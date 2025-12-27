@@ -15,7 +15,6 @@ return new class extends Migration
             $table->id('id_region');
             $table->string('clave_region', 10)->unique();
             $table->string('nombre_region', 150);
-            $table->foreignId('id_municipio')->constrained('municipios');
             $table->timestamps();
         });
     }

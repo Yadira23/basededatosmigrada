@@ -13,10 +13,8 @@ return new class extends Migration
     {
         Schema::create('sectores', function (Blueprint $table) {
             $table->id('id_sector');
-
             $table->string('nombre_sector', 100);
             $table->string('descripcion_sector')->nullable();
-            
             $table->timestamps();
         });
     }

@@ -14,7 +14,10 @@ return new class extends Migration
         Schema::create('dependencias', function (Blueprint $table) {
             $table->id('id_depen');
             $table->string('nombre_depen', 150);
-            $table->foreignId('id_sector')->constrained('sectores');
+            $table->foreignId('id_sector')
+                ->references('id_sector')
+                ->on('sectores')
+                ->onDelete('restrict');
             $table->string('email_depen', 150);
             $table->string('extension_depen', 10)->nullable();
             $table->string('telefono_depen', 20);

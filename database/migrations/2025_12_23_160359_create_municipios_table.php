@@ -12,9 +12,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('municipios', function (Blueprint $table) {
-            $table->id('id_municipio');
+            $table->id('id_mun');
             $table->string('clave_municipio', 10)->unique();
             $table->string('nombre_municipio', 150);
+            $table->foreignId('id_region')
+                ->references('id_region')
+                ->on('regiones')
+                ->onDelete('cascade');
             $table->timestamps();
         });
     }

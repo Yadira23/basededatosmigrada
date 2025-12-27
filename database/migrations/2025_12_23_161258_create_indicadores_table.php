@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id('id_ind');
             $table->string('nombre_ind', 200);
             $table->text('definicion_ind');
-            $table->text('formula_ind');
+            $table->text('formula_ind')->nullable();
             $table->string('tendencia_ind', 50);
             $table->string('restriccion_ind', 100)->nullable();
             $table->string('formato_ind', 50);
@@ -26,11 +26,19 @@ return new class extends Migration
             $table->string('periodo_ind', 20);
             $table->string('etiquetas_ind', 200)->nullable();
             $table->string('fuenteverificacion_ind', 200)->nullable();
-            $table->foreignId('id_form')->constrained('formularios');
-            $table->foreignId('id_anexo')->constrained('anexos');
+            $table->foreignId('id_form')
+                ->references('id_form')
+                ->on('formularios')
+                ->onDelete('cascade');
+            $table->foreignId('id_anexo')
+                ->nullable()
+                ->references('id_anexo')
+                ->on('anexos')
+                ->onDelete('set null');
             $table->timestamps();
         });
     }
+
 
     /**
      * Reverse the migrations.

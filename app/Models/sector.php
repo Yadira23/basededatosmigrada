@@ -5,8 +5,10 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class sector extends Model
+class Sector extends Model
 {
+    use HasFactory;
+    
     protected $table = 'sectores';
     protected $primaryKey = 'id_sector';
 
@@ -21,5 +23,5 @@ class sector extends Model
     {
         return $this->hasMany(Dependencia::class, 'id_sector');
     }
-    use HasFactory;
+    
 }

@@ -14,11 +14,13 @@ return new class extends Migration
         Schema::create('bitacoras', function (Blueprint $table) {
             $table->id('id_bitacora');
             $table->foreignId('id_usuario')
-                ->constrained('usuarios')
+                ->references('id_usuario')
+                ->on('usuarios')
                 ->onDelete('cascade');
 
             $table->foreignId('id_carga')
-                ->constrained('cargas')
+                ->references('id_carga')
+                ->on('cargas')
                 ->onDelete('cascade');
 
             $table->string('accion_bit');
@@ -26,6 +28,8 @@ return new class extends Migration
             $table->timestamp('fecha_bit');
             $table->string('ip_origen_bit', 45);
             $table->timestamps();
+
+            $table->unique(['id_usuario', 'id_carga', 'fecha_bit']);
         });
     }
 

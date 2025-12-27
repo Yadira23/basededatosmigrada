@@ -13,17 +13,15 @@ return new class extends Migration
     {
         Schema::create('cargas', function (Blueprint $table) {
             $table->id('id_carga');
-
             $table->string('folioUnico_carga')->unique();
             $table->date('fecha_carga');
             $table->string('periodo'); // mensual, trimestral, anual
-
             $table->string('status_env'); // enviado, en revisión, aprobado, rechazado
             $table->text('descripcion_env')->nullable();
             $table->text('observacion_env')->nullable();
-
             $table->foreignId('id_form')
-                ->constrained('formularios')
+                ->references('id_form')
+                ->on('formularios')
                 ->onDelete('cascade');
             $table->timestamps();
         });

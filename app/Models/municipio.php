@@ -5,12 +5,22 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class municipio extends Model
+class Municipio extends Model
 {
-    protected $primaryKey = 'id_municipio';
-    public function municipios()
-    {
-        return $this->hasMany(Municipio::class, 'id_region');
-    }
     use HasFactory;
+
+    protected $table = 'municipios';
+    protected $primaryKey = 'id_municipio';
+
+    protected $fillable = [
+        'clave_municipio',
+        'nombre_municipio',
+        'id_region'
+    ];
+
+    // 🔗 Un municipio pertenece a una región
+    public function region()
+    {
+        return $this->belongsTo(Region::class, 'id_region');
+    }
 }

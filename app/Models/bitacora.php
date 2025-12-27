@@ -7,9 +7,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 
 
-class bitacora extends Pivot
+class Bitacora extends Pivot
 {
-    protected $table = 'bitacora';
+    use HasFactory;
+    protected $table = 'bitacoras';
     protected $primaryKey = 'id_bitacora';
 
     protected $fillable = [
@@ -20,5 +21,5 @@ class bitacora extends Pivot
         'fecha_bit',
         'ip_origen_bit'
     ];
-    use HasFactory;
+    public $timestamps = true;
 }

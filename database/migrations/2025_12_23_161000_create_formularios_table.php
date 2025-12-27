@@ -14,13 +14,19 @@ return new class extends Migration
         Schema::create('formularios', function (Blueprint $table) {
             $table->id('id_form');
             $table->string('titulo_form', 200);
-            $table->date('fecha_creacion_form');
+            $table->date('fecha_creacion_form')->useCurrent();
             $table->text('descripcion_form')->nullable();
             $table->string('boton_accion_form', 50);
             $table->string('secciones_form', 100);
             $table->string('periodo_form', 20);
-            $table->foreignId('id_depen')->constrained('dependencias');
-            $table->foreignId('id_usr')->constrained('usuarios');
+            $table->foreignId('id_depen')
+                ->references('id_depen')
+                ->on('dependencias')
+                ->onDelete('restrict');
+            $table->foreignId('id_usr')
+                ->references('id_usuario')
+                ->on('usuarios')
+                ->onDelete('restrict');
             $table->timestamps();
         });
     }

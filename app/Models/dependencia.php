@@ -5,8 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class dependencia extends Model
+class Dependencia extends Model
 {
+    use HasFactory;
     protected $primaryKey = 'id_depen';
     public function usuario()
     {
@@ -22,5 +23,5 @@ class dependencia extends Model
     {
         return $this->belongsTo(Sector::class, 'id_sector');
     }
-    use HasFactory;
+    
 }

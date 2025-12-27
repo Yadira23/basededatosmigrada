@@ -5,9 +5,25 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class usuario extends Model
+class Usuario extends Model
 {
+    use HasFactory;
+    protected $table = 'usuarios';
     protected $primaryKey = 'id_usuario';
+
+    protected $fillable = [
+        'usuario_usr',
+        'nombre_usr',
+        'apellido_paterno',
+        'apellido_materno',
+        'email_usr',
+        'password',
+        'id_depen',
+        'id_rol',
+        'estado_usr',
+        'telefono_usr'
+    ];
+
     public function rol()
     {
         return $this->belongsTo(Role::class, 'id_rol');
@@ -15,14 +31,14 @@ class usuario extends Model
 
     public function dependencia()
     {
-        return $this->belongsTo(Dependencia::class, 'id_dep');
+        return $this->belongsTo(Dependencia::class, 'id_depen');
     }
 
     public function cargas()
     {
         return $this->belongsToMany(
         Carga::class,
-        'bitacora',
+        'bitacoras',
         'id_usuario',
         'id_carga'
     )->using(Bitacora::class)

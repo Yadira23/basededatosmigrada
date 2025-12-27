@@ -5,9 +5,22 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class carga extends Model
+class Carga extends Model
 {
+    use HasFactory;
+    protected $table = 'cargas';
     protected $primaryKey = 'id_carga';
+
+    protected $fillable = [
+        'folioUnico_carga',
+        'fecha_carga',
+        'periodo',
+        'status_env',
+        'descripcion_env',
+        'observacion_env',
+        'id_form'
+    ];
+
     public function formulario()
     {
         return $this->belongsTo(Formulario::class, 'id_form');
@@ -17,7 +30,7 @@ class carga extends Model
     {
         return $this->belongsToMany(
         Usuario::class,
-        'bitacora',
+        'bitacoras',
         'id_carga',
         'id_usuario'
     )->using(Bitacora::class)
@@ -30,9 +43,4 @@ class carga extends Model
         return $this->hasMany(DetalleCarga::class, 'id_carga');
     }
 
-    public function municipio()
-    {
-        return $this->belongsTo(Municipio::class, 'id_municipio');
-    }
-    use HasFactory;
 }

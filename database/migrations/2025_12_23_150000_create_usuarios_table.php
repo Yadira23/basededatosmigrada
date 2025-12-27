@@ -19,10 +19,15 @@ return new class extends Migration
             $table->string('apellido_materno', 100)->nullable();
             $table->string('email_usr', 150)->unique();
             $table->string('password');
-
-            $table->foreignId('id_depen')->constrained('dependencias');
-            $table->foreignId('id_rol')->constrained('rol');
-
+            $table->foreignId('id_depen')
+                ->unique()
+                ->references('id_depen')
+                ->on('dependencias')
+                ->onDelete('restrict');
+            $table->foreignId('id_rol')
+                ->references('id_rol')
+                ->on('roles')
+                ->onDelete('restrict');
             $table->string('estado_usr', 20);
             $table->string('telefono_usr', 20)->nullable();
             $table->timestamps();
