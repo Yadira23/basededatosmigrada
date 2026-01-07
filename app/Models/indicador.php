@@ -25,18 +25,12 @@ class Indicador extends Model
         'periodo_ind',
         'etiquetas_ind',
         'fuenteverificacion_ind',
-        'id_form',
-        'id_anexo'
+        'id_form'
     ];
     
     public function formulario()
     {
         return $this->belongsTo(Formulario::class, 'id_form');
-    }
-
-    public function anexo()
-    {
-        return $this->belongsTo(Anexo::class, 'id_anexo');
     }
 
     public function detalles()

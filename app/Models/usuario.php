@@ -1,4 +1,4 @@
-<?php
+<?php 
 
 namespace App\Models;
 
@@ -7,43 +7,45 @@ use Illuminate\Database\Eloquent\Model;
 
 class Usuario extends Model
 {
-    use HasFactory;
+	use HasFactory;
+	
+    public $timestamps = true;
+
     protected $table = 'usuarios';
     protected $primaryKey = 'id_usuario';
 
-    protected $fillable = [
-        'usuario_usr',
-        'nombre_usr',
-        'apellido_paterno',
-        'apellido_materno',
-        'email_usr',
-        'password',
-        'id_depen',
-        'id_rol',
-        'estado_usr',
-        'telefono_usr'
-    ];
-
-    public function rol()
+    protected $fillable = ['usuario_usr','nombre_usr','apellido_paterno','apellido_materno','email_usr', 'password', 'id_depen','id_rol','estado_usr','telefono_usr'];
+	
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasOne
+     */
+    public function bitacora()
     {
-        return $this->belongsTo(Role::class, 'id_rol');
+        return $this->hasOne('App\Models\Bitacora', 'id_usuario', 'id_usuario');
     }
-
+    
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasOne
+     */
     public function dependencia()
     {
-        return $this->belongsTo(Dependencia::class, 'id_depen');
+        return $this->hasOne('App\Models\Dependencia', 'id_depen', 'id_depen');
     }
-
-    public function cargas()
+    
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function formularios()
     {
-        return $this->belongsToMany(
-        Carga::class,
-        'bitacoras',
-        'id_usuario',
-        'id_carga'
-    )->using(Bitacora::class)
-     ->withPivot(['accion_bit', 'descripcion_bit', 'fecha_bit', 'ip_origen_bit'])
-     ->withTimestamps();
+        return $this->hasMany('App\Models\Formulario', 'id_usr', 'id_usuario');
     }
-    use HasFactory;
+    
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasOne
+     */
+    public function role()
+    {
+        return $this->hasOne('App\Models\Role', 'id_rol', 'id_rol');
+    }
+    
 }

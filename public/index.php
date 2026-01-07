@@ -1,9 +1,15 @@
 <?php
 
+ini_set('memory_limit', '2048M');
+set_time_limit(300);
+error_reporting(E_ALL & ~E_DEPRECATED & ~E_STRICT);
+ini_set('display_errors', '1');
+
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Http\Request;
 
 define('LARAVEL_START', microtime(true));
+
 
 /*
 |--------------------------------------------------------------------------

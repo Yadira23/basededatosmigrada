@@ -12,7 +12,6 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('formularios', function (Blueprint $table) {
-            $table->id('id_form');
             $table->string('titulo_form', 200);
             $table->date('fecha_creacion_form')->useCurrent();
             $table->text('descripcion_form')->nullable();

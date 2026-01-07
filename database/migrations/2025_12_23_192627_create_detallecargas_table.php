@@ -23,17 +23,6 @@ return new class extends Migration
                 ->references('id_ind')
                 ->on('indicadores')
                 ->onDelete('restrict');
-            // Relación con región (catálogo)
-            $table->foreignId('id_region')
-                ->references('id_region')
-                ->on('regiones')
-                ->onDelete('restrict');
-            // 🔴 AQUÍ VA id_mun (municipio)
-            $table->foreignId('id_mun')
-                ->references('id_mun')
-                ->on('municipios')
-                ->onDelete('restrict');
-            // Atributos propios del detalle
             $table->string('periodo_det');        // mensual, trimestral, anual
             $table->year('ejercicio_det');        // aquí SÍ va el año
             $table->date('fecha_registro_det');

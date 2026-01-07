@@ -30,11 +30,6 @@ return new class extends Migration
                 ->references('id_form')
                 ->on('formularios')
                 ->onDelete('cascade');
-            $table->foreignId('id_anexo')
-                ->nullable()
-                ->references('id_anexo')
-                ->on('anexos')
-                ->onDelete('set null');
             $table->timestamps();
         });
     }
