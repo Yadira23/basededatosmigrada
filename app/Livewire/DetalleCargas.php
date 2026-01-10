@@ -6,10 +6,36 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use App\Models\DetalleCarga;
 use Livewire\Attributes\Computed;
+use App\Models\Carga;
+use App\Models\Indicador;
+
 
 class DetalleCargas extends Component
 {
     use WithPagination;
+	public function mount()
+{
+    //No hay cargas → manda a cargas
+    if (!Carga::exists()) {
+        session()->flash(
+            'error',
+            'Debes registrar al menos una Carga.'
+        );
+        return redirect()->to('/cargas');
+    }
+
+    //Sí hay cargas, pero NO indicadores → manda a indicadores
+    if (!Indicador::exists()) {
+        session()->flash(
+            'error',
+            'Debes registrar al menos un Indicador.'
+        );
+        return redirect()->to('/indicadores');
+    }
+
+    //Si llega aquí, ya puede usar DetalleCarga
+}
+
 
 	protected $paginationTheme = 'bootstrap';
     public $selected_id, $keyWord, $id_detalle, $id_carga, $id_ind, $id_region, $id_mun, $periodo_det, $ejercicio_det, $fecha_registro_det, $fuente_det, $valor_det;
@@ -47,6 +73,11 @@ class DetalleCargas extends Component
 
     public function save()
     {
+		if (!Carga::exists() || !Indicador::exists()) {
+        session()->flash('error', 'Proceso inválido.');
+        return;
+    }
+
         $this->validate([
 		'id_carga' => 'required',
 		'id_ind' => 'required',

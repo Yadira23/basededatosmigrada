@@ -13,39 +13,52 @@ use Illuminate\Support\Facades\Hash;
 class Usuarios extends Component
 {
     use WithPagination;
+    
+    public $adminExiste = false;
+    public function mount()
+{
+    // bloqueo por dependencias (ya lo tienes)
+    if (Dependencia::count() === 0) {
+        session()->flash('error', 'Debes registrar al menos una Dependencia.');
+        return redirect()->route('dependencias');
+    }
 
-	protected $paginationTheme = 'bootstrap';
+    $this->adminExiste = Usuario::where('id_rol', 1)->exists();
+}
+
+
+    protected $paginationTheme = 'bootstrap';
     public $selected_id, $keyWord, $usuario_usr, $nombre_usr, $apellido_paterno, $apellido_materno, $email_usr, $password, $id_depen, $id_rol, $estado_usr, $telefono_usr;
 
     #[Computed]
-	public function filteredUsuarios()
-	{
-		$keyWord = '%' . $this->keyWord . '%';
-		return Usuario::latest()
-			->where(function ($query) use ($keyWord) {
-				$query
-						->orWhere('usuario_usr', 'LIKE', $keyWord)
-						->orWhere('nombre_usr', 'LIKE', $keyWord)
-						->orWhere('apellido_paterno', 'LIKE', $keyWord)
-						->orWhere('apellido_materno', 'LIKE', $keyWord)
-						->orWhere('email_usr', 'LIKE', $keyWord)
-						->orWhere('id_depen', 'LIKE', $keyWord)
-						->orWhere('id_rol', 'LIKE', $keyWord)
-						->orWhere('estado_usr', 'LIKE', $keyWord)
-						->orWhere('telefono_usr', 'LIKE', $keyWord);
-			})
-			->paginate(10);
-	}
+    public function filteredUsuarios()
+    {
+        $keyWord = '%' . $this->keyWord . '%';
+        return Usuario::latest()
+            ->where(function ($query) use ($keyWord) {
+                $query
+                    ->orWhere('usuario_usr', 'LIKE', $keyWord)
+                    ->orWhere('nombre_usr', 'LIKE', $keyWord)
+                    ->orWhere('apellido_paterno', 'LIKE', $keyWord)
+                    ->orWhere('apellido_materno', 'LIKE', $keyWord)
+                    ->orWhere('email_usr', 'LIKE', $keyWord)
+                    ->orWhere('id_depen', 'LIKE', $keyWord)
+                    ->orWhere('id_rol', 'LIKE', $keyWord)
+                    ->orWhere('estado_usr', 'LIKE', $keyWord)
+                    ->orWhere('telefono_usr', 'LIKE', $keyWord);
+            })
+            ->paginate(10);
+    }
 
-	public function render()
-	{
-		return view('livewire.usuarios.view', [
-			'usuarios' => $this->filteredUsuarios,
-			'dependencias' => Dependencia::all(),
+    public function render()
+    {
+        return view('livewire.usuarios.view', [
+            'usuarios' => $this->filteredUsuarios,
+            'dependencias' => Dependencia::all(),
             'roles'        => Role::all(),
-		]);
-	}
-	
+        ]);
+    }
+
     public function cancel()
     {
         $this->reset();
@@ -53,58 +66,64 @@ class Usuarios extends Component
 
     public function save()
 {
-    // Validaciones
-    $this->validate([
-        'usuario_usr' => 'required',
-        'nombre_usr' => 'required',
-        'apellido_paterno' => 'required',
-        'apellido_materno' => 'nullable',
-        'email_usr' => 'required|email',
-        'password' => $this->selected_id ? 'nullable|min:6' : 'required|min:6', // obligatorio al crear
-        'id_depen' => 'required',
-        'id_rol' => 'required',
-        'estado_usr' => 'required',
-        'telefono_usr' => 'nullable',
-    ]);
+    // 1️⃣ Reglas base
+    $rules = [
+        'usuario_usr'        => 'required',
+        'nombre_usr'         => 'required',
+        'apellido_paterno'   => 'required',
+        'apellido_materno'   => 'nullable',
+        'email_usr'          => 'required|email|unique:usuarios,email_usr,' . $this->selected_id . ',id_usuario',
+        'password'           => $this->selected_id ? 'nullable|min:6' : 'required|min:6',
+        'id_rol'             => 'required',
+        'estado_usr'         => 'required',
+        'telefono_usr'       => 'nullable',
+    ];
 
-    // Determinar password a guardar
-    if ($this->selected_id) {
-        // Actualizando: solo hash si se ingresó uno nuevo
-        $passwordToSave = $this->password 
-            ? Hash::make($this->password) 
-            : Usuario::find($this->selected_id)->password;
-    } else {
-        // Creando: obligatorio, hash seguro
-        $passwordToSave = Hash::make($this->password);
+    // 2️⃣ Si NO es administrador → dependencia obligatoria
+    if ($this->id_rol != 1) {
+        $rules['id_depen'] = 'required|exists:dependencias,id_depen';
     }
 
-    // Guardar o actualizar
-    Usuario::updateOrCreate(
-        ['id_usuario' => $this->selected_id],
-        [
-            'usuario_usr' => $this->usuario_usr,
-            'nombre_usr' => $this->nombre_usr,
-            'apellido_paterno' => $this->apellido_paterno,
-            'apellido_materno' => $this->apellido_materno,
-            'email_usr' => $this->email_usr,
-            'password' => $passwordToSave,
-            'id_depen' => $this->id_depen,
-            'id_rol' => $this->id_rol,
-            'estado_usr' => $this->estado_usr,
-            'telefono_usr' => $this->telefono_usr,
-        ]
-    );
+    // 3️⃣ Validar (UNA sola vez)
+    $this->validate($rules);
 
-    $this->dispatch('closeModal');
-    $this->reset();
+    // 4️⃣ Regla: solo un administrador
+    if ($this->id_rol == 1 && Usuario::where('id_rol', 1)->exists() && !$this->selected_id) {
+        session()->flash('error', 'Ya existe un Administrador registrado.');
+        return;
+    }
 
-    session()->flash(
-        'message',
-        $this->selected_id
-            ? 'Usuario actualizado correctamente'
-            : 'Usuario creado correctamente'
-    );
-}
+    // 5️⃣ Administrador no tiene dependencia
+    if ($this->id_rol == 1) {
+        $this->id_depen = null;
+    }
+        // Guardar o actualizar
+        Usuario::updateOrCreate(
+            ['id_usuario' => $this->selected_id],
+            [
+                'usuario_usr' => $this->usuario_usr,
+                'nombre_usr' => $this->nombre_usr,
+                'apellido_paterno' => $this->apellido_paterno,
+                'apellido_materno' => $this->apellido_materno,
+                'email_usr' => $this->email_usr,
+                'password' => $this->password ? bcrypt($this->password) : Usuario::find($this->selected_id)->password,
+                'id_depen' => $this->id_depen,
+                'id_rol' => $this->id_rol,
+                'estado_usr' => $this->estado_usr,
+                'telefono_usr' => $this->telefono_usr,
+            ]
+        );
+
+        $this->dispatch('closeModal');
+        $this->reset();
+
+        session()->flash(
+            'message',
+            $this->selected_id
+                ? 'Usuario actualizado correctamente'
+                : 'Usuario creado correctamente'
+        );
+    }
 
 
     public function edit($id)
@@ -128,5 +147,17 @@ class Usuarios extends Component
         if ($id) {
             Usuario::where('id_usuario', $id)->delete();
         }
+    }
+
+    public function getRolesProperty()
+    {
+        $roles = \App\Models\Role::query();
+
+        if (Usuario::where('id_rol', 1)->exists()) {
+            // Si ya hay admin, ocultamos ese rol
+            $roles->where('id_rol', '!=', 1);
+        }
+
+        return $roles->get();
     }
 }

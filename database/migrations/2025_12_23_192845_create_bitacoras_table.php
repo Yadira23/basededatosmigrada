@@ -28,8 +28,6 @@ return new class extends Migration
             $table->timestamp('fecha_bit');
             $table->string('ip_origen_bit', 45);
             $table->timestamps();
-
-            $table->unique(['id_usuario', 'id_carga', 'fecha_bit']);
         });
     }
 

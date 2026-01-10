@@ -28,6 +28,7 @@ return new class extends Migration
             $table->date('fecha_registro_det');
             $table->string('fuente_det');
             $table->decimal('valor_det', 12, 4);
+            $table->unique(['id_carga', 'id_ind']);
             $table->timestamps();
         });
     }

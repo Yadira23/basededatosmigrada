@@ -61,15 +61,12 @@
     @enderror
 </div>
 
-                    <div class="form-group">
-    <label>Status</label>
-    <select wire:model.defer="status_ind" class="form-control">
-        <option value="">Seleccione</option>
-        <option value="Activo">Activo</option>
-        <option value="Inactivo">Inactivo</option>
-    </select>
-    @error('status_ind') <span class="text-danger">{{ $message }}</span> @enderror
-</div>
+                    <select wire:model="status_ind" class="form-control">
+    <option value="">Selecciona estado</option>
+    <option value="1">Activo</option>
+    <option value="0">Inactivo</option>
+</select>
+
 
 
                     <div class="form-group">
