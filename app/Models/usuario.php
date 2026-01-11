@@ -29,7 +29,7 @@ class Usuario extends Model
      */
     public function dependencia()
     {
-        return $this->hasOne('App\Models\Dependencia', 'id_depen', 'id_depen');
+        return $this->belongsTo('App\Models\Dependencia', 'id_depen', 'id_depen');
     }
     
     /**
@@ -45,7 +45,7 @@ class Usuario extends Model
      */
     public function role()
     {
-        return $this->hasOne('App\Models\Role', 'id_rol', 'id_rol');
+        return $this->belongsTo('App\Models\Role', 'id_rol', 'id_rol');
     }
     
 }

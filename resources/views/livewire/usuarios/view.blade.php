@@ -22,12 +22,13 @@
 				</div>
 				
 				<div class="card-body">
-						@include('livewire.usuarios.modals')
+						@include('livewire.usuarios.modals', [
+    'adminExiste' => $this->adminExiste
+])
 				<div class="table-responsive">
 					<table class="table table-bordered table-sm">
 						<thead class="thead">
 							<tr> 
-								<td>#</td> 
 								<th>Id Usuario</th>
 								<th>Usuario Usr</th>
 								<th>Nombre Usr</th>
@@ -44,15 +45,20 @@
 						<tbody>
 							@forelse($usuarios as $row)
 							<tr>
-								<td>{{ $loop->iteration }}</td> 
 								<td>{{ $row->id_usuario }}</td>
 								<td>{{ $row->usuario_usr }}</td>
 								<td>{{ $row->nombre_usr }}</td>
 								<td>{{ $row->apellido_paterno }}</td>
 								<td>{{ $row->apellido_materno }}</td>
 								<td>{{ $row->email_usr }}</td>
-								<td>{{ $row->id_depen }}</td>
-								<td>{{ $row->id_rol }}</td>
+								<td>
+    @if($row->id_depen)
+        {{ $row->dependencia->nombre_depen ?? '—' }}
+    @else
+        <span class="badge bg-secondary">Administrador</span>
+    @endif
+</td>
+<td>{{ $row->role->nombre_rol ?? '—' }}</td>
 								<td>{{ $row->estado_usr }}</td>
 								<td>{{ $row->telefono_usr }}</td>
 								<td width="90">

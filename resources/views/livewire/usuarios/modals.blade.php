@@ -1,4 +1,9 @@
 <!-- Modal -->
+  @if (session()->has('error'))
+    <div class="alert alert-danger">
+        {{ session('error') }}
+    </div>
+@endif
 <div wire:ignore.self class="modal fade" id="DataModal" data-bs-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="DataModalLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
@@ -36,38 +41,49 @@
                         <input type="password" wire:model.defer="password" class="form-control">
                         @error('password') <span class="text-danger">{{ $message }}</span> @enderror
                     </div>
-
+                    
                     <div class="form-group">
-                    @if($id_rol != 1)
-    <select wire:model="id_depen" class="form-control">
-        <option value="">Seleccione dependencia</option>
-        @foreach($dependencias as $dep)
-            <option value="{{ $dep->id_depen }}">
-                {{ $dep->nombre_depen }}
-            </option>
-        @endforeach
+    <label>Rol</label>
+    <select wire:model.live="id_rol" class="form-control">
+        <option value="">Seleccione rol</option>
+
+        @if(!$adminExiste)
+            <option value="1">Administrador</option>
+        @endif
+
+        <option value="2">Enlace Técnico</option>
     </select>
+
+    @error('id_rol') 
+        <span class="text-danger">{{ $message }}</span> 
+    @enderror
+</div>
+
+@if($id_rol == 2)
+    <div class="form-group mt-2">
+        <label>Dependencia</label>
+
+        @if($dependenciasDisponibles->isEmpty())
+            <div class="alert alert-warning">
+                No hay dependencias disponibles para asignar.
+            </div>
+        @else
+            <select wire:model.live="id_depen" class="form-control">
+                <option value="">Seleccione dependencia</option>
+
+                @foreach($dependenciasDisponibles as $dep)
+                    <option value="{{ $dep->id_depen }}">
+                        {{ $dep->nombre_depen }}
+                    </option>
+                @endforeach
+            </select>
+        @endif
+
+        @error('id_depen')
+            <small class="text-danger">{{ $message }}</small>
+        @enderror
+    </div>
 @endif
-
-        
-                </div>
-
-                    <div class="form-group">
-                        <label>Rol</label>
-                        <select wire:model="id_rol" class="form-control">
-    <option value="">Seleccione rol</option>
-
-    @if(!$adminExiste)
-        <option value="1">Administrador</option>
-    @endif
-
-    <option value="2">Enlace Técnico</option>
-</select>
-
-
-                        @error('id_rol') <span class="text-danger">{{ $message }}</span> @enderror
-                    </div>
-
                     <div class="form-group">
                         <label for="estado_usr"></label>
                         <select wire:model="estado_usr" class="form-control">

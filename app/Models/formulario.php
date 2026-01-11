@@ -46,7 +46,7 @@ class Formulario extends Model
      */
     public function indicadores()
     {
-        return $this->hasMany('App\Models\Indicadore', 'id_form', 'id_form');
+        return $this->hasMany('App\Models\Indicador', 'id_form', 'id_form');
     }
     
     /**

@@ -27,7 +27,7 @@
 					<table class="table table-bordered table-sm">
 						<thead class="thead">
 							<tr> 
-								<td>#</td> 
+								<th>#</th>
 								<th>Id Form</th>
 								<th>Titulo Form</th>
 								<th>Fecha Creacion Form</th>
@@ -48,7 +48,25 @@
 								<td>{{ $row->titulo_form }}</td>
 								<td>{{ $row->fecha_creacion_form }}</td>
 								<td>{{ $row->descripcion_form }}</td>
-								<td>{{ $row->boton_accion_form }}</td>
+								<td width="150">
+    @if($row->boton_accion_form === 'Publicar')
+        <button wire:click="publicar({{ $row->id_form }})" class="btn btn-success btn-sm">
+            Publicar
+        </button>
+    @endif
+
+    @if($row->boton_accion_form === 'Ver')
+        <button wire:click="ver({{ $row->id_form }})" class="btn btn-primary btn-sm">
+            Ver
+        </button>
+    @endif
+
+    @if($this->botonFinalizarVisible($row))
+        <button wire:click="finalizar({{ $row->id_form }})" class="btn btn-danger btn-sm">
+            Finalizar
+        </button>
+    @endif
+</td>
 								<td>{{ $row->secciones_form }}</td>
 								<td>{{ $row->periodo_form }}</td>
 								<td>{{ $row->id_depen }}</td>

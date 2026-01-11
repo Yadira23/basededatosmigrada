@@ -20,6 +20,7 @@ return new class extends Migration
             $table->string('email_usr', 150)->unique();
             $table->string('password');
             $table->foreignId('id_depen')
+                ->nullable()
                 ->unique()
                 ->references('id_depen')
                 ->on('dependencias')

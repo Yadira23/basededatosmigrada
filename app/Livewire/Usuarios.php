@@ -14,7 +14,8 @@ class Usuarios extends Component
 {
     use WithPagination;
     
-    public $adminExiste = false;
+    public $dependenciasDisponibles;
+
     public function mount()
 {
     // bloqueo por dependencias (ya lo tienes)
@@ -23,12 +24,18 @@ class Usuarios extends Component
         return redirect()->route('dependencias');
     }
 
-    $this->adminExiste = Usuario::where('id_rol', 1)->exists();
+    $this->dependenciasDisponibles = collect();
 }
-
 
     protected $paginationTheme = 'bootstrap';
     public $selected_id, $keyWord, $usuario_usr, $nombre_usr, $apellido_paterno, $apellido_materno, $email_usr, $password, $id_depen, $id_rol, $estado_usr, $telefono_usr;
+
+    #[Computed]
+public function adminExiste()
+{
+    return Usuario::where('id_rol', 1)->exists();
+}
+
 
     #[Computed]
     public function filteredUsuarios()
@@ -68,7 +75,7 @@ class Usuarios extends Component
 {
     // 1️⃣ Reglas base
     $rules = [
-        'usuario_usr'        => 'required',
+        'usuario_usr' => 'required|unique:usuarios,usuario_usr,' . $this->selected_id . ',id_usuario',
         'nombre_usr'         => 'required',
         'apellido_paterno'   => 'required',
         'apellido_materno'   => 'nullable',
@@ -81,8 +88,8 @@ class Usuarios extends Component
 
     // 2️⃣ Si NO es administrador → dependencia obligatoria
     if ($this->id_rol != 1) {
-        $rules['id_depen'] = 'required|exists:dependencias,id_depen';
-    }
+    $rules['id_depen'] = 'required|unique:usuarios,id_depen,' . $this->selected_id . ',id_usuario';
+}
 
     // 3️⃣ Validar (UNA sola vez)
     $this->validate($rules);
@@ -160,4 +167,21 @@ class Usuarios extends Component
 
         return $roles->get();
     }
+
+    public function updatedIdRol($value)
+{
+    if ($value == 2) {
+        $this->dependenciasDisponibles = Dependencia::whereNotIn(
+            'id_depen',
+            Usuario::whereNotNull('id_depen')->pluck('id_depen')
+        )->get();
+
+        if ($this->dependenciasDisponibles->isEmpty()) {
+            session()->flash('message', '⚠️ No hay dependencias disponibles para registrar usuarios.');
+        }
+    } else {
+        $this->id_depen = null;
+    }
+}
+
 }
