@@ -21,7 +21,7 @@ class Anexo extends Model
      */
     public function formulario()
     {
-        return $this->hasOne('App\Models\Formulario', 'id_form', 'id_form');
+        return $this->belongsTo('App\Models\Formulario', 'id_form', 'id_form');
     }
     
     /**

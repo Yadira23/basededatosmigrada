@@ -28,6 +28,11 @@ class Indicador extends Model
         'id_form'
     ];
     
+    // Constantes
+    const FORMATOS = ['porcentaje', 'entero', 'decimal'];
+    const PERIODOS = ['mensual', 'trimestral', 'semestral', 'anual'];
+    const TENDENCIAS = ['ascendente', 'descendente'];
+
     public function formulario()
     {
         return $this->belongsTo(Formulario::class, 'id_form');
@@ -38,4 +43,22 @@ class Indicador extends Model
         return $this->hasMany(DetalleCarga::class, 'id_ind');
     }
     
+    // Scope
+    public function scopeActivos($query)
+    {
+        return $query->where('status_ind', true);
+    }
+
+    // Accesor
+    public function getUnidadmedidaIndAttribute($value)
+    {
+        if ($value) return $value;
+
+        return match ($this->formato_ind) {
+            'porcentaje' => '%',
+            'entero'     => 'entero',
+            'decimal'    => 'decimal',
+            default      => null,
+        };
+    }
 }
