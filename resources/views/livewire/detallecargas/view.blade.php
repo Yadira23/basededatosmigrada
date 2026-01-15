@@ -27,7 +27,7 @@
 					<table class="table table-bordered table-sm">
 						<thead class="thead">
 							<tr> 
-								<td>#</td> 
+								{{--<td>#</td>--}}
 								<th>Id Detalle</th>
 								<th>Id Carga</th>
 								<th>Id Ind</th>
@@ -44,7 +44,7 @@
 						<tbody>
 							@forelse($detalleCargas as $row)
 							<tr>
-								<td>{{ $loop->iteration }}</td> 
+								{{--<td>{{ $loop->iteration }}</td> --}}
 								<td>{{ $row->id_detalle }}</td>
 								<td>{{ $row->id_carga }}</td>
 								<td>{{ $row->id_ind }}</td>

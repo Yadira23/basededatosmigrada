@@ -14,39 +14,39 @@
 						<table class="table table-bordered table-sm">
 							<thead class="thead">
 								<tr>
-									<td>#</td>
+									<!-- <td>#</td> -->
 									<th>Id Ind</th>
 									<th>Nombre Ind</th>
-									<th>Definicion Ind</th>
-									<th>Formula Ind</th>
+									<th>Etiquetas Ind</th>
+									<!-- <th>Definicion Ind</th>
+									<th>Formula Ind</th> -->
 									<th>Tendencia Ind</th>
-									<th>Restriccion Ind</th>
+									<!-- <th>Restriccion Ind</th> -->
 									<th>Formato Ind</th>
 									<th>Unidadmedida Ind</th>
 									<th>Meta Ind</th>
 									<th>Requerido Ind</th>
 									<th>Status Ind</th>
 									<th>Periodo Ind</th>
-									<th>Etiquetas Ind</th>
 									<th>Fuenteverificacion Ind</th>
-									<th>Id Form</th>
 									<td>ACTIONS</td>
 								</tr>
 							</thead>
 							<tbody> @forelse($indicadores as $row) <tr>
-									<td>{{ $loop->iteration }}</td>
+									<!--<td>{{ $loop->iteration }}</td>-->
 									<td>{{ $row->id_ind }}</td>
 									<td>{{ $row->nombre_ind }}</td>
-									<td>{{ $row->definicion_ind }}</td>
+									<td>{{ $row->etiquetas_ind }}</td>
+									{{--<td>{{ $row->definicion_ind }}</td>
 									<td>
 										@if($row->formula_ind)
 										{{ $row->formula_ind }}
 										@else
 										<span class="text-muted">Sin fórmula</span>
 										@endif
-									</td>
+									</td> --}}
 									<td>{{ $row->tendencia_ind }}</td>
-									<td>{{ $row->restriccion_ind }}</td>
+									<!--<td>{{ $row->restriccion_ind }}</td>-->
 									<td>{{ $row->formato_ind }}</td>
 									<td>{{ $row->unidadmedida_ind }}</td>
 									<td>{{ $row->meta_ind ?? '—' }}</td>
@@ -65,9 +65,7 @@
 										@endif
 									</td>
 									<td>{{ $row->periodo_ind }}</td>
-									<td>{{ $row->etiquetas_ind }}</td>
 									<td>{{ $row->fuenteverificacion_ind }}</td>
-									<td>{{ $row->id_form }}</td>
 									<td width="90">
 										<div class="dropdown"> <a class="btn btn-sm btn-secondary dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false"> Actions </a>
 											<ul class="dropdown-menu">

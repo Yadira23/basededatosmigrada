@@ -7,55 +7,54 @@ use Illuminate\Database\Eloquent\Model;
 
 class Formulario extends Model
 {
-	use HasFactory;
-	
+    use HasFactory;
+
     public $timestamps = true;
 
     protected $table = 'formularios';
     protected $primaryKey = 'id_form';
 
-    protected $fillable = ['titulo_form','fecha_creacion_form','descripcion_form','boton_accion_form','secciones_form','periodo_form','id_depen','id_usr'];
-	
+    protected $fillable = [
+        'titulo_form',
+        'fecha_creacion_form',
+        'descripcion_form',
+        'boton_accion_form',
+        'secciones_form',
+        'periodo_form',
+        'id_ind',      // 🔴 SE AGREGA
+        'id_depen'
+    ];
+
     /**
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     * Formulario -> Anexos (1:N)
      */
     public function anexos()
     {
-        return $this->hasMany('App\Models\Anexo', 'id_form', 'id_form');
+        return $this->hasMany(Anexo::class, 'id_form', 'id_form');
     }
-    
+
     /**
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     * Formulario -> Cargas (1:N)
      */
     public function cargas()
     {
-        return $this->hasMany('App\Models\Carga', 'id_form', 'id_form');
+        return $this->hasMany(Carga::class, 'id_form', 'id_form');
     }
-    
+
     /**
-     * @return \Illuminate\Database\Eloquent\Relations\HasOne
+     * Formulario -> Dependencia (N:1)
      */
-    // Formulario -> Dependencia (N:1)
     public function dependencia()
     {
         return $this->belongsTo(Dependencia::class, 'id_depen', 'id_depen');
     }
-    
+
     /**
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     * 🔴 Formulario -> Indicador (N:1)
      */
-    public function indicadores()
+    public function indicador()
     {
-        return $this->hasMany('App\Models\Indicador', 'id_form', 'id_form');
+        return $this->belongsTo(Indicador::class, 'id_ind', 'id_ind');
     }
-    
-    /**
-     * @return \Illuminate\Database\Eloquent\Relations\HasOne
-     */
-    // Formulario -> Usuario (N:1)
-    public function usuario()
-    {
-        return $this->belongsTo(Usuario::class, 'id_usr', 'id_usuario');
-    }
-    
+
 }

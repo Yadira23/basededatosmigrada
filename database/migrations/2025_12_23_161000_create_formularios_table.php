@@ -18,13 +18,13 @@ return new class extends Migration
             $table->text('descripcion_form')->nullable();
             $table->string('boton_accion_form', 50);
             $table->string('periodo_form', 20);
+            $table->foreignId('id_ind')
+                ->references('id_ind')
+                ->on('indicadores')
+                ->onDelete('restrict');
             $table->foreignId('id_depen')
                 ->references('id_depen')
                 ->on('dependencias')
-                ->onDelete('restrict');
-            $table->foreignId('id_usr')
-                ->references('id_usuario')
-                ->on('usuarios')
                 ->onDelete('restrict');
             $table->timestamps();
         });

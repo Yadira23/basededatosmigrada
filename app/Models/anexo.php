@@ -14,7 +14,7 @@ class Anexo extends Model
     protected $table = 'anexos';
     protected $primaryKey = 'id_anexo';
 
-    protected $fillable = ['nombre_anexo','tipo_anexo','peso_anexo','guia_anexo','fin_proposito_anexo','fecha_subida_anexo','ruta_archivo_anexo','id_form'];
+    protected $fillable = ['nombre_anexo','tipo_anexo','peso_anexo','guia_anexo','fin_proposito_anexo','fecha_subida_anexo','ruta_archivo_anexo','id_form', 'id_ind'];
 	
     /**
      * @return \Illuminate\Database\Eloquent\Relations\HasOne
@@ -27,9 +27,9 @@ class Anexo extends Model
     /**
      *  @return \Illuminate\Database\Eloquent\Relations\HasMany
      */
-    //public function indicadores()
-    //{
-    //    return $this->hasMany('App\Models\Indicadore', 'id_anexo', 'id_anexo');
-    //}
+    public function indicadores()
+    {
+        return $this->belongsTo('App\Models\Indicadore', 'id_ind', 'id_ind');
+    }
     
 }

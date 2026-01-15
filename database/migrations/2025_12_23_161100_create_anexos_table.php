@@ -24,6 +24,10 @@ return new class extends Migration
             ->references('id_form')
             ->on('formularios')
             ->onDelete('cascade');
+        $table->foreignId('id_ind')
+        ->references('id_ind')
+        ->on('indicadores')
+        ->onDelete('cascade');
         $table->timestamps();
         });
     }

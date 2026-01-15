@@ -27,7 +27,7 @@
 						<table class="table table-bordered table-sm">
 							<thead class="thead">
 								<tr>
-									<td>#</td>
+									{{--<td>#</td>--}}
 									<th>Id Anexo</th>
 									<th>Nombre Anexo</th>
 									<th>Tipo Anexo</th>
@@ -35,15 +35,16 @@
 									<th>Guia Anexo</th>
 									<th>Fin Proposito Anexo</th>
 									<th>Fecha Subida Anexo</th>
-									<th>Ruta Archivo Anexo</th>
+									<th>Ruta Archivo Anexo</th>	
 									<th>Id Form</th>
+									<th>Id Ind</th>
 									<td>ACTIONS</td>
 								</tr>
 							</thead>
 							<tbody>
 								@forelse($anexos as $row)
 								<tr>
-									<td>{{ $loop->iteration }}</td>
+									{{--<td>{{ $loop->iteration }}</td>--}}
 									<td>{{ $row->id_anexo }}</td>
 									<td>{{ $row->nombre_anexo }}</td>
 									<td>{{ $row->tipo_anexo }}</td>
@@ -56,6 +57,7 @@
 										<a href="{{ asset('storage/' . $row->ruta_archivo_anexo) }}" target="_blank">Ver archivo</a>
 									</td>
 									<td>{{ $row->formulario ? $row->formulario->titulo_form : '-' }}</td>
+									<td>{{ $row->indicador ? $row->indicador->nombre_ind : 'Sin indicador' }}</td>
 									<td width="90">
 										<div class="dropdown">
 											<a class="btn btn-sm btn-secondary dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">

@@ -1,8 +1,8 @@
 <!-- Modal -->
- @if (session()->has('error'))
-    <div class="alert alert-danger">
-        {{ session('error') }}
-    </div>
+@if (session()->has('error'))
+<div class="alert alert-danger">
+    {{ session('error') }}
+</div>
 @endif
 <div wire:ignore.self class="modal fade" id="DataModal" data-bs-backdrop="static" tabindex="-1" role="dialog" aria-labelledby="DataModalLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
@@ -55,6 +55,26 @@
                         @error('periodo_form') <span class="text-danger">{{ $message }}</span> @enderror
                     </div>
                     <div class="form-group">
+                        <label>Indicador</label>
+                        <select wire:model.defer="id_ind" class="form-control">
+                            <option value="">Seleccione un indicador</option>
+
+                            @if(!empty($indicadores) && count($indicadores) > 0)
+                            @foreach($indicadores as $ind)
+                            <option value="{{ $ind->id_ind }}">
+                                {{ $ind->nombre_ind }}
+                            </option>
+                            @endforeach
+                            @else
+                            <option value="">No hay indicadores disponibles</option>
+                            @endif
+                        </select>
+
+                        @error('id_ind')
+                        <span class="text-danger">{{ $message }}</span>
+                        @enderror
+                    </div>
+                    <div class="form-group">
                         <label>Dependencia</label>
                         <select wire:model.defer="id_depen" class="form-control">
                             <option value="">Seleccione</option>
@@ -66,7 +86,6 @@
                         </select>
                         @error('id_depen') <span class="text-danger">{{ $message }}</span> @enderror
                     </div>
-                    <input type="hidden" wire:model="id_usr" value="{{ auth()->user()->id_usuario }}">
                 </form>
             </div>
             <div class="modal-footer">

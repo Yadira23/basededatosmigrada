@@ -26,10 +26,7 @@ return new class extends Migration
             $table->string('periodo_ind', 20);
             $table->string('etiquetas_ind', 200)->nullable();
             $table->string('fuenteverificacion_ind', 200)->nullable();
-            $table->foreignId('id_form')
-                ->references('id_form')
-                ->on('formularios')
-                ->onDelete('cascade');
+    
             $table->timestamps();
         });
     }

@@ -6,10 +6,10 @@
                 <h5 class="modal-title" id="DataModalLabel">{{ $selected_id ? 'Update Anexo' : 'Create Anexo' }}</h5>
                 <button wire:click.prevent="cancel()" type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-           <div class="modal-body">
+            <div class="modal-body">
                 <form wire:submit.prevent="save" enctype="multipart/form-data">
                     @if ($selected_id)
-                        <input type="hidden" wire:model="selected_id">
+                    <input type="hidden" wire:model="selected_id">
                     @endif
 
                     <!-- Nombre -->
@@ -55,14 +55,25 @@
                         <select wire:model="id_form" class="form-control">
                             <option value="">-- Selecciona formulario --</option>
                             @foreach($formularios as $form)
-                                <option value="{{ $form->id_form }}">{{ $form->titulo_form }}</option>
+                            <option value="{{ $form->id_form }}">{{ $form->titulo_form }}</option>
                             @endforeach
                         </select>
                         @error('id_form') <span class="text-danger">{{ $message }}</span> @enderror
                     </div>
                 </form>
-           </div>
-
+            </div>
+            <!-- Indicador -->
+            <div class="form-group mb-2">
+                <select wire:model="id_ind" class="form-control">
+                    <option value="">-- Selecciona indicador --</option>
+                    @foreach($indicadores as $ind)
+                    <option value="{{ $ind->id_ind }}">
+                        {{ $ind->nombre_ind }}
+                    </option>
+                    @endforeach
+                </select>
+                @error('id_ind') <span class="text-danger">{{ $message }}</span> @enderror
+            </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" wire:click.prevent="cancel()">Close</button>
                 <button type="button" wire:click.prevent="save()" class="btn btn-primary">{{ $selected_id ? 'Update' : 'Create' }}</button>

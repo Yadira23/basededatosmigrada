@@ -9,13 +9,14 @@ use Livewire\Attributes\Computed;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Dependencia;
 use App\Models\Usuario;
+use App\Models\Indicador;
 
 
 
 class Formularios extends Component
 {
     use WithPagination;
-
+    public $indicadores;
     public function mount()
     {
 
@@ -28,12 +29,11 @@ class Formularios extends Component
 
 
         // Inicializa el usuario logueado
-        $this->id_usr = auth()->user()->id_usuario;
+        $this->indicadores = \App\Models\Indicador::orderBy('nombre_ind')->get();
     }
 
     protected $paginationTheme = 'bootstrap';
-    public $id_usr;
-    public $selected_id, $keyWord, $id_form, $titulo_form, $fecha_creacion_form, $descripcion_form, $boton_accion_form, $secciones_form, $periodo_form, $id_depen;
+    public $selected_id, $keyWord, $id_form, $titulo_form, $fecha_creacion_form, $descripcion_form, $boton_accion_form, $secciones_form, $periodo_form, $id_ind, $id_depen;
 
     #[Computed]
     public function filteredFormularios()
@@ -69,12 +69,13 @@ class Formularios extends Component
     {
         $this->reset();
         $this->boton_accion_form = 'Publicar';
-    $this->fecha_creacion_form = now()->toDateString();
+        $this->fecha_creacion_form = now()->toDateString();
     }
 
     public function save()
     {
         $this->boton_accion_form = $this->boton_accion_form ?? 'Publicar';
+        $this->validate(['id_ind' => 'required',]);
         $this->validate([
             'titulo_form' => 'required',
             'fecha_creacion_form' => 'required',
@@ -82,18 +83,9 @@ class Formularios extends Component
             'secciones_form' => 'required',
             'periodo_form' => 'required',
             'id_depen' => 'required',
-        ]);
+            'id_ind' => 'required|exists:indicadores,id_ind',
 
-        // Verificar que la dependencia tenga usuario
-        if (!$this->id_usr) {
-            $usuario = Usuario::where('id_depen', $this->id_depen)->first();
-            if ($usuario) {
-                $this->id_usr = $usuario->id_usuario;
-            } else {
-                session()->flash('error', 'La dependencia seleccionada no tiene usuarios asignados.');
-                return; // salir sin guardar
-            }
-        }
+        ]);
 
         if (!$this->fecha_creacion_form) {
             $this->fecha_creacion_form = now()->format('Y-m-d');
@@ -114,13 +106,13 @@ class Formularios extends Component
                 'secciones_form' => $this->secciones_form,
                 'periodo_form' => $this->periodo_form,
                 'id_depen' => $this->id_depen,
-                'id_usr' => $this->id_usr,
+                'id_ind' => $this->id_ind,
 
             ]
         );
 
         $this->dispatch('closeModal');
-        $this->resetExcept(['id_usr', 'fecha_creacion_form', 'boton_accion_form']);
+        $this->resetExcept([ 'fecha_creacion_form', 'boton_accion_form','id_ind' ]);
 
         session()->flash(
             'message',
@@ -142,10 +134,8 @@ class Formularios extends Component
         $this->secciones_form = $formulario->secciones_form;
         $this->periodo_form = $formulario->periodo_form;
         $this->id_depen = $formulario->id_depen;
+        $this->id_ind = $formulario->id_ind;
 
-        // Asignar usuario de la dependencia
-        $usuario = Usuario::where('id_depen', $this->id_depen)->first();
-        $this->id_usr = $usuario ? $usuario->id_usuario : null;
     }
 
     public function destroy($id)
@@ -155,17 +145,6 @@ class Formularios extends Component
         }
     }
 
-    public function updatedIdDepen($value)
-    {
-        $usuario = Usuario::where('id_depen', $value)->first();
-
-        if ($usuario) {
-            $this->id_usr = $usuario->id_usuario;
-        } else {
-            $this->id_usr = null;
-            session()->flash('error', 'La dependencia seleccionada no tiene usuarios asignados.');
-        }
-    }
 
     // Acción dinámica del botón
     public function accionFormulario($id)

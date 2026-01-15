@@ -17,18 +17,8 @@ class Indicadores extends Component
     public $tiene_formula = false;
     
 
-    public $nombre_ind, $definicion_ind, $formula_ind, $tendencia_ind, $restriccion_ind, $formato_ind, $unidadmedida_ind, $meta_ind, $requerido_ind, $status_ind, $periodo_ind, $etiquetas_ind, $fuenteverificacion_ind, $id_form; 
-    public $formularios;
-    public function mount()
-{
-    $this->formularios = Formulario::orderBy('titulo_form')->get();
-
-    if ($this->formularios->isEmpty()) {
-        return redirect('/formularios');
-    }
-    $this->id_form = null;
-}
-
+    public $nombre_ind, $definicion_ind, $formula_ind, $tendencia_ind, $restriccion_ind, $formato_ind, $unidadmedida_ind, $meta_ind, $requerido_ind, $status_ind, $periodo_ind, $etiquetas_ind, $fuenteverificacion_ind; 
+    
     /* =============================== 
     LISTADO + BÚSQUEDA 
     ================================*/
@@ -64,7 +54,6 @@ class Indicadores extends Component
         'status_ind' => 'required|boolean',
         'periodo_ind' => 'required',
         'fuenteverificacion_ind' => 'required|string',
-        'id_form' => 'required|exists:formularios,id_form',
     ];
 
     if ($this->tiene_formula) {
@@ -114,7 +103,6 @@ class Indicadores extends Component
             'periodo_ind' => $this->periodo_ind,
             'etiquetas_ind' => $this->etiquetas_ind,
             'fuenteverificacion_ind' => $this->fuenteverificacion_ind,
-            'id_form' => $this->id_form,
         ]
     );
 
@@ -148,7 +136,6 @@ class Indicadores extends Component
     'periodo_ind',
     'etiquetas_ind',
     'fuenteverificacion_ind',
-    'id_form',
     'tiene_formula',
 ]);
     } 
@@ -174,7 +161,6 @@ class Indicadores extends Component
         $this->periodo_ind = $ind->periodo_ind;
         $this->etiquetas_ind = $ind->etiquetas_ind;
         $this->fuenteverificacion_ind = $ind->fuenteverificacion_ind;
-        $this->id_form = $ind->id_form;
 
         $this->tiene_formula = !is_null($ind->formula_ind);
 

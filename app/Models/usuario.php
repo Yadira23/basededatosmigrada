@@ -32,13 +32,6 @@ class Usuario extends Model
         return $this->belongsTo('App\Models\Dependencia', 'id_depen', 'id_depen');
     }
     
-    /**
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
-     */
-    public function formularios()
-    {
-        return $this->hasMany('App\Models\Formulario', 'id_usr', 'id_usuario');
-    }
     
     /**
      * @return \Illuminate\Database\Eloquent\Relations\HasOne

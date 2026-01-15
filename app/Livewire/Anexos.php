@@ -8,6 +8,8 @@ use Livewire\WithFileUploads;
 use App\Models\Anexo;
 use App\Models\Formulario;
 use Illuminate\Support\Facades\Storage;
+use App\Models\Indicador;
+
 
 class Anexos extends Component
 {
@@ -17,8 +19,9 @@ class Anexos extends Component
 
     public $selected_id, $keyWord;
     public $nombre_anexo, $tipo_anexo, $archivo, $guia_anexo, $fin_proposito_anexo, $id_form;
-
     public $formularios;
+    public $id_ind;
+    public $indicadores;
 
     protected $rules = [
         'nombre_anexo' => 'required|string|min:5|max:255',
@@ -27,22 +30,23 @@ class Anexos extends Component
         'guia_anexo' => 'nullable|string|max:255',
         'fin_proposito_anexo' => 'required|string|max:255',
         'id_form' => 'required|exists:formularios,id_form',
+        'id_ind' => 'required|exists:indicadores,id_ind',
     ];
 
     public function mount()
     {
         $this->formularios = Formulario::all();
+        $this->indicadores = Indicador::all();
         // Si no hay formularios, redirige al index de formularios
-    if ($this->formularios->isEmpty()) {
-    return redirect('/formularios'); // redirige directo a la URL
-}
-
+        if ($this->formularios->isEmpty()) {
+            return redirect('/formularios'); // redirige directo a la URL
+        }
     }
 
     public function crearAnexo()
     {
         // Verifica de nuevo por seguridad
-        if(!$this->id_form) {
+        if (!$this->id_form) {
             session()->flash('error', 'Debes seleccionar un formulario antes de subir un anexo.');
             return;
         }
@@ -54,7 +58,6 @@ class Anexos extends Component
         ]);
 
         session()->flash('success', 'Anexo creado correctamente.');
-    
     }
 
     public function updatedArchivo()
@@ -63,7 +66,7 @@ class Anexos extends Component
         $tipos = [
             'PDF' => ['mimes' => 'pdf', 'max' => 5120],       // 5 MB
             'WORD' => ['mimes' => 'doc,docx', 'max' => 5120], // 5 MB
-            'EXCEL' => ['mimes' => 'xls,xlsx', 'max' => 5120],// 5 MB
+            'EXCEL' => ['mimes' => 'xls,xlsx', 'max' => 5120], // 5 MB
             'IMAGEN' => ['mimes' => 'jpg,jpeg,png,gif', 'max' => 3072], // 3 MB
             'OTRO' => ['mimes' => '*', 'max' => 2048],        // 2 MB
         ];
@@ -92,11 +95,12 @@ class Anexos extends Component
                 'fecha_subida_anexo' => now(),
                 'ruta_archivo_anexo' => $ruta,
                 'id_form' => $this->id_form,
+                'id_ind' => $this->id_ind,
             ]
         );
 
         session()->flash('message', $this->selected_id ? 'Anexo actualizado' : 'Anexo creado');
-        $this->reset(['nombre_anexo','tipo_anexo','archivo','guia_anexo','fin_proposito_anexo','id_form','selected_id']);
+        $this->reset(['nombre_anexo', 'tipo_anexo', 'archivo', 'guia_anexo', 'fin_proposito_anexo', 'id_form', 'id_ind', 'selected_id']);
         $this->dispatch('closeModal');
     }
 
@@ -109,6 +113,7 @@ class Anexos extends Component
         $this->guia_anexo = $anexo->guia_anexo;
         $this->fin_proposito_anexo = $anexo->fin_proposito_anexo;
         $this->id_form = $anexo->id_form;
+        $this->id_ind = $anexo->id_ind;
     }
 
     public function destroy($id)
@@ -127,7 +132,7 @@ class Anexos extends Component
     {
         $keyWord = '%' . $this->keyWord . '%';
         return view('livewire.anexos.view', [
-            'anexos' => Anexo::with('formulario')
+            'anexos' => Anexo::with('formulario.indicador')
                 ->where('nombre_anexo', 'LIKE', $keyWord)
                 ->latest()
                 ->paginate(10),
@@ -135,21 +140,20 @@ class Anexos extends Component
         ]);
     }
 
-    function formatoPeso($bytes) {
-    $unidades = ['B', 'KB', 'MB', 'GB', 'TB'];
-    $i = 0;
-    while ($bytes >= 1024 && $i < count($unidades) - 1) {
-        $bytes /= 1024;
-        $i++;
+    function formatoPeso($bytes)
+    {
+        $unidades = ['B', 'KB', 'MB', 'GB', 'TB'];
+        $i = 0;
+        while ($bytes >= 1024 && $i < count($unidades) - 1) {
+            $bytes /= 1024;
+            $i++;
+        }
+        return round($bytes, 2) . ' ' . $unidades[$i];
     }
-    return round($bytes, 2) . ' ' . $unidades[$i];
-}
 
-public function cancel()
-{
-    $this->reset(['nombre_anexo','tipo_anexo','archivo','guia_anexo','fin_proposito_anexo','id_form','selected_id']);
-    $this->dispatch('closeModal'); // si usas modal
-}
-
-
+    public function cancel()
+    {
+        $this->reset(['nombre_anexo', 'tipo_anexo', 'archivo', 'guia_anexo', 'fin_proposito_anexo', 'id_form', 'selected_id']);
+        $this->dispatch('closeModal'); // si usas modal
+    }
 }

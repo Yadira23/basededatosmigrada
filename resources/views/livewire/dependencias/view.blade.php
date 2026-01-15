@@ -27,7 +27,7 @@
 					<table class="table table-bordered table-sm">
 						<thead class="thead">
 							<tr> 
-								<td>#</td> 
+								{{--<td>#</td> --}}
 								<th>Id Depen</th>
 								<th>Nombre Depen</th>
 								<th>Id Sector</th>
@@ -44,7 +44,7 @@
 						<tbody>
 							@forelse($dependencias as $row)
 							<tr>
-								<td>{{ $loop->iteration }}</td> 
+								{{--<td>{{ $loop->iteration }}</td> --}}
 								<td>{{ $row->id_depen }}</td>
 								<td>{{ $row->nombre_depen }}</td>
 								<td>{{ $row->sectore->nombre_sector ?? 'N/A' }}</td>

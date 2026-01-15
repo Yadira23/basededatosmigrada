@@ -82,26 +82,7 @@
                     </div>
                     <div class="form-group"> <label for="etiquetas_ind"></label> <input wire:model.defer="etiquetas_ind" type="text" class="form-control" id="etiquetas_ind" placeholder="Etiquetas Ind">@error('etiquetas_ind') <span class="error text-danger">{{ $message }}</span> @enderror </div>
                     <div class="form-group"> <label for="fuenteverificacion_ind"></label> <input wire:model.defer="fuenteverificacion_ind" type="text" class="form-control" id="fuenteverificacion_ind" placeholder="Fuenteverificacion Ind">@error('fuenteverificacion_ind') <span class="error text-danger">{{ $message }}</span> @enderror </div>
-                    <div class="form-group">
-                        <label>Formulario</label>
-                        <select wire:model.defer="id_form" class="form-control">
-    <option value="">Seleccione un formulario</option>
-
-    @if(!empty($formularios) && count($formularios) > 0)
-        @foreach($formularios as $form)
-            <option value="{{ $form->id_form }}">
-                {{ $form->titulo_form }}
-            </option>
-        @endforeach
-    @else
-        <option value="">No hay formularios disponibles</option>
-    @endif
-</select>
-
-@error('id_form')
-<span class="text-danger">{{ $message }}</span>
-@enderror
-                    </div>
+                    
                 </form>
             </div>
             <div class="modal-footer"> <button type="button" class="btn btn-secondary close-btn" data-bs-dismiss="modal">Close</button> <button type="button" wire:click.prevent="save()" class="btn btn-primary">{{ $selected_id ? 'Update' : 'Create' }}</button> </div>
