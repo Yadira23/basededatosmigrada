@@ -17,6 +17,7 @@ return new class extends Migration
             $table->date('fecha_creacion_form')->useCurrent();
             $table->text('descripcion_form')->nullable();
             $table->string('boton_accion_form', 50);
+            $table->text('secciones_form')->nullable();
             $table->string('periodo_form', 20);
             $table->foreignId('id_ind')
                 ->references('id_ind')

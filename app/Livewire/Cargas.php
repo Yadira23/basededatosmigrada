@@ -59,7 +59,7 @@ class Cargas extends Component
 
     public function render()
     {
-        return view('livewire.cargas.view', [
+        return view('livewire.carga.view', [
             'cargas' => $this->filteredCargas,
             'formularios' => Formulario::all(),
         ]);
