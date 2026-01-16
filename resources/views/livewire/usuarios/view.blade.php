@@ -58,7 +58,9 @@
         <span class="badge bg-secondary">Administrador</span>
     @endif
 </td>
-<td>{{ $row->role->nombre_rol ?? '—' }}</td>
+<td>
+    {{ $row->getRoleNames()->first() ?? '—' }}
+</td>
 								<td>{{ $row->estado_usr }}</td>
 								<td>{{ $row->telefono_usr }}</td>
 								<td width="90">

@@ -5,40 +5,41 @@ namespace App\Livewire;
 use Livewire\Component;
 use Livewire\WithPagination;
 use App\Models\Usuario;
-use Livewire\Attributes\Computed;
 use App\Models\Dependencia;
 use App\Models\Role;
 use Illuminate\Support\Facades\Hash;
+use Livewire\Attributes\Computed;
 
 class Usuarios extends Component
 {
     use WithPagination;
-    
+
     public $dependenciasDisponibles;
 
-    public function mount()
-{
-    // bloqueo por dependencias (ya lo tienes)
-    if (Dependencia::count() === 0) {
-        session()->flash('error', 'Debes registrar al menos una Dependencia.');
-        return redirect()->route('dependencias');
-    }
-
-    $this->dependenciasDisponibles = collect();
-}
-
-    protected $paginationTheme = 'bootstrap';
+    // Campos para crear/editar usuarios
     public $selected_id, $keyWord, $usuario_usr, $nombre_usr, $apellido_paterno, $apellido_materno, $email_usr, $password, $id_depen, $id_rol, $estado_usr, $telefono_usr;
 
-    #[Computed]
-public function adminExiste()
-{
-    return Usuario::where('id_rol', 1)->exists();
-}
+    protected $paginationTheme = 'bootstrap';
 
+    public function mount()
+    {
+        // Bloqueo si no hay dependencias registradas
+        if (Dependencia::count() === 0) {
+            session()->flash('error', 'Debes registrar al menos una Dependencia.');
+            return redirect()->route('dependencias');
+        }
 
-    #[Computed]
-    public function filteredUsuarios()
+        $this->dependenciasDisponibles = collect();
+    }
+
+    // ✅ Propiedad computada para saber si ya hay un admin
+    public function getAdminExisteProperty()
+    {
+        return Usuario::role('admin')->exists();
+    }
+
+    // Filtrado de usuarios para la tabla
+    public function getFilteredUsuariosProperty()
     {
         $keyWord = '%' . $this->keyWord . '%';
         return Usuario::latest()
@@ -49,10 +50,9 @@ public function adminExiste()
                     ->orWhere('apellido_paterno', 'LIKE', $keyWord)
                     ->orWhere('apellido_materno', 'LIKE', $keyWord)
                     ->orWhere('email_usr', 'LIKE', $keyWord)
-                    ->orWhere('id_depen', 'LIKE', $keyWord)
-                    ->orWhere('id_rol', 'LIKE', $keyWord)
                     ->orWhere('estado_usr', 'LIKE', $keyWord)
                     ->orWhere('telefono_usr', 'LIKE', $keyWord);
+                    // Quitamos id_rol porque Spatie maneja roles en otra tabla
             })
             ->paginate(10);
     }
@@ -62,7 +62,7 @@ public function adminExiste()
         return view('livewire.usuarios.view', [
             'usuarios' => $this->filteredUsuarios,
             'dependencias' => Dependencia::all(),
-            'roles'        => Role::all(),
+            'roles' => Role::all(),
         ]);
     }
 
@@ -72,40 +72,39 @@ public function adminExiste()
     }
 
     public function save()
-{
-    // 1️⃣ Reglas base
-    $rules = [
-        'usuario_usr' => 'required|unique:usuarios,usuario_usr,' . $this->selected_id . ',id_usuario',
-        'nombre_usr'         => 'required',
-        'apellido_paterno'   => 'required',
-        'apellido_materno'   => 'nullable',
-        'email_usr'          => 'required|email|unique:usuarios,email_usr,' . $this->selected_id . ',id_usuario',
-        'password'           => $this->selected_id ? 'nullable|min:6' : 'required|min:6',
-        'id_rol'             => 'required',
-        'estado_usr'         => 'required',
-        'telefono_usr'       => 'nullable',
-    ];
+    {
+        // Validaciones base
+        $rules = [
+            'usuario_usr' => 'required|unique:usuarios,usuario_usr,' . $this->selected_id . ',id_usuario',
+            'nombre_usr' => 'required',
+            'apellido_paterno' => 'required',
+            'apellido_materno' => 'nullable',
+            'email_usr' => 'required|email|unique:usuarios,email_usr,' . $this->selected_id . ',id_usuario',
+            'password' => $this->selected_id ? 'nullable|min:6' : 'required|min:6',
+            'id_rol' => 'required',
+            'estado_usr' => 'required',
+            'telefono_usr' => 'nullable',
+        ];
 
-    // 2️⃣ Si NO es administrador → dependencia obligatoria
-    if ($this->id_rol != 1) {
-    $rules['id_depen'] = 'required|unique:usuarios,id_depen,' . $this->selected_id . ',id_usuario';
-}
+        // Si no es admin, dependencia obligatoria
+        if ($this->id_rol != 1) {
+            $rules['id_depen'] = 'required|unique:usuarios,id_depen,' . $this->selected_id . ',id_usuario';
+        }
 
-    // 3️⃣ Validar (UNA sola vez)
-    $this->validate($rules);
+        $this->validate($rules);
 
-    // 4️⃣ Regla: solo un administrador
-    if ($this->id_rol == 1 && Usuario::where('id_rol', 1)->exists() && !$this->selected_id) {
-        session()->flash('error', 'Ya existe un Administrador registrado.');
-        return;
-    }
+        // Solo un admin permitido
+        if ($this->id_rol == 1 && $this->adminExiste && !$this->selected_id) {
+            session()->flash('error', 'Ya existe un Administrador registrado.');
+            return;
+        }
 
-    // 5️⃣ Administrador no tiene dependencia
-    if ($this->id_rol == 1) {
-        $this->id_depen = null;
-    }
-        // Guardar o actualizar
-        Usuario::updateOrCreate(
+        if ($this->id_rol == 1) {
+            $this->id_depen = null; // Admin no tiene dependencia
+        }
+
+        // Guardar o actualizar usuario
+        $usuario = Usuario::updateOrCreate(
             ['id_usuario' => $this->selected_id],
             [
                 'usuario_usr' => $this->usuario_usr,
@@ -113,13 +112,15 @@ public function adminExiste()
                 'apellido_paterno' => $this->apellido_paterno,
                 'apellido_materno' => $this->apellido_materno,
                 'email_usr' => $this->email_usr,
-                'password' => $this->password ? bcrypt($this->password) : Usuario::find($this->selected_id)->password,
+                'password' => $this->password ? bcrypt($this->password) : ($this->selected_id ? Usuario::find($this->selected_id)->password : null),
                 'id_depen' => $this->id_depen,
-                'id_rol' => $this->id_rol,
                 'estado_usr' => $this->estado_usr,
                 'telefono_usr' => $this->telefono_usr,
             ]
         );
+
+        // Asignar rol con Spatie
+        $usuario->syncRoles(Role::find($this->id_rol)->name);
 
         $this->dispatch('closeModal');
         $this->reset();
@@ -132,7 +133,6 @@ public function adminExiste()
         );
     }
 
-
     public function edit($id)
     {
         $usuario = Usuario::findOrFail($id);
@@ -144,7 +144,7 @@ public function adminExiste()
         $this->apellido_materno = $usuario->apellido_materno;
         $this->email_usr = $usuario->email_usr;
         $this->id_depen = $usuario->id_depen;
-        $this->id_rol = $usuario->id_rol;
+        $this->id_rol = $usuario->roles->first() ? $usuario->roles->first()->id : null;
         $this->estado_usr = $usuario->estado_usr;
         $this->telefono_usr = $usuario->telefono_usr;
     }
@@ -156,32 +156,19 @@ public function adminExiste()
         }
     }
 
-    public function getRolesProperty()
-    {
-        $roles = \App\Models\Role::query();
-
-        if (Usuario::where('id_rol', 1)->exists()) {
-            // Si ya hay admin, ocultamos ese rol
-            $roles->where('id_rol', '!=', 1);
-        }
-
-        return $roles->get();
-    }
-
     public function updatedIdRol($value)
-{
-    if ($value == 2) {
-        $this->dependenciasDisponibles = Dependencia::whereNotIn(
-            'id_depen',
-            Usuario::whereNotNull('id_depen')->pluck('id_depen')
-        )->get();
+    {
+        if ($value != 1) { // No admin
+            $this->dependenciasDisponibles = Dependencia::whereNotIn(
+                'id_depen',
+                Usuario::whereNotNull('id_depen')->pluck('id_depen')
+            )->get();
 
-        if ($this->dependenciasDisponibles->isEmpty()) {
-            session()->flash('message', '⚠️ No hay dependencias disponibles para registrar usuarios.');
+            if ($this->dependenciasDisponibles->isEmpty()) {
+                session()->flash('message', '⚠️ No hay dependencias disponibles para registrar usuarios.');
+            }
+        } else {
+            $this->id_depen = null;
         }
-    } else {
-        $this->id_depen = null;
     }
-}
-
 }

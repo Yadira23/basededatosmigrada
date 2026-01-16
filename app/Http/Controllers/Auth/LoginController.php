@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Foundation\Auth\AuthenticatesUsers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -15,28 +14,32 @@ class LoginController extends Controller
     }
 
     public function login(Request $request)
-    {
-        $credentials = $request->validate([
-            'email' => 'required|email',
-            'password' => 'required',
-        ]);
+{
+    $credentials = $request->validate([
+        'email' => 'required|email',
+        'password' => 'required',
+    ]);
 
-        if (Auth::attempt([
-            'email_usr' => $credentials['email'],
-            'password' => $credentials['password'],
-        ])) {
-            $request->session()->regenerate();
-            return redirect()->intended('/cargas');
-        }
+    if (Auth::guard('web')->attempt([
+        'email_usr' => $credentials['email'],
+        'password'  => $credentials['password'],
+    ])) {
 
-        return back()->withErrors([
-            'email' => 'Credenciales incorrectas',
-        ]);
+        $request->session()->regenerate();
+
+        return redirect()->intended('/redirect-por-rol');
     }
+
+    return back()->withErrors([
+        'email' => 'Credenciales incorrectas',
+    ]);
+}
+
 
     public function logout(Request $request)
     {
-        Auth::logout();
+        Auth::guard('web')->logout();
+
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 

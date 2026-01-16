@@ -98,7 +98,7 @@
                         <li class="nav-item dropdown no-arrow">
                             <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button"
                                 data-toggle="dropdown">
-                                <span class="mr-2 d-none d-lg-inline text-gray-600 small">Yesenia Jimenez</span>
+                                <span class="mr-2 d-none d-lg-inline text-gray-600 small">{{ auth()->user()->nombre_usr ?? 'Usuario' }}</span>
                                 <img class="img-profile rounded-circle" src="{{ asset('sbadmin2/img/undraw_profile.svg') }}">
                             </a>
                             <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in" aria-labelledby="userDropdown">
@@ -106,7 +106,10 @@
                                 <a class="dropdown-item" href="#">Configuración</a>
                                 <a class="dropdown-item" href="#">Registro de Actividad</a>
                                 <div class="dropdown-divider"></div>
-                                <a class="dropdown-item" href="{{ url('/') }}">Cerrar Sesión</a>
+                                <form method="POST" action="{{ route('logout') }}">
+    @csrf
+    <button type="submit" class="dropdown-item">Cerrar Sesión</button>
+</form>
                             </div>
                         </li>
 
