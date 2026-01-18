@@ -223,5 +223,14 @@ public function finalizar($id)
     session()->flash('message', "Formulario {$formulario->titulo_form} finalizado.");
 }
 
+protected $listeners = ['openCreateModal'];
+
+public function openCreateModal()
+{
+    $this->resetValidation();
+    $this->reset(['selected_id','titulo_form','descripcion_form','fecha_creacion_form','id_depen','id_ind']); // ajusta según los campos
+    $this->dispatchBrowserEvent('show-modal');
+}
+
 
 }

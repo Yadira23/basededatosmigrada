@@ -2,22 +2,48 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\Models\Permission;
+use App\Models\Usuario;
 
 class RolSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        //
-        DB::table('roles')->insert([
-            ['nombre_rol' => 'Administrador', 'descripcion_rol' => 'Control total del sistema'],
-            ['nombre_rol' => 'Capturista', 'descripcion_rol' => 'Captura de información']
-        ]);
+        // 1️⃣ Crear permisos
+        $permisos = [
+            'view formularios',
+            'cargar indicadores',
+            'view anexos',
+            'manage users',   // solo Admin
+            'manage cargas',  // solo Admin
+            'manage roles',   // solo Admin
+        ];
+
+        foreach ($permisos as $permiso) {
+            Permission::firstOrCreate(['name' => $permiso, 'guard_name' => 'web']);
+        }
+
+        // 2️⃣ Crear roles
+        $adminRole = Role::firstOrCreate(['name' => 'Administrador', 'guard_name' => 'web']);
+        $capturistaRole = Role::firstOrCreate(['name' => 'Capturista', 'guard_name' => 'web']);
+
+        // 3️⃣ Asignar permisos a roles
+        $adminRole->syncPermissions(Permission::all()); // Admin tiene todos
+        $capturistaRole->syncPermissions(['view formularios', 'cargar indicadores', 'view anexos']);
+
+        // 4️⃣ Asignar roles a usuarios existentes
+        $adminUser = Usuario::where('id_usuario', 1)->first();
+        if ($adminUser) {
+            $adminUser->roles()->syncWithoutDetaching([$adminRole->id]);
+        }
+
+        $capturistaUser = Usuario::where('id_usuario', 2)->first();
+        if ($capturistaUser) {
+            $capturistaUser->roles()->syncWithoutDetaching([$capturistaRole->id]);
+        }
+
+        $this->command->info('Roles, permisos y asignaciones completadas correctamente.');
     }
-    
 }

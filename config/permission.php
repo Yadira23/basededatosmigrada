@@ -28,6 +28,8 @@ return [
 
     ],
 
+    'user_model' => App\Models\Usuario::class,
+
     'table_names' => [
 
         /*

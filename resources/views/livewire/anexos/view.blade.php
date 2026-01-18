@@ -1,5 +1,6 @@
 @section('title', __('Anexos'))
 <div class="container-fluid">
+	@role('admin')
 	<div class="row justify-content-center">
 		<div class="col-md-12">
 			<div class="card">
@@ -35,7 +36,7 @@
 									<th>Guia Anexo</th>
 									<th>Fin Proposito Anexo</th>
 									<th>Fecha Subida Anexo</th>
-									<th>Ruta Archivo Anexo</th>	
+									<th>Ruta Archivo Anexo</th>
 									<th>Id Form</th>
 									<th>Id Ind</th>
 									<td>ACTIONS</td>
@@ -83,4 +84,23 @@
 			</div>
 		</div>
 	</div>
+	@endrole
+
+
+	@role('usuario')
+	<div class="row">
+		<div class="col-md-12">
+			<div class="card shadow-sm border-left-info">
+				<div class="card-body text-center" style="padding:60px;">
+					<i class="fas fa-paperclip fa-3x text-info mb-3"></i>
+					<h4>Módulo de Anexos</h4>
+					<p class="text-muted">
+						Los anexos requeridos aparecerán aquí cuando tengas formularios asignados.
+					</p>
+					<span class="badge bg-warning text-dark">Solo disponible dentro de captura</span>
+				</div>
+			</div>
+		</div>
+	</div>
+	@endrole
 </div>

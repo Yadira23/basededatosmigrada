@@ -1,5 +1,6 @@
 @section('title', __('Formularios'))
 <div class="container-fluid">
+	@role('admin')
 	<div class="row justify-content-center">
 		<div class="col-md-12">
 			<div class="card">
@@ -96,4 +97,20 @@
 			</div>
 		</div>
 	</div>
+	@endrole
+
+	@role('usuario')
+	<div class="row">
+		<div class="col-md-12">
+			<div class="card shadow-sm border-left-primary">
+				<div class="card-body text-center" style="padding:60px;">
+					<i class="fas fa-file-alt fa-3x text-primary mb-3"></i>
+					<h4 class="text-gray-700">Módulo de Formularios</h4>
+					<p class="text-muted">Aquí aparecerán los formularios disponibles para responder.</p>
+					<span class="badge bg-warning text-dark">Próximamente</span>
+				</div>
+			</div>
+		</div>
+	</div>
+	@endrole
 </div>

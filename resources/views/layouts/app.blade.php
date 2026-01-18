@@ -16,11 +16,25 @@
 <body id="page-top">
     <div id="wrapper">
         <!-- ===== SIDEBAR ===== -->
+        @auth
         <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
             <!-- Brand -->
+            @php
+            $user = auth()->user();
+            @endphp
+
             <a class="sidebar-brand d-flex align-items-center justify-content-center" href="{{ url('/') }}">
-                <div class="sidebar-brand-icon rotate-n-15"><i class="fas fa-laugh-wink"></i></div>
-                <div class="sidebar-brand-text mx-3">ADMINISTRADOR</div>
+                <div class="sidebar-brand-icon rotate-n-15">
+                    <i class="fas fa-laugh-wink"></i>
+                </div>
+
+                <div class="sidebar-brand-text mx-3">
+                    @role('admin')
+                    ADMINISTRADOR
+                    @elserole('usuario')
+                    {{ strtoupper($user->dependencia->nombre_depen ?? 'USUARIO') }}
+                    @endrole
+                </div>
             </a>
             <hr class="sidebar-divider my-0">
 
@@ -37,23 +51,150 @@
             <hr class="sidebar-divider">
 
             <!-- Menú CRUD -->
-            <li class="nav-item"><a class="nav-link" href="{{ url('/cargas') }}"><i class="fas fa-boxes"></i> <span>Cargas</span></a></li>
-            <li class="nav-item"><a class="nav-link" href="{{ url('/formularios') }}"><i class="fas fa-file-alt"></i> <span>Formularios</span></a></li>
-            <li class="nav-item"><a class="nav-link" href="{{ url('/usuarios') }}"><i class="fas fa-users"></i> <span>Usuarios</span></a></li>
-            <li class="nav-item"><a class="nav-link" href="{{ url('/DetalleCargas') }}"><i class="fas fa-clipboard-list"></i> <span>Detalle Cargas</span></a></li>
-            <li class="nav-item"><a class="nav-link" href="{{ url('/anexos') }}"><i class="fas fa-paperclip"></i> <span>Anexos</span></a></li>
-            <li class="nav-item"><a class="nav-link" href="{{ url('/indicadores') }}"><i class="fas fa-chart-line"></i> <span>Indicadores</span></a></li>
-            <li class="nav-item"><a class="nav-link" href="{{ url('/dependencias') }}"><i class="fas fa-building"></i> <span>Dependencias</span></a></li>
+            <!-- Divider -->
+            @hasanyrole('admin|usuario')
+            <hr class="sidebar-divider">
+            <!-- Heading -->
+            <div class="sidebar-heading"> Formularios </div>
 
+            <li class="nav-item">
+                <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseFormularios" aria-expanded="true" aria-controls="collapseFormularios">
+                    <i class="fas fa-file-alt"></i>
+                    <span>Formularios</span>
+                </a>
+                <div id="collapseFormularios" class="collapse" aria-labelledby="headingFormularios" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <h6 class="collapse-header">Opciones:</h6>
+
+                        @role('admin')
+                        <a class="collapse-item" href="{{ url('/formularios') }}">Administrar formularios</a>
+                        @endrole
+
+                        @role('usuario')
+                        <a class="collapse-item" href="{{ url('/formularios') }}">Responder formularios</a>
+                        @endrole
+                    </div>
+                </div>
+            </li>
+            <!-- ===== SECCIÓN ANEXOS ===== -->
+            <hr class="sidebar-divider">
+            <div class="sidebar-heading">Anexos</div>
+            <li class="nav-item">
+                <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseAnexos" aria-expanded="true" aria-controls="collapseAnexos">
+                    <i class="fas fa-paperclip"></i>
+                    <span>Anexos</span>
+                </a>
+                <div id="collapseAnexos" class="collapse" aria-labelledby="headingAnexos" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <h6 class="collapse-header">Opciones:</h6>
+
+                        @role('admin')
+                        <a class="collapse-item" href="{{ url('/anexos') }}">Administrar anexos</a>
+                        @endrole
+
+                        @role('usuario')
+                        <a class="collapse-item" href="{{ url('/anexos') }}">Subir anexos</a>
+                        @endrole
+                    </div>
+                </div>
+            </li>
+
+            <!-- ===== SECCIÓN INDICADORES ===== -->
+            <hr class="sidebar-divider">
+            <div class="sidebar-heading">Indicadores</div>
+            <li class="nav-item">
+                <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseIndicadores" aria-expanded="true" aria-controls="collapseIndicadores">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Indicadores</span>
+                </a>
+                <div id="collapseIndicadores" class="collapse" aria-labelledby="headingIndicadores" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <h6 class="collapse-header">Opciones:</h6>
+
+                        @role('admin')
+                        <a class="collapse-item" href="{{ url('/indicadores') }}">Administrar indicadores</a>
+                        @endrole
+
+                        @role('usuario')
+                        <a class="collapse-item" href="{{ url('/indicadores') }}">Ver indicadores asignados</a>
+                        @endrole
+                    </div>
+                </div>
+            </li>
+            @endhasanyrole
+            @role('admin')
+            <!-- ===== SECCIÓN DEPENDENCIAS ===== -->
+            <hr class="sidebar-divider">
+            <div class="sidebar-heading">Dependencias</div>
+            <li class="nav-item">
+                <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseDependencias" aria-expanded="true" aria-controls="collapseDependencias">
+                    <i class="fas fa-building"></i>
+                    <span>Dependencias</span>
+                </a>
+                <div id="collapseDependencias" class="collapse" aria-labelledby="headingDependencias" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <h6 class="collapse-header">Opciones:</h6>
+                        <a class="collapse-item" href="{{ url('/dependencias') }}">Listar</a>
+                    </div>
+                </div>
+            </li>
+
+            <!-- ===== SECCIÓN USUARIOS ===== -->
+            <hr class="sidebar-divider">
+            <div class="sidebar-heading">Usuarios</div>
+            <li class="nav-item">
+                <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseUsuarios" aria-expanded="true" aria-controls="collapseUsuarios">
+                    <i class="fas fa-users"></i>
+                    <span>Usuarios</span>
+                </a>
+                <div id="collapseUsuarios" class="collapse" aria-labelledby="headingUsuarios" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <h6 class="collapse-header">Opciones:</h6>
+                        <a class="collapse-item" href="{{ url('/usuarios') }}">Listar</a>
+                    </div>
+                </div>
+            </li>
+
+            <!-- ===== SECCIÓN FINAL: CARGAS Y DETALLE CARGAS ===== -->
+            <hr class="sidebar-divider">
+            <div class="sidebar-heading">Cargas</div>
+
+            <li class="nav-item">
+                <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseCargas" aria-expanded="true" aria-controls="collapseCargas">
+                    <i class="fas fa-boxes"></i>
+                    <span>Cargas</span>
+                </a>
+                <div id="collapseCargas" class="collapse" aria-labelledby="headingCargas" data-parent="#accordionSidebar">
+                    <div class="bg-white py-2 collapse-inner rounded">
+                        <h6 class="collapse-header">Opciones:</h6>
+                        <a class="collapse-item" href="{{ url('/cargas') }}">Listar</a>
+                        <a class="collapse-item" href="{{ url('/cargas/create') }}">Crear</a>
+                    </div>
+                </div>
+            </li>
+
+            <li class="nav-item">
+                <a class="nav-link" href="{{ url('/DetalleCargas') }}">
+                    <i class="fas fa-clipboard-list"></i>
+                    <span>Detalle Cargas</span>
+                </a>
+            </li>
+            @endrole
             <hr class="sidebar-divider d-none d-md-block">
-            <div class="text-center d-none d-md-inline"><button class="rounded-circle border-0" id="sidebarToggle"></button></div>
+
+            <!-- Sidebar Toggler -->
+            <div class="text-center d-none d-md-inline">
+                <button class="rounded-circle border-0" id="sidebarToggle"></button>
+            </div>
         </ul>
+        @endauth
         <!-- ===== END SIDEBAR ===== -->
 
         <!-- ===== CONTENT WRAPPER ===== -->
         <div id="content-wrapper" class="d-flex flex-column">
             <div id="content">
                 <!-- ===== TOPBAR ===== -->
+                @auth
                 <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 shadow">
                     <!-- Logos izquierda -->
                     <div class="d-flex align-items-center mr-3">
@@ -107,9 +248,9 @@
                                 <a class="dropdown-item" href="#">Registro de Actividad</a>
                                 <div class="dropdown-divider"></div>
                                 <form method="POST" action="{{ route('logout') }}">
-    @csrf
-    <button type="submit" class="dropdown-item">Cerrar Sesión</button>
-</form>
+                                    @csrf
+                                    <button type="submit" class="dropdown-item">Cerrar Sesión</button>
+                                </form>
                             </div>
                         </li>
 
@@ -119,8 +260,8 @@
                         </li>
                     </ul>
                 </nav>
+                @endauth
                 <!-- ===== END TOPBAR ===== -->
-
 
                 <!-- ===== MAIN CONTENT ===== -->
                 <div class="container-fluid">
@@ -129,6 +270,7 @@
             </div>
 
             <!-- ===== FOOTER ===== -->
+            @auth
             <footer class="sticky-footer bg-white">
                 <div class="container my-auto">
                     <div class="copyright text-center my-auto d-flex justify-content-between" style="font-size: 14px; padding: 8px 15px;">
@@ -141,6 +283,7 @@
                     </div>
                 </div>
             </footer>
+            @endauth
         </div>
         <!-- END CONTENT WRAPPER -->
     </div>
@@ -162,6 +305,13 @@
             });
         }
     </script>
+    <script>
+        window.addEventListener('show-formulario-modal', event => {
+            var myModal = new bootstrap.Modal(document.getElementById('FormularioCreateModal'), {});
+            myModal.show();
+        });
+    </script>
+
 </body>
 
 </html>

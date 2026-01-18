@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 namespace App\Models;
 
@@ -8,16 +8,17 @@ use Spatie\Permission\Traits\HasRoles;
 
 class Usuario extends Authenticatable
 {
-	use HasFactory;
-	use HasRoles;
+    use HasFactory, HasRoles;
     public $timestamps = true;
-    
+
     protected $table = 'usuarios';
     protected $primaryKey = 'id_usuario';
+    protected $keyType = 'int';
+    public $incrementing = true;
     protected $guard_name = 'web';
 
-    protected $fillable = ['usuario_usr','nombre_usr','apellido_paterno','apellido_materno','email_usr', 'password', 'id_depen','estado_usr','telefono_usr'];
-	
+    protected $fillable = ['usuario_usr', 'nombre_usr', 'apellido_paterno', 'apellido_materno', 'email_usr', 'password', 'id_depen', 'estado_usr', 'telefono_usr'];
+
     /**
      * @return \Illuminate\Database\Eloquent\Relations\HasOne
      */
@@ -25,7 +26,7 @@ class Usuario extends Authenticatable
     {
         return $this->hasOne('App\Models\Bitacora', 'id_usuario', 'id_usuario');
     }
-    
+
     /**
      * @return \Illuminate\Database\Eloquent\Relations\HasOne
      */
@@ -33,8 +34,10 @@ class Usuario extends Authenticatable
     {
         return $this->belongsTo('App\Models\Dependencia', 'id_depen', 'id_depen');
     }
-    
-    
-   
-    
+
+    protected function getDefaultGuardName(): string
+{
+    return 'web';
+}
+
 }

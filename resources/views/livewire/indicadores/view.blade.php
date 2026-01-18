@@ -1,4 +1,5 @@
 @section('title', __('Indicadores')) <div class="container-fluid">
+	@role('admin')
 	<div class="row justify-content-center">
 		<div class="col-md-12">
 			<div class="card">
@@ -84,4 +85,22 @@
 			</div>
 		</div>
 	</div>
+	@endrole
+
+
+	@role('usuario')
+	<div class="row">
+		<div class="col-md-12">
+			<div class="card shadow-sm border-left-info">
+				<div class="card-body text-center" style="padding:60px;">
+					<i class="fas fa-chart-line fa-3x text-info mb-3"></i>
+					<h4>Módulo de Indicadores</h4>
+					<p class="text-muted">Los indicadores asignados aparecerán aquí cuando un formulario sea publicado.</p>
+					<span class="badge bg-warning text-dark">Sin acceso de edición</span>
+				</div>
+			</div>
+		</div>
+	</div>
+	@endrole
+
 </div>
