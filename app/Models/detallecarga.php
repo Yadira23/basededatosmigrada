@@ -11,25 +11,25 @@ class DetalleCarga extends Model
 	
     public $timestamps = true;
 
-    protected $table = 'detalleCargas';
+    protected $table = 'detallecargas';
     protected $primaryKey = 'id_detalle';
 
-    protected $fillable = ['id_carga','id_ind','id_region','id_mun','periodo_det','ejercicio_det','fecha_registro_det','fuente_det','valor_det'];
+    protected $fillable = ['id_carga','id_ind','periodo_det','ejercicio_det','fecha_registro_det','fuente_det','valor_det'];
 	
     /**
      * @return \Illuminate\Database\Eloquent\Relations\HasOne
      */
     public function carga()
     {
-        return $this->hasOne('App\Models\Carga', 'id_carga', 'id_carga');
+        return $this->belongsTo('App\Models\Carga', 'id_carga', 'id_carga');
     }
     
     /**
      * @return \Illuminate\Database\Eloquent\Relations\HasOne
      */
-    public function indicadore()
+    public function indicador()
     {
-        return $this->hasOne('App\Models\Indicadore', 'id_ind', 'id_ind');
+        return $this->belongsTo('App\Models\Indicador', 'id_ind', 'id_ind');
     }
     
     /**

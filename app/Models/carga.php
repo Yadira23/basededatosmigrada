@@ -15,6 +15,8 @@ class Carga extends Model
         'folioUnico_carga',
         'fecha_carga',
         'periodo',
+        'ejercicio',  // nuevo
+        'fuente',     // nuevo
         'status_env',
         'descripcion_env',
         'observacion_env',

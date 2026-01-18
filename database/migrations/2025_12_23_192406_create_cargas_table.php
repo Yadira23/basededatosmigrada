@@ -16,6 +16,8 @@ return new class extends Migration
             $table->string('folioUnico_carga')->unique();
             $table->date('fecha_carga');
             $table->string('periodo'); // mensual, trimestral, anual
+            $table->year('ejercicio');          // año, ej. 2025
+            $table->string('fuente');           // fuente de información
             $table->string('status_env'); // enviado, en revisión, aprobado, rechazado
             $table->text('descripcion_env')->nullable();
             $table->text('observacion_env')->nullable();

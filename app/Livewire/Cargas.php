@@ -15,7 +15,7 @@ class Cargas extends Component
     protected $paginationTheme = 'bootstrap';
 
     public $selected_id, $keyWord;
-    public $id_carga, $folioUnico_carga, $fecha_carga, $periodo, $status_env, $descripcion_env, $observacion_env, $id_form;
+    public $id_carga, $folioUnico_carga, $fecha_carga, $periodo, $ejercicio, $fuente, $status_env, $descripcion_env, $observacion_env, $id_form;
 
     public function mount()
     {
@@ -35,10 +35,10 @@ class Cargas extends Component
     }
 
     public function openModal()
-{
-    $this->folioUnico_carga = strtoupper(uniqid('FOLIO-')); // ejemplo folio aleatorio
-    $this->fecha_carga = now()->format('Y-m-d');
-}
+    {
+        $this->folioUnico_carga = strtoupper(uniqid('FOLIO-')); // ejemplo folio aleatorio
+        $this->fecha_carga = now()->format('Y-m-d');
+    }
 
     #[\Livewire\Attributes\Computed]
     public function filteredCargas()
@@ -77,6 +77,8 @@ class Cargas extends Component
     {
         $this->validate([
             'periodo' => 'required',
+            'periodo_det' => 'required',
+            'ejercicio_det' => 'required',
             'descripcion_env' => 'required',
             'id_form' => 'required',
         ]);
@@ -87,6 +89,8 @@ class Cargas extends Component
                 'folioUnico_carga' => $this->folioUnico_carga,
                 'fecha_carga' => $this->fecha_carga,
                 'periodo' => $this->periodo,
+                'ejercicio' => $this->ejercicio,  // nuevo
+                'fuente' => $this->fuente,        // nuevo
                 'status_env' => $this->status_env,
                 'descripcion_env' => $this->descripcion_env,
                 'observacion_env' => $this->observacion_env,
@@ -132,34 +136,33 @@ class Cargas extends Component
         );
     }
 
-public function saveObservation()
-{
-    $this->validate([
-        'observacion_env' => 'required|min:3'
-    ]);
+    public function saveObservation()
+    {
+        $this->validate([
+            'observacion_env' => 'required|min:3'
+        ]);
 
-    $carga = Carga::findOrFail($this->selected_id);
+        $carga = Carga::findOrFail($this->selected_id);
 
-    $carga->update([
-        'observacion_env' => $this->observacion_env
-    ]);
+        $carga->update([
+            'observacion_env' => $this->observacion_env
+        ]);
 
-    session()->flash(
-        'message',
-        "Observación guardada para la carga {$carga->folioUnico_carga}"
-    );
+        session()->flash(
+            'message',
+            "Observación guardada para la carga {$carga->folioUnico_carga}"
+        );
 
-    $this->dispatch('closeObservationModal');
+        $this->dispatch('closeObservationModal');
 
-    $this->reset(['observacion_env', 'selected_id']);
-}
+        $this->reset(['observacion_env', 'selected_id']);
+    }
 
-public function openObservation($id)
-{
-    $carga = Carga::findOrFail($id);
+    public function openObservation($id)
+    {
+        $carga = Carga::findOrFail($id);
 
-    $this->selected_id = $carga->id_carga;
-    $this->observacion_env = $carga->observacion_env;
-}
-
+        $this->selected_id = $carga->id_carga;
+        $this->observacion_env = $carga->observacion_env;
+    }
 }

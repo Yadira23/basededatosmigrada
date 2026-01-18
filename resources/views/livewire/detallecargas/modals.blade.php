@@ -12,19 +12,24 @@
                     <input type="hidden" wire:model="selected_id">
                 @endif
                     <div class="form-group">
-                        <input wire:model.live="id_detalle" type="text" class="form-control" id="id_detalle" placeholder="Id Detalle">@error('id_detalle') <span class="error text-danger">{{ $message }}</span> @enderror
+                        <label>Carga</label>
+                        <select wire:model="id_carga" class="form-control">
+                            <option value="">-- Select Carga --</option>
+                            @foreach(\App\Models\Carga::all() as $c)
+                                <option value="{{ $c->id_carga }}">{{ $c->folioUnico_carga }}</option>
+                            @endforeach
+                        </select>
+                        @error('id_carga') <span class="error text-danger">{{ $message }}</span> @enderror
                     </div>
                     <div class="form-group">
-                        <input wire:model.live="id_carga" type="text" class="form-control" id="id_carga" placeholder="Id Carga">@error('id_carga') <span class="error text-danger">{{ $message }}</span> @enderror
-                    </div>
-                    <div class="form-group">
-                        <input wire:model.live="id_ind" type="text" class="form-control" id="id_ind" placeholder="Id Ind">@error('id_ind') <span class="error text-danger">{{ $message }}</span> @enderror
-                    </div>
-                    <div class="form-group">
-                        <input wire:model.live="id_region" type="text" class="form-control" id="id_region" placeholder="Id Region">@error('id_region') <span class="error text-danger">{{ $message }}</span> @enderror
-                    </div>
-                    <div class="form-group">
-                        <input wire:model.live="id_mun" type="text" class="form-control" id="id_mun" placeholder="Id Mun">@error('id_mun') <span class="error text-danger">{{ $message }}</span> @enderror
+                        <label>Indicador</label>
+                        <select wire:model="id_ind" class="form-control">
+                            <option value="">-- Select Indicador --</option>
+                            @foreach(\App\Models\Indicador::all() as $i)
+                                <option value="{{ $i->id_ind }}">{{ $i->nombre_ind }}</option>
+                            @endforeach
+                        </select>
+                        @error('id_ind') <span class="error text-danger">{{ $message }}</span> @enderror
                     </div>
                     <div class="form-group">
                         <input wire:model.live="periodo_det" type="text" class="form-control" id="periodo_det" placeholder="Periodo Det">@error('periodo_det') <span class="error text-danger">{{ $message }}</span> @enderror

@@ -31,8 +31,6 @@
 								<th>Id Detalle</th>
 								<th>Id Carga</th>
 								<th>Id Ind</th>
-								<th>Id Region</th>
-								<th>Id Mun</th>
 								<th>Periodo Det</th>
 								<th>Ejercicio Det</th>
 								<th>Fecha Registro Det</th>
@@ -46,10 +44,8 @@
 							<tr>
 								{{--<td>{{ $loop->iteration }}</td> --}}
 								<td>{{ $row->id_detalle }}</td>
-								<td>{{ $row->id_carga }}</td>
-								<td>{{ $row->id_ind }}</td>
-								<td>{{ $row->id_region }}</td>
-								<td>{{ $row->id_mun }}</td>
+								<td>{{ $row->carga->folioUnico_carga ?? $row->id_carga }}</td>
+								<td>{{ $row->indicador->nombre_ind ?? $row->id_ind }}</td>
 								<td>{{ $row->periodo_det }}</td>
 								<td>{{ $row->ejercicio_det }}</td>
 								<td>{{ $row->fecha_registro_det }}</td>

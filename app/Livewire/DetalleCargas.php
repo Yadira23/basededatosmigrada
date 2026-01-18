@@ -38,7 +38,7 @@ class DetalleCargas extends Component
 
 
 	protected $paginationTheme = 'bootstrap';
-    public $selected_id, $keyWord, $id_detalle, $id_carga, $id_ind, $id_region, $id_mun, $periodo_det, $ejercicio_det, $fecha_registro_det, $fuente_det, $valor_det;
+    public $selected_id, $keyWord, $id_detalle, $id_carga, $id_ind, $periodo_det, $ejercicio_det, $fecha_registro_det, $fuente_det, $valor_det;
 
     #[Computed]
 	public function filteredDetalleCargas()
@@ -93,8 +93,6 @@ class DetalleCargas extends Component
 			[
 				'id_carga' => $this-> id_carga,
 				'id_ind' => $this-> id_ind,
-				'id_region' => $this-> id_region,
-				'id_mun' => $this-> id_mun,
 				'periodo_det' => $this-> periodo_det,
 				'ejercicio_det' => $this-> ejercicio_det,
 				'fecha_registro_det' => $this-> fecha_registro_det,

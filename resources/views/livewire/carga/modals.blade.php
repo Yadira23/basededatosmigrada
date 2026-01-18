@@ -56,6 +56,21 @@
                         @error('descripcion_env') <span class="error text-danger">{{ $message }}</span> @enderror
                     </div>
 
+                    {{-- AÑO DEL PERIODO DE LA CARGA --}}
+                    <div class="form-group">
+                        <label>Ejercicio</label>
+                        <input type="text" wire:model="ejercicio" class="form-control" placeholder="Año del ejercicio">
+                        @error('ejercicio') <span class="error text-danger">{{ $message }}</span> @enderror
+                    </div>
+
+                    {{-- DONDE PROVIENE LA INFORMACION --}}
+                    <div class="form-group">
+                        <label>Fuente</label>
+                        <input type="text" wire:model="fuente" class="form-control" placeholder="Fuente de la carga">
+                        @error('fuente') <span class="error text-danger">{{ $message }}</span> @enderror
+                    </div>
+
+
                     {{-- ESTADO INICIAL --}}
                     <input type="hidden" wire:model="status_env">
 

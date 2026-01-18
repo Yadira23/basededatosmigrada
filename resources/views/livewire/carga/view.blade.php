@@ -19,6 +19,8 @@
                                     <th>Foliounico Carga</th>
                                     <th>Fecha Carga</th>
                                     <th>Periodo</th>
+                                    <th>Ejercicio</th>
+                                    <th>Fuente</th>
                                     <th>Status Env</th>
                                     <th>Descripcion Env</th>
                                     <th>Observacion Env</th>
@@ -34,6 +36,8 @@
                                     <td>{{ $row->folioUnico_carga }}</td>
                                     <td>{{ $row->fecha_carga }}</td>
                                     <td>{{ $row->periodo }}</td>
+                                    <td>{{ $row->ejercicio }}</td>
+                                    <td>{{ $row->fuente }}</td>
                                     <td>
                                         {{-- Botones de estado dinámicos --}}
                                         @if($row->status_env == 'Enviado')
