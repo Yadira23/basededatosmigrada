@@ -13,7 +13,6 @@ class DetalleCargaFactory extends Factory
     public function definition()
     {
         return [
-			'id_detalle' => fake()->name(),
 			'id_carga' => fake()->name(),
 			'id_ind' => fake()->name(),
 			'id_region' => fake()->name(),

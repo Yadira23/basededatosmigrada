@@ -11,6 +11,7 @@ class Sector extends Model
     
     protected $table = 'sectores';
     protected $primaryKey = 'id_sector';
+    public $timestamps = false;
 
     protected $fillable = [
         'nombre_sector',

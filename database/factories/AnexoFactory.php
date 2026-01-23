@@ -13,7 +13,6 @@ class AnexoFactory extends Factory
     public function definition()
     {
         return [
-			'id_anexo' => fake()->name(),
 			'nombre_anexo' => fake()->name(),
 			'tipo_anexo' => fake()->name(),
 			'peso_anexo' => fake()->name(),

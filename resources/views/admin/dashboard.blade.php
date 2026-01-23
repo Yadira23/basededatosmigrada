@@ -1,5 +1,9 @@
 @extends('layouts.app')
 
+@section('content')
+    @livewire('admin-dashboard')
+@endsection
+
 @section('titulo', 'Dashboard Admin')
 
 @section('content')

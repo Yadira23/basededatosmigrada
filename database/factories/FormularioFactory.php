@@ -13,7 +13,6 @@ class FormularioFactory extends Factory
     public function definition()
     {
         return [
-			'id_form' => fake()->name(),
 			'titulo_form' => fake()->name(),
 			'fecha_creacion_form' => fake()->name(),
 			'descripcion_form' => fake()->name(),

@@ -6,7 +6,9 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use App\Models\Carga;
 use App\Models\Formulario;
+use App\Models\Indicador;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Auth;
 
 class Cargas extends Component
 {
@@ -15,13 +17,24 @@ class Cargas extends Component
     protected $paginationTheme = 'bootstrap';
 
     public $selected_id, $keyWord;
-    public $id_carga, $folioUnico_carga, $fecha_carga, $periodo, $ejercicio, $fuente, $status_env, $descripcion_env, $observacion_env, $id_form;
+    public $id_carga, $folioUnico_carga, $fecha_carga, $periodo, $periodo_det, $ejercicio, $ejercicio_det, $fuente, $status_env, $descripcion_env, $observacion_env, $id_form;
+    public $indicadores = [];
+    public $selectedIndicador;
 
     public function mount()
     {
         $this->fecha_carga = now()->format('Y-m-d'); // fecha de hoy
         $this->status_env = 'Enviado'; // estado inicial
         $this->generateFolio(); // folio único automático
+
+        // Inicializar los campos de detalle si quieres un valor por defecto
+        $this->periodo_det = '';
+        $this->ejercicio_det = '';
+
+        // 🔹 Inicializar indicadores según dependencia y formulario si ya existe id_form
+        if ($this->id_form) {
+            $this->loadIndicadores($this->id_form);
+        }
     }
 
     // Genera folio único automáticamente
@@ -75,22 +88,24 @@ class Cargas extends Component
 
     public function save()
     {
+        // 1️⃣ Validación solo de los campos que existen en 'cargas'
         $this->validate([
             'periodo' => 'required',
-            'periodo_det' => 'required',
-            'ejercicio_det' => 'required',
             'descripcion_env' => 'required',
             'id_form' => 'required',
+            'ejercicio' => 'required',
+            'fuente' => 'required',
         ]);
 
-        Carga::updateOrCreate(
+        // 2️⃣ Crear o actualizar la carga
+        $carga = Carga::updateOrCreate(
             ['id_carga' => $this->selected_id],
             [
                 'folioUnico_carga' => $this->folioUnico_carga,
                 'fecha_carga' => $this->fecha_carga,
                 'periodo' => $this->periodo,
-                'ejercicio' => $this->ejercicio,  // nuevo
-                'fuente' => $this->fuente,        // nuevo
+                'ejercicio' => $this->ejercicio,
+                'fuente' => $this->fuente,
                 'status_env' => $this->status_env,
                 'descripcion_env' => $this->descripcion_env,
                 'observacion_env' => $this->observacion_env,
@@ -98,17 +113,50 @@ class Cargas extends Component
             ]
         );
 
+        // 3️⃣ Crear automáticamente registros en detallecargas solo si es nueva carga
+        if (!$this->selected_id) {
+            $indicadores = Indicador::whereHas('formularios', function ($q) {
+                $q->where('id_form', $this->id_form);
+            })->get();
+
+            foreach ($indicadores as $ind) {
+                \App\Models\DetalleCarga::create(
+                    [
+                        //'id_carga' => $carga->id_carga,
+                        //'id_ind' => $ind->id_ind,
+                        //'periodo_det' => $this->periodo,
+                        //'ejercicio_det' => $this->ejercicio,
+                        //'fecha_registro_det' => now(),
+                        //'fuente_det' => $this->fuente,
+                        //'valor_det' => 0,
+                        'id_carga' => $carga->id_carga,
+                        'id_ind' => $ind->id_ind,
+                        'periodo_det' => $this->periodo,
+                        'ejercicio_det' => $this->ejercicio,
+                    ],
+                    [
+                        'fecha_registro_det' => now(),
+                        'fuente_det' => $this->fuente,
+                        'valor_det' => 0,
+                    ]
+                );
+            }
+        }
+
+        // 4️⃣ Mensaje de éxito
         session()->flash(
             'message',
             $this->selected_id
                 ? "Carga actualizada correctamente"
-                : "Carga creada correctamente para el formulario {$this->id_form}"
+                : "Carga creada correctamente con {$carga->detallecargas()->count()} indicadores"
         );
 
+        // 5️⃣ Reset de variables y regenerar folio
         $this->dispatch('closeModal');
         $this->reset();
         $this->mount(); // reinicia folio, fecha y estado
     }
+
 
     public function edit($id)
     {
@@ -164,5 +212,24 @@ class Cargas extends Component
 
         $this->selected_id = $carga->id_carga;
         $this->observacion_env = $carga->observacion_env;
+    }
+
+    // Método para cargar indicadores según el formulario seleccionado
+    public function loadIndicadores($id_form)
+    {
+        $usuario = Auth::user();
+
+        $formulario = Formulario::with('indicador')
+            ->where('id_form', $id_form)
+            ->where('id_depen', $usuario->id_depen)
+            ->first();
+
+        $this->indicadores = $formulario && $formulario->indicador ? [$formulario->indicador] : [];
+    }
+
+    // 🔹 Nuevo método: se ejecuta automáticamente cuando cambia $id_form
+    public function updatedIdForm($value)
+    {
+        $this->loadIndicadores($value);
     }
 }

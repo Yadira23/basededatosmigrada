@@ -1,4 +1,4 @@
-<?php 
+<?php
 
 namespace App\Models;
 
@@ -57,4 +57,15 @@ class Formulario extends Model
         return $this->belongsTo(Indicador::class, 'id_ind', 'id_ind');
     }
 
+    // Scope para obtener solo formularios publicados
+    public function scopePublicados($query)
+    {
+        return $query->where('boton_accion_form', 'publicar');
+    }
+
+    // Scope para filtrar por dependencia
+    public function scopePorDependencia($query, $id_depen)
+    {
+        return $query->where('id_depen', $id_depen);
+    }
 }

@@ -13,7 +13,6 @@ class CargaFactory extends Factory
     public function definition()
     {
         return [
-			'id_carga' => fake()->name(),
 			'folioUnico_carga' => fake()->name(),
 			'fecha_carga' => fake()->name(),
 			'periodo' => fake()->name(),

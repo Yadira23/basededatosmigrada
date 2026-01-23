@@ -49,7 +49,14 @@
                 </div>
             </div>
             <hr class="sidebar-divider">
-
+            @role('admin')
+            <li class="nav-item">
+                <a class="nav-link" href="{{ route('admin.dashboard') }}">
+                    <i class="fas fa-fw fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
+                </a>
+            </li>
+            @endrole
             <!-- Menú CRUD -->
             <!-- Divider -->
             @hasanyrole('admin|usuario')

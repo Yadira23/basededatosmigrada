@@ -13,7 +13,6 @@ class IndicadorFactory extends Factory
     public function definition()
     {
         return [
-			'id_ind' => fake()->name(),
 			'nombre_ind' => fake()->name(),
 			'definicion_ind' => fake()->name(),
 			'formula_ind' => fake()->name(),

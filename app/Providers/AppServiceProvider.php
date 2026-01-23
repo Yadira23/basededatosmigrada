@@ -5,6 +5,8 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use App\Models\Carga;
 use App\Observers\CargaObserver;
+use Livewire\Livewire;
+use App\Livewire\UsuarioFormularios;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -22,5 +24,6 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Carga::observe(CargaObserver::class);
+        Livewire::component('usuario-formularios', UsuarioFormularios::class);
     }
 }

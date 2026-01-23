@@ -5,6 +5,7 @@ use App\Livewire\Carga\CargaCreate;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\UsuarioController;
+use App\Livewire\AdminDashboard;
 
 /*
 |--------------------------------------------------------------------------

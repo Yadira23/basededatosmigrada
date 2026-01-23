@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\Dependencia;
+use App\Models\Sector;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
@@ -10,19 +11,18 @@ class DependenciaFactory extends Factory
 {
     protected $model = Dependencia::class;
 
-    public function definition()
+    public function definition(): array
     {
         return [
-			'id_depen' => fake()->name(),
-			'nombre_depen' => fake()->name(),
-			'id_sector' => fake()->name(),
-			'email_depen' => fake()->name(),
-			'extension_depen' => fake()->name(),
-			'telefono_depen' => fake()->name(),
-			'calle_depen' => fake()->name(),
-			'numerocalle_depen' => fake()->name(),
-			'colonia_depen' => fake()->name(),
-			'cp_depen' => fake()->name(),
+			'nombre_depen' => fake()->company(),
+			'id_sector' => Sector::factory(),
+			'email_depen' => fake()->unique()->safeEmail(),
+            'extension_depen' => fake()->numerify('####'),
+            'telefono_depen' => fake()->numerify('##########'),
+            'calle_depen' => fake()->streetName(),
+            'numerocalle_depen' => fake()->buildingNumber(),
+            'colonia_depen' => fake()->city(),
+            'cp_depen' => fake()->postcode(),
         ];
     }
 }

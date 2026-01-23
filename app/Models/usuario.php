@@ -14,6 +14,7 @@ class Usuario extends Authenticatable
     protected $table = 'usuarios';
     protected $primaryKey = 'id_usuario';
     protected $keyType = 'int';
+    
     public $incrementing = true;
     protected $guard_name = 'web';
 

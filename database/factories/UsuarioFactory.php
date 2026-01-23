@@ -5,24 +5,25 @@ namespace Database\Factories;
 use App\Models\Usuario;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Hash;
+use App\Models\Dependencia;
 
 class UsuarioFactory extends Factory
 {
     protected $model = Usuario::class;
 
-    public function definition()
+    public function definition(): array
     {
         return [
-			'id_usuario' => fake()->name(),
-			'usuario_usr' => fake()->name(),
-			'nombre_usr' => fake()->name(),
-			'apellido_paterno' => fake()->name(),
-			'apellido_materno' => fake()->name(),
-			'email_usr' => fake()->name(),
-			'id_depen' => fake()->name(),
-			'id_rol' => fake()->name(),
-			'estado_usr' => fake()->name(),
-			'telefono_usr' => fake()->name(),
+			'usuario_usr' => $this->faker->userName(),
+            'nombre_usr' => $this->faker->firstName(),
+            'apellido_paterno' => $this->faker->lastName(),
+            'apellido_materno' => $this->faker->lastName(),
+            'email_usr' => $this->faker->unique()->safeEmail(),
+			'password' => Hash::make('password'),
+            'telefono_usr' => $this->faker->numerify('##########'),
+            'estado_usr' => 1,
+            'id_depen' => Dependencia::factory(),
         ];
     }
 }

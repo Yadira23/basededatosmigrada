@@ -49,6 +49,36 @@
                         @error('id_form') <span class="error text-danger">{{ $message }}</span> @enderror
                     </div>
 
+                    {{-- 🔹 Lista de indicadores según formulario y dependencia --}}
+                    @if(!empty($indicadores))
+                    <div class="card mt-3">
+                        <div class="card-header bg-info text-white">Indicadores disponibles</div>
+                        <div class="card-body">
+                            <ul>
+                                @foreach($indicadores as $ind)
+                                <li class="d-flex justify-content-between align-items-center mb-2">
+                                    <div>
+                                        <strong>{{ $ind->nombre_ind }}</strong><br>
+                                        <small>{{ $ind->definicion_ind }}</small>
+                                    </div>
+                                    <button type="button"
+                                        wire:click="$emit('openCargarIndicador', {{ $ind->id_ind }})"
+                                        class="btn btn-sm btn-success">
+                                        Cargar Información
+                                    </button>
+                                </li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    </div>
+                    @else
+                    @if($id_form)
+                    <div class="alert alert-warning mt-2">
+                        No hay indicadores disponibles para este formulario en tu dependencia.
+                    </div>
+                    @endif
+                    @endif
+
                     {{-- DESCRIPCIÓN DE LA CARGA --}}
                     <div class="form-group">
                         <label>Descripción</label>

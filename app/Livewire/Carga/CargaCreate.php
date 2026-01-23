@@ -22,18 +22,23 @@ class CargaCreate extends Component
     // 🔹 ESTE MÉTODO SE EJECUTA AL ENTRAR A LA VISTA
     public function mount()
     {
+        if (!Auth::check()) {
+            return redirect()->route('login');
+        }
+
         $usuario = Auth::user();
 
-        // 1️⃣ Obtener el formulario según la dependencia del usuario
         $this->formulario = Formulario::with(['indicador', 'anexos'])
-    ->where('id_depen', $usuario->id_depen)
-    ->first();
+            ->where('id_depen', $usuario->id_depen)
+            ->first();
 
-if ($this->formulario) {
-    $this->indicadores = $this->formulario->indicador ? [$this->formulario->indicador] : [];
-    $this->anexos = $this->formulario->anexos ?? [];
-}
+        if ($this->formulario) {
+            $this->indicadores = $this->formulario->indicador
+                ? [$this->formulario->indicador]
+                : [];
 
+            $this->anexos = $this->formulario->anexos ?? [];
+        }
     }
 
     // 🔹 SOLO CAMBIA EL ESTADO, NO GUARDA

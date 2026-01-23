@@ -25,10 +25,6 @@ return new class extends Migration
                 ->references('id_depen')
                 ->on('dependencias')
                 ->onDelete('restrict');
-            $table->foreignId('id_rol')
-                ->references('id_rol')
-                ->on('roles')
-                ->onDelete('restrict');
             $table->string('estado_usr', 20);
             $table->string('telefono_usr', 20)->nullable();
             $table->timestamps();
