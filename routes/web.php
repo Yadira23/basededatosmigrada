@@ -6,6 +6,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\UsuarioController;
 use App\Livewire\AdminDashboard;
+use App\Livewire\Usuario\FormularioCaptura;
 
 /*
 |--------------------------------------------------------------------------
@@ -71,3 +72,20 @@ Route::middleware(['auth', 'role:admin|usuario'])->group(function () {
     Route::view('/anexos', 'livewire.anexos.index');
     Route::view('/indicadores', 'livewire.indicadores.index');
 });
+
+
+Route::middleware(['auth'])->group(function () {
+
+    Route::get('/usuario/dashboard', function () {
+        return view('usuario.dashboard');
+    })->name('usuario.dashboard');
+
+    Route::get('/usuario/formularios', function () {
+        return view('usuario.formularios.index');
+    })->name('usuario.formularios');
+    
+    Route::get('/usuario/formulario/{id_form}', FormularioCaptura::class)
+        ->name('usuario.formulario.captura');
+
+});
+

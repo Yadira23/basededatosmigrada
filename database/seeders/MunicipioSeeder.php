@@ -68,22 +68,13 @@ class MunicipioSeeder extends Seeder
         ];
 
         foreach ($municipios as $m) {
-
-            if (!isset($m['region'])) {
-                continue; // evita error si falta region
-            }
-
-            $region = Region::where('clave_region', $m['region'])->first();
-
-            if ($region) {
-                Municipio::firstOrCreate(
-                    ['clave_municipio' => $m['clave']],
-                    [
-                        'id_region' => $region->id,
-                        'nombre_municipio' => $m['nombre']
-                    ]
-                );
-            }
+        Municipio::firstOrCreate(
+            ['clave_municipio' => $m['clave_municipio']],
+            [
+                'nombre_municipio' => $m['nombre_municipio'],
+                'id_region'        => $m['id_region'],
+            ]
+        );
         }
     }
 }

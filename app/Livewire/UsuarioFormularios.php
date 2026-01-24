@@ -28,6 +28,6 @@ class UsuarioFormularios extends Component
     public function abrirFormulario($id_form)
     {
         // Aquí rediriges o cargas la vista del formulario para que el usuario lo complete
-        return redirect()->route('usuario.formulario.responder', ['id' => $id_form]);
+        return redirect()->route('usuario.formulario.captura', $id_form);
     }
 }

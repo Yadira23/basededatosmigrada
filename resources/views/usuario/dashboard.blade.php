@@ -3,6 +3,8 @@
 @section('titulo', 'Dashboard Usuario')
 
 @section('content')
-    <h1>Dashboard Usuario</h1>
+    <livewire:dashboard-usuario />
 @endsection
+
+
 
