@@ -19,12 +19,16 @@ return new class extends Migration
             $table->year('ejercicio');          // año, ej. 2025
             $table->string('fuente');           // fuente de información
             $table->string('status_env'); // enviado, en revisión, aprobado, rechazado
+            $table->enum('ambito_geo_carga', ['SIN_AMBITO', 'REGION', 'MUNICIPIO'])
+                ->default('SIN_AMBITO');
+            $table->enum('metodo_captura', ['MANUAL', 'ARCHIVO'])->default('MANUAL');
             $table->text('descripcion_env')->nullable();
             $table->text('observacion_env')->nullable();
             $table->foreignId('id_form')
                 ->references('id_form')
                 ->on('formularios')
                 ->onDelete('cascade');
+
             $table->timestamps();
         });
     }

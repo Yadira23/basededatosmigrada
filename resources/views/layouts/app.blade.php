@@ -8,9 +8,11 @@
     <!-- SB Admin 2 Styles -->
     <link href="{{ asset('sbadmin2/vendor/fontawesome-free/css/all.min.css') }}" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,600,700,800,900" rel="stylesheet">
-    <link href="{{ asset('sbadmin2/vendor/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">
+    {{-- <link href="{{ asset('sbadmin2/vendor/bootstrap/css/bootstrap.min.css') }}" rel="stylesheet">--}}
     <link href="{{ asset('sbadmin2/css/sb-admin-2.min.css') }}" rel="stylesheet">
     @vite(['resources/js/app.js'])
+    @livewireStyles
+    @stack('styles')
 </head>
 
 <body id="page-top">
@@ -318,7 +320,10 @@
             myModal.show();
         });
     </script>
+    <script src="{{ asset('sbadmin2/js/sb-admin-2.min.js') }}"></script>
 
+    @livewireScripts
+    @stack('scripts')
 </body>
 
 </html>

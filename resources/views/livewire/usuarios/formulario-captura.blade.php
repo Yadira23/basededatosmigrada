@@ -1,43 +1,150 @@
-@extends('layouts.app')
-@section('content')
-<div class="formulario-root"> {{-- Elemento raíz Livewire --}}
+<div class="formulario-root">
 
     <h2>Paso 1 de 2: Selecciona el método de captura</h2>
 
     {{-- MÉTODOS DE CAPTURA --}}
     <div class="metodos">
-        <div id="manual" class="card" onclick="seleccionar('manual')">
+        <div id="manual"
+            class="card {{ $metodo === 'manual' ? 'selected' : '' }}"
+            wire:click="seleccionar('manual')">
             <h3>Captura Manual</h3>
             <p>Ingresa los valores manualmente por región. Ideal para pocos datos o correcciones.</p>
         </div>
 
-        <div id="archivo" class="card" onclick="seleccionar('archivo')">
+        <div id="archivo"
+            class="card {{ $metodo === 'archivo' ? 'selected' : '' }}"
+            wire:click="seleccionar('archivo')">
             <h3>Subir Archivo</h3>
             <p>Sube un archivo Excel o CSV con todos los datos. Perfecto para grandes volúmenes.</p>
-            <input type="file" id="archivoInput" class="file-input" onchange="mostrarArchivo(event)">
+
+            {{-- ✅ INPUT SOLO CUANDO SE SELECCIONA ARCHIVO --}}
+            @if($metodo === 'archivo')
+            <input type="file"
+                id="archivoInput"
+                class="file-input"
+                wire:model.live="archivo"
+                wire:click.stop
+                onclick="event.stopPropagation()"
+                accept=".txt,.csv,.xlsx,.xls" />
+
+            <div style="margin-top:6px;">
+                <span wire:loading wire:target="archivo">Cargando archivo...</span>
+
+                @error('archivo')
+                <div style="color:red; margin-top:6px;">{{ $message }}</div>
+                @enderror
+            </div>
+            @endif
         </div>
     </div>
 
     {{-- INFORMACIÓN --}}
     <div class="info">
-        <p>Método seleccionado: <span id="metodo">No seleccionado</span></p>
-        <p id="archivoNombre"></p>
-        <p>Última actualización: 23/01/2026 23:32</p>
+        <p>
+            Método seleccionado:
+            <span id="metodo">
+                {{ $metodo === 'manual' ? 'Captura Manual' : ($metodo === 'archivo' ? 'Subir Archivo' : 'No seleccionado') }}
+            </span>
+        </p>
+
+        <p id="archivoNombre">
+            @if(!empty($archivoNombre))
+            Archivo seleccionado: {{ $archivoNombre }}
+            @endif
+        </p>
+
+        <p>Última actualización: <span id="fechaHora"></span></p>
     </div>
 
-    {{-- FORMULARIO MANUAL --}}
-    <div id="manualForm" class="manual-form" style="display:none;">
+    {{-- MENSAJES --}}
+    @if (session()->has('success'))
+    <div style="margin-bottom:12px; padding:10px; border:1px solid #c3e6cb; background:#d4edda;">
+        {{ session('success') }}
+    </div>
+    @endif
+
+    @if (session()->has('error'))
+    <div style="margin-bottom:12px; padding:10px; border:1px solid #f5c6cb; background:#f8d7da;">
+        {{ session('error') }}
+    </div>
+    @endif
+
+    {{-- ✅ FORMULARIO MANUAL (UN SOLO DIV, NO @else) --}}
+    <div id="manualForm" @class(['manual-form', 'd-none'=> $metodo !== 'manual'])>
+
         <h3>Captura Manual</h3>
-        <form id="formManual" onsubmit="return enviarManual()">
-            <label>Región:</label>
-            <select id="region" required>
-                <option value="" disabled selected>Selecciona una región</option>
-                @foreach($regiones as $r)
-                <option value="{{ $r->nombre_region }}">{{ $r->nombre_region }}</option>
-                @endforeach
+
+        {{-- ÁMBITO (GLOBAL / REGIÓN / MUNICIPIO) --}}
+        <div style="margin-bottom:10px;">
+            <label>Capturar por:</label>
+            <select wire:model.live="ambito_geo">
+                <option value="SIN_AMBITO">Global (sin región/municipio)</option>
+                <option value="REGION">Región</option>
+                <option value="MUNICIPIO">Municipio</option>
             </select>
-            <label>Valor:</label>
-            <input type="number" id="valor" required>
+        </div>
+
+        <form id="formManual" wire:submit.prevent="agregarManual">
+
+            {{-- REGIÓN --}}
+            @if($ambito_geo === 'REGION')
+            <div style="flex:1 1 100%; margin-bottom:10px;">
+                <label>Región:</label>
+                <select wire:model.live="region">
+                    <option value="">Selecciona una región</option>
+
+                    @foreach($regiones as $r)
+                    @php
+                    $regionUsada = collect($manualData)->contains(function($row) use ($r) {
+                    return ($row['ambito_geo'] ?? '') === 'REGION'
+                    && (int)($row['id_region'] ?? 0) === (int)$r->id_region;
+                    });
+                    @endphp
+
+                    <option value="{{ $r->id_region }}" @disabled($regionUsada)>
+                        {{ $r->nombre_region }} @if($regionUsada) (ya agregado) @endif
+                    </option>
+                    @endforeach
+                </select>
+            </div>
+            @endif
+
+            {{-- MUNICIPIO --}}
+            @if($ambito_geo === 'MUNICIPIO')
+            <div style="flex:1 1 100%; margin-bottom:10px;">
+                <label>Región (para filtrar municipios):</label>
+                <select wire:model.live="regionFiltro">
+                    <option value="">Selecciona una región</option>
+                    @foreach($regiones as $r)
+                    <option value="{{ $r->id_region }}">{{ $r->nombre_region }}</option>
+                    @endforeach
+                </select>
+
+                <label style="margin-top:8px; display:block;">Municipio:</label>
+                <select wire:model.live="municipio" @disabled(empty($regionFiltro))>
+                    <option value="">Selecciona un municipio</option>
+
+                    @foreach($municipiosFiltrados as $m)
+                    @php
+                    $munUsado = collect($manualData)->contains(function($row) use ($m) {
+                    return ($row['ambito_geo'] ?? '') === 'MUNICIPIO'
+                    && (int)($row['id_mun'] ?? 0) === (int)$m->id_mun;
+                    });
+                    @endphp
+
+                    <option value="{{ $m->id_mun }}" @disabled($munUsado)>
+                        {{ $m->nombre_municipio }} @if($munUsado) (ya agregado) @endif
+                    </option>
+                    @endforeach
+                </select>
+            </div>
+            @endif
+
+            <div style="margin-bottom:10px;">
+                <label>Valor:</label>
+                <input type="number" id="valor" wire:model="valor" required>
+            </div>
+
             <button type="submit">Agregar</button>
         </form>
 
@@ -45,32 +152,97 @@
         <table id="tablaManual">
             <thead>
                 <tr>
-                    <th>Región</th>
+                    <th>
+                        @if($ambito_geo === 'MUNICIPIO')
+                        Municipio
+                        @elseif($ambito_geo === 'REGION')
+                        Región
+                        @else
+                        Global
+                        @endif
+                    </th>
                     <th>Valor</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
-            <tbody></tbody>
+
+            <tbody>
+                @forelse($manualData as $i => $row)
+                <tr>
+                    <td>{{ $row['nombre'] }}</td>
+                    <td>{{ $row['valor'] }}</td>
+                    <td>
+                        <button type="button" wire:click="editarManual({{ $i }})">Editar</button>
+                        <button type="button" wire:click="eliminarManual({{ $i }})">Eliminar</button>
+                    </td>
+                </tr>
+                @empty
+                <tr>
+                    <td colspan="3">Aún no hay registros.</td>
+                </tr>
+                @endforelse
+            </tbody>
         </table>
+
+        <button type="button"
+            wire:click="guardarTodo"
+            class="btn btn-primary"
+            wire:loading.attr="disabled"
+            wire:target="guardarTodo">
+            Enviar
+        </button>
     </div>
 
-    {{-- TABLA DE ARCHIVO --}}
-    <div id="tablaArchivoContainer" class="archivo-form" style="display:none;">
-        <h3>Datos del archivo</h3>
+    {{-- ✅ TABLA DE ARCHIVO (PREVIEW) --}}
+    <div id="tablaArchivoContainer" @class(['archivo-form', 'd-none'=> $metodo !== 'archivo'])>
+        <h3>Datos del archivo (preview)</h3>
+
         <table id="tablaArchivo">
             <thead>
                 <tr>
                     <th>Fila</th>
-                    <th>Contenido</th>
+                    <th>Texto (raw)</th>
+                    <th>Número detectado</th>
                 </tr>
             </thead>
-            <tbody></tbody>
+            <tbody>
+                @forelse($archivoPreview as $i => $row)
+                <tr>
+                    <td>{{ $i + 1 }}</td>
+                    <td>{{ $row['payload_det']['raw'] ?? '' }}</td>
+                    <td>
+                        @if(isset($row['valor_det']) && $row['valor_det'] !== null)
+                        {{ $row['valor_det'] }}
+                        @else
+                        —
+                        @endif
+                    </td>
+                </tr>
+                @empty
+                <tr>
+                    <td colspan="3">Aún no hay datos cargados.</td>
+                </tr>
+                @endforelse
+            </tbody>
         </table>
+
+        <button type="button"
+            wire:click="guardarTodo"
+            class="btn btn-primary"
+            wire:loading.attr="disabled">
+            Enviar
+        </button>
     </div>
 
+
 </div>
-@endsection
+@push('styles')
 <style>
+    .d-none {
+        display: none !important;
+    }
+
+    /* TU CSS IGUAL */
     /* ===== ESTILO GENERAL ===== */
     .formulario-root {
         font-family: Arial, sans-serif;
@@ -192,110 +364,25 @@
         margin-bottom: 20px;
     }
 </style>
+@endpush
 
+@push('scripts')
 <script>
-    let metodoSeleccionado = null;
+    document.addEventListener('DOMContentLoaded', function() {
+        function actualizarFechaHora() {
+            const ahora = new Date();
+            const dia = String(ahora.getDate()).padStart(2, '0');
+            const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+            const anio = ahora.getFullYear();
+            const horas = String(ahora.getHours()).padStart(2, '0');
+            const minutos = String(ahora.getMinutes()).padStart(2, '0');
 
-    function seleccionar(metodo) {
-        metodoSeleccionado = metodo;
-        document.getElementById('metodo').innerText = metodo === 'manual' ? 'Captura Manual' : 'Subir Archivo';
-        document.getElementById('manual').classList.remove('selected');
-        document.getElementById('archivo').classList.remove('selected');
-        document.getElementById(metodo).classList.add('selected');
-
-        document.getElementById('manualForm').style.display = metodo === 'manual' ? 'block' : 'none';
-        document.getElementById('tablaArchivoContainer').style.display = 'none';
-
-        if (metodo === 'archivo') document.getElementById('archivoInput').click();
-    }
-
-    // Función para enviar fila
-    function enviarManual() {
-        const select = document.getElementById('region');
-        const valor = document.getElementById('valor');
-        const regionTexto = select.options[select.selectedIndex].text;
-        const regionValue = select.value;
-
-        if (!regionValue) return false;
-
-        const tbody = document.querySelector('#tablaManual tbody');
-        const tr = document.createElement('tr');
-
-        tr.innerHTML = `
-        <td data-value="${regionValue}">${regionTexto}</td>
-        <td>${valor.value}</td>
-        <td>
-            <button type="button" onclick="editarFila(this)">Editar</button>
-            <button type="button" onclick="eliminarFila(this)">Eliminar</button>
-        </td>
-    `;
-
-        tbody.appendChild(tr);
-
-        // 🔒 Bloquear región en el select
-        select.options[select.selectedIndex].disabled = true;
-
-        document.getElementById('formManual').reset();
-        return false;
-    }
-
-    // Función para eliminar fila
-    function eliminarFila(btn) {
-        const fila = btn.closest('tr');
-        const regionValue = fila.cells[0].dataset.value;
-
-        const select = document.getElementById('region');
-        for (let option of select.options) {
-            if (option.value == regionValue) {
-                option.disabled = false;
-                break;
-            }
+            const span = document.getElementById('fechaHora');
+            if (span) span.innerText = `${dia}/${mes}/${anio} ${horas}:${minutos}`;
         }
 
-        fila.remove();
-    }
-
-    // Función para editar fila
-    function editarFila(btn) {
-        const fila = btn.closest('tr');
-        const regionValue = fila.cells[0].dataset.value;
-        const regionTexto = fila.cells[0].innerText;
-        const valor = fila.cells[1].innerText;
-
-        const select = document.getElementById('region');
-
-        // Rehabilitar región
-        for (let option of select.options) {
-            if (option.value == regionValue) {
-                option.disabled = false;
-                option.selected = true;
-                break;
-            }
-        }
-
-        document.getElementById('valor').value = valor;
-
-        fila.remove();
-    }
-
-    function mostrarArchivo(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-        document.getElementById('archivoNombre').innerText = "Archivo seleccionado: " + file.name;
-
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const lines = e.target.result.split(/\r\n|\n/);
-            const tbody = document.querySelector('#tablaArchivo tbody');
-            tbody.innerHTML = '';
-            lines.forEach((line, index) => {
-                if (line.trim() === '') return;
-                const tr = document.createElement('tr');
-                tr.innerHTML = `<td>${index+1}</td><td>${line}</td>`;
-                tbody.appendChild(tr);
-            });
-            document.getElementById('tablaArchivoContainer').style.display = 'block';
-        };
-        reader.readAsText(file);
-    }
+        actualizarFechaHora();
+        setInterval(actualizarFechaHora, 60000);
+    });
 </script>
+@endpush

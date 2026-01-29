@@ -18,7 +18,7 @@ return new class extends Migration
             $table->foreignId('id_region')
                 ->references('id_region')
                 ->on('regiones')
-                ->onDelete('cascade');
+                ->onDelete('restrict');
             $table->timestamps();
         });
     }

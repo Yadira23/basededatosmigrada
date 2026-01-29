@@ -89,6 +89,12 @@
                                             </a>
                                             <ul class="dropdown-menu">
                                                 <li><a data-bs-toggle="modal" data-bs-target="#DataModal" class="dropdown-item" wire:click="edit({{$row->id_carga}})"><i class="bi-pencil-square"></i> Edit </a></li>
+                                                <li>
+                                                    <a class="dropdown-item"
+                                                        href="{{ route('detallecargas.index', ['id_carga' => $row->id_carga]) }}">
+                                                        <i class="bi-list-ul"></i> Ver detalles
+                                                    </a>
+                                                </li>
                                                 <li><a class="dropdown-item" onclick="confirm('Confirm Delete Carga id {{$row->id_carga}}? \nDeleted Cargas cannot be recovered!')||event.stopImmediatePropagation()" wire:click="destroy({{$row->id_carga}})"><i class="bi-trash3-fill"></i> Delete </a></li>
                                             </ul>
                                         </div>

@@ -28,6 +28,19 @@ class UsuarioFormularios extends Component
     public function abrirFormulario($id_form)
     {
         // Aquí rediriges o cargas la vista del formulario para que el usuario lo complete
-        return redirect()->route('usuario.formulario.captura', $id_form);
+        $form = Formulario::select('id_form', 'id_ind')
+            ->where('id_form', $id_form)
+            ->firstOrFail();
+
+        // ✅ DEFENSA: por si el formulario no tiene indicador
+        if (!$form->id_ind) {
+            session()->flash('error', 'Este formulario no tiene indicador asignado.');
+            return;
+        }
+
+        return redirect()->route('usuario.formulario.captura', [
+            'id_form' => $form->id_form,
+            'id_ind'  => $form->id_ind,
+        ]);
     }
 }

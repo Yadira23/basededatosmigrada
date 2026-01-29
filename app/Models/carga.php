@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+
 class Carga extends Model
 {
     use HasFactory;
@@ -20,21 +21,29 @@ class Carga extends Model
         'status_env',
         'descripcion_env',
         'observacion_env',
-        'id_form'
+        'id_form',
+
+        // ✅ nuevos (cargas personalizadas)
+        'ambito_geo_carga',
+        'metodo_captura',
     ];
-    /** * @return \Illuminate\Database\Eloquent\Relations\HasMany */ 
+
+    /** * @return \Illuminate\Database\Eloquent\Relations\HasMany */
     public function bitacoras()
     {
         return $this->hasMany('App\Models\Bitacora', 'id_carga', 'id_carga');
     }
-    /** * @return \Illuminate\Database\Eloquent\Relations\HasMany */ 
+
+    /** * @return \Illuminate\Database\Eloquent\Relations\HasMany */
     public function detallecargas()
     {
-        return $this->hasMany('App\Models\Detallecarga', 'id_carga', 'id_carga');
+        return $this->hasMany('App\Models\DetalleCarga', 'id_carga', 'id_carga');
     }
-    /** * @return \Illuminate\Database\Eloquent\Relations\HasOne */ 
+
+    /** * @return \Illuminate\Database\Eloquent\Relations\HasOne */
     public function formulario()
     {
         return $this->belongsTo('App\Models\Formulario', 'id_form', 'id_form');
     }
+
 }

@@ -14,10 +14,17 @@ class DetalleCarga extends Model
     protected $table = 'detallecargas';
     protected $primaryKey = 'id_detalle';
 
-    protected $fillable = ['id_carga','id_ind','periodo_det','ejercicio_det','fecha_registro_det','fuente_det','valor_det'];
+    protected $fillable = ['id_carga','id_ind','ambito_geo', 'id_region','id_mun', 'fila_det', 'periodo_det','ejercicio_det','fecha_registro_det','fuente_det','valor_det', 'payload_det'];
+
+    protected $casts = [
+        'payload_det' => 'array',
+        'fecha_registro_det' => 'date',
+        'ejercicio_det' => 'integer',
+        'valor_det' => 'decimal:4',
+    ];
 	
     /**
-     * @return \Illuminate\Database\Eloquent\Relations\HasOne
+     * @return \Illuminate\Database\Eloquent\Relations\belongsTo  
      */
     public function carga()
     {
@@ -25,7 +32,7 @@ class DetalleCarga extends Model
     }
     
     /**
-     * @return \Illuminate\Database\Eloquent\Relations\HasOne
+     * @return \Illuminate\Database\Eloquent\Relations\belongsTo
      */
     public function indicador()
     {
@@ -33,19 +40,19 @@ class DetalleCarga extends Model
     }
     
     /**
-     * @return \Illuminate\Database\Eloquent\Relations\HasOne
+     * @return \Illuminate\Database\Eloquent\Relations\belongsTo
      */
-    //public function municipio()
-    //{
-    //    return $this->hasOne('App\Models\Municipio', 'id_mun', 'id_mun');
-    //}
+    public function municipio()
+    {
+        return $this->belongsTo('App\Models\Municipio', 'id_mun', 'id_mun');
+    }
     
     /**
-     * @return \Illuminate\Database\Eloquent\Relations\HasOne
+     * @return \Illuminate\Database\Eloquent\Relations\belongsTo
      */
-    //public function regione()
-    //{
-    //    return $this->hasOne('App\Models\Regione', 'id_region', 'id_region');
-    //}
+    public function region()
+    {
+        return $this->belongsTo('App\Models\Region', 'id_region', 'id_region');
+    }
     
 }

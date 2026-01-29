@@ -7,6 +7,7 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\UsuarioController;
 use App\Livewire\AdminDashboard;
 use App\Livewire\Usuario\FormularioCaptura;
+use App\Livewire\DetalleCargas;
 
 /*
 |--------------------------------------------------------------------------
@@ -22,8 +23,6 @@ Route::get('/', function () {
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [LoginController::class, 'login'])->name('login.post');
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
-
-
 /* ---------------- REDIRECCIÓN POR ROL ---------------- */
 Route::middleware('auth')->get('/redirect-por-rol', function () {
 
@@ -76,16 +75,14 @@ Route::middleware(['auth', 'role:admin|usuario'])->group(function () {
 
 Route::middleware(['auth'])->group(function () {
 
-    Route::get('/usuario/dashboard', function () {
-        return view('usuario.dashboard');
-    })->name('usuario.dashboard');
-
     Route::get('/usuario/formularios', function () {
         return view('usuario.formularios.index');
     })->name('usuario.formularios');
     
-    Route::get('/usuario/formulario/{id_form}', FormularioCaptura::class)
-        ->name('usuario.formulario.captura');
+    Route::get('/usuario/formulario/{id_form}/{id_ind}', FormularioCaptura::class)
+    ->name('usuario.formulario.captura');
 
+    Route::get('/detallecargas/{id_carga}', DetalleCargas::class)
+    ->name('detallecargas.index');
 });
 
