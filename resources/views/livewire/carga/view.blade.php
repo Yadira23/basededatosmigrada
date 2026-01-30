@@ -21,6 +21,9 @@
                                     <th>Periodo</th>
                                     <th>Ejercicio</th>
                                     <th>Fuente</th>
+                                    <th>Indicador</th>
+                                    <th>Ámbito</th>
+                                    <th>Filas</th>
                                     <th>Status Env</th>
                                     <th>Descripcion Env</th>
                                     <th>Observacion Env</th>
@@ -37,7 +40,30 @@
                                     <td>{{ $row->fecha_carga }}</td>
                                     <td>{{ $row->periodo }}</td>
                                     <td>{{ $row->ejercicio }}</td>
-                                    <td>{{ $row->fuente }}</td>
+                                    <td>
+                                        {{ $row->primerDetalle?->fuente_det ?? 'N/A' }}
+                                    </td>
+                                    <td>
+                                        {{ $row->primerDetalle->indicador->nombre_ind ?? 'N/A' }}
+                                    </td>
+                                    <td>
+                                        @php $amb = $row->primerDetalle->ambito_geo ?? null; @endphp
+
+                                        @if($amb === 'REGION')
+                                        <span class="badge bg-primary">REGIÓN</span>
+                                        @elseif($amb === 'MUNICIPIO')
+                                        <span class="badge bg-warning text-dark">MUNICIPIO</span>
+                                        @elseif($amb === 'SIN_AMBITO')
+                                        <span class="badge bg-secondary">GLOBAL</span>
+                                        @else
+                                        <span class="badge bg-light text-dark">N/A</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info text-dark">
+                                            {{ $row->detallecargas_count }}
+                                        </span>
+                                    </td>
                                     <td>
                                         {{-- Botones de estado dinámicos --}}
                                         @if($row->status_env == 'Enviado')

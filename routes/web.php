@@ -8,6 +8,7 @@ use App\Http\Controllers\UsuarioController;
 use App\Livewire\AdminDashboard;
 use App\Livewire\Usuario\FormularioCaptura;
 use App\Livewire\DetalleCargas;
+use App\Http\Controllers\AnexoDownloadController;
 
 /*
 |--------------------------------------------------------------------------
@@ -84,5 +85,11 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/detallecargas/{id_carga}', DetalleCargas::class)
     ->name('detallecargas.index');
+
+    Route::get('/anexos/plantilla/{id_form}/{id_ind}', [AnexoDownloadController::class, 'plantilla'])
+    ->name('anexos.plantilla');
+
+    Route::get('/anexos/descargar/{id_anexo}', [AnexoDownloadController::class, 'descargar'])
+    ->name('anexos.descargar');
 });
 

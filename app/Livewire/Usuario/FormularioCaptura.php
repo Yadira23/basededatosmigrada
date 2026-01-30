@@ -10,6 +10,7 @@ use App\Models\Carga;
 use App\Models\DetalleCarga;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Models\Anexo;
 
 class FormularioCaptura extends Component
 {
@@ -20,6 +21,7 @@ class FormularioCaptura extends Component
 
     public $metodo = null;
     public $guardando = false;
+    public $hayPlantilla = false;
 
     // SIN_AMBITO | REGION | MUNICIPIO
     public $ambito_geo = 'SIN_AMBITO';
@@ -31,6 +33,10 @@ class FormularioCaptura extends Component
     public $region = '';
     public $municipio = '';
     public $valor = '';
+
+    // ✅ nuevos inputs (para evitar repetición y guardar correcto)
+    public $fuente_dato = '';     // ej. INEGI, CONEVAL, etc.
+    public $descripcion_env = ''; // ej. "practica", "enero 2026", etc.
 
     // data
     public $manualData = [];
@@ -54,6 +60,14 @@ class FormularioCaptura extends Component
 
         $this->regiones = Region::orderBy('nombre_region')->get();
         $this->municipiosFiltrados = collect();
+
+        $this->fuente_dato = '';
+        $this->descripcion_env = '';
+
+        $this->hayPlantilla = Anexo::where('id_form', $this->id_form)
+            ->where('id_ind', $this->id_ind)
+            ->where('tipo_anexo', Anexo::TIPO_PLANTILLA) // 'plantilla'
+            ->exists();
     }
 
     public function seleccionar($metodo)
@@ -218,6 +232,10 @@ class FormularioCaptura extends Component
                 'metodo' => 'required|in:manual,archivo',
                 'id_form' => 'required|integer',
                 'id_ind'  => 'required|integer',
+
+                // ✅ opcionales pero recomendables
+                'fuente_dato' => 'nullable|string|max:255',
+                'descripcion_env' => 'nullable|string|max:255',
             ]);
 
             // ✅ validar según método
@@ -245,21 +263,42 @@ class FormularioCaptura extends Component
             // ✅ datos de carga
             $periodo   = now()->format('Y-m');
             $ejercicio = now()->year;
-            $fuente    = $this->metodo === 'manual' ? 'Captura Manual' : 'Carga por Archivo';
 
-            DB::transaction(function () use ($filas, $periodo, $ejercicio, $fuente) {
+            // ✅ método real
+            $metodoCaptura = $this->metodo; // 'manual' | 'archivo'
+
+            // ✅ fuente real del dato (INEGI, etc.)
+            $fuenteDato = trim((string)$this->fuente_dato);
+            $fuenteDato = $fuenteDato !== '' ? $fuenteDato : 'N/D'; // ✅ nunca null
+
+
+            // ✅ descripción (si no capturan nada, ponemos una genérica NO duplicada con método)
+            $desc = trim((string)$this->descripcion_env);
+            if ($desc === '') {
+                $desc = $this->metodo === 'manual'
+                    ? 'Registro manual'
+                    : 'Importación de archivo';
+            }
+
+            DB::transaction(function () use ($filas, $periodo, $ejercicio, $metodoCaptura, $fuenteDato, $desc) {
 
                 // ✅ crear carga
                 $carga = Carga::create([
-                    'folioUnico_carga' => 'CAR-' . now()->timestamp,
                     'fecha_carga' => now(),
                     'periodo' => $periodo,
                     'ejercicio' => $ejercicio,
-                    'fuente' => $fuente,
-                    'status_env' => 'ENVIADO',
-                    'descripcion_env' => $this->metodo === 'manual'
-                        ? 'Captura manual (según indicador)'
-                        : 'Carga desde archivo (según indicador)',
+
+                    // ✅ fuente real (INEGI/etc.)
+                    'fuente' => $fuenteDato,
+
+                    // ✅ método real
+                    'metodo_captura' => $metodoCaptura,
+
+                    // (si lo usas en tu modelo, lo puedes guardar también)
+                    'ambito_geo_carga' => $this->ambito_geo,
+
+                    'status_env' => 'Enviado',
+                    'descripcion_env' => $desc,
                     'observacion_env' => '',
                     'id_form' => $this->id_form,
                 ]);
@@ -282,7 +321,29 @@ class FormularioCaptura extends Component
                         'valor' => $item['valor'] ?? null,
                     ];
 
+                    if (is_string($payload)) {
+                        $decoded = json_decode($payload, true);
+                        $payload = is_array($decoded) ? $decoded : ['raw' => $payload];
+                    }
+
                     $valorDet = $item['valor_det'] ?? ($item['valor'] ?? null);
+
+                    // ✅ asegura consistencia por ámbito (no mezclar mun/region si no aplica)
+                    $idRegion = $item['id_region'] ?? null;
+                    $idMun    = $item['id_mun'] ?? null;
+
+                    if ($ambito === 'SIN_AMBITO') {
+                        $idRegion = null;
+                        $idMun = null;
+                    } elseif ($ambito === 'REGION') {
+                        $idMun = null;
+                    } elseif ($ambito === 'MUNICIPIO') {
+                        // si quieres NO guardar región cuando es municipio, descomenta:
+                        // $idRegion = null;
+                    }
+
+                    // ✅ fuente por fila: si el item trae fuente_det úsala; si no, usa fuenteDato global
+                    $fuenteFila = $item['fuente_det'] ?? $fuenteDato;
 
                     // ✅ NO tronar por duplicado: actualiza si ya existe esa llave única
                     DetalleCarga::updateOrCreate(
@@ -295,10 +356,15 @@ class FormularioCaptura extends Component
                             'fila_det' => $filaDet,
                         ],
                         [
-                            'id_region' => $item['id_region'] ?? null,
-                            'id_mun' => $item['id_mun'] ?? null,
+                            // ✅ usa los ya “limpios”
+                            'id_region' => $idRegion,
+                            'id_mun' => $idMun,
+
                             'fecha_registro_det' => now()->toDateString(),
-                            'fuente_det' => $fuente,
+
+                            // ✅ fuente REAL del dato
+                            'fuente_det' => $fuenteFila,
+
                             'valor_det' => $valorDet,
                             'payload_det' => $payload,
                         ]

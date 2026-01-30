@@ -52,7 +52,8 @@ class DetalleCargas extends Component
     {
         $keyWord = '%' . ($this->keyWord ?? '') . '%';
 
-        $query = DetalleCarga::query()->latest();
+        $query = DetalleCarga::with(['carga', 'indicador', 'region', 'municipio'])
+            ->latest();
 
         // ✅ aplicar filtro por carga si viene en la ruta
         if (!empty($this->id_carga_filtro)) {
@@ -81,7 +82,7 @@ class DetalleCargas extends Component
         return view('livewire.detalleCargas.view', [
             'detalleCargas' => $this->filteredDetalleCargas,
             'id_carga_filtro' => $this->id_carga_filtro, // por si lo quieres mostrar en pantalla
-        ]);
+        ])->extends('layouts.app')->section('content');
     }
 
     public function cancel()
@@ -132,7 +133,7 @@ class DetalleCargas extends Component
     {
         $this->selected_id = $id;
         $this->fill(DetalleCarga::findOrFail($id)->toArray());
-    }
+    } 
 
     public function destroy($id)
     {

@@ -19,6 +19,16 @@
 
             {{-- ✅ INPUT SOLO CUANDO SE SELECCIONA ARCHIVO --}}
             @if($metodo === 'archivo')
+            @if($hayPlantilla)
+            <a class="btn btn-outline-success mb-2"
+                href="{{ route('anexos.plantilla', ['id_form' => $id_form, 'id_ind' => $id_ind]) }}">
+                Descargar plantilla
+            </a>
+            @else
+            <div class="alert alert-warning mb-2">
+                No hay plantilla disponible para este indicador. Pídele al administrador que la suba.
+            </div>
+            @endif
             <input type="file"
                 id="archivoInput"
                 class="file-input"
@@ -189,8 +199,16 @@
             class="btn btn-primary"
             wire:loading.attr="disabled"
             wire:target="guardarTodo">
-            Enviar
+
+            <span wire:loading.remove wire:target="guardarTodo">
+                Enviar
+            </span>
+
+            <span wire:loading wire:target="guardarTodo">
+                Guardando...
+            </span>
         </button>
+
     </div>
 
     {{-- ✅ TABLA DE ARCHIVO (PREVIEW) --}}

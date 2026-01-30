@@ -48,14 +48,39 @@
 									{{--<td>{{ $loop->iteration }}</td>--}}
 									<td>{{ $row->id_anexo }}</td>
 									<td>{{ $row->nombre_anexo }}</td>
-									<td>{{ $row->tipo_anexo }}</td>
+									<td>
+										@if($row->tipo_anexo === 'plantilla')
+										<span class="badge bg-success">PLANTILLA</span>
+										@elseif($row->tipo_anexo === 'guia')
+										<span class="badge bg-info text-dark">GUÍA</span>
+										@else
+										<span class="badge bg-secondary">{{ $row->tipo_anexo }}</span>
+										@endif
+									</td>
 									<td>{{ number_format($row->peso_anexo / 1024, 2) }} KB</td>
 									<td>{{ $row->guia_anexo }}</td>
 									<td>{{ $row->fin_proposito_anexo }}</td>
 									<td>{{ $row->fecha_subida_anexo }}</td>
 									<td>
-										<input type="text" value="{{ asset('storage/' . $row->ruta_archivo_anexo) }}" readonly class="form-control mb-1">
-										<a href="{{ asset('storage/' . $row->ruta_archivo_anexo) }}" target="_blank">Ver archivo</a>
+										@php
+										$url = asset('storage/' . ltrim($row->ruta_archivo_anexo, '/'));
+										@endphp
+
+										<input type="text" value="{{ $url }}" readonly class="form-control mb-1">
+
+										@if($row->tipo_anexo === 'plantilla')
+										<a class="btn btn-sm btn-success"
+											href="{{ route('anexos.descargar', $row->id_anexo) }}">
+											Descargar Plantilla
+										</a>
+										@else
+										<a class="btn btn-sm btn-info"
+											href="{{ $url }}"
+											target="_blank"
+											rel="noopener">
+											Ver archivo
+										</a>
+										@endif
 									</td>
 									<td>{{ $row->formulario ? $row->formulario->titulo_form : '-' }}</td>
 									<td>{{ $row->indicador ? $row->indicador->nombre_ind : 'Sin indicador' }}</td>

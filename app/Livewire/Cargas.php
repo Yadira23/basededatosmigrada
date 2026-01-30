@@ -57,7 +57,14 @@ class Cargas extends Component
     public function filteredCargas()
     {
         $keyWord = '%' . $this->keyWord . '%';
-        return Carga::with('formulario')
+
+        return Carga::query()
+            ->with([
+                'formulario',
+                'primerDetalle',
+                'primerDetalle.indicador'
+            ])
+            ->withCount('detallecargas')
             ->latest()
             ->where(function ($query) use ($keyWord) {
                 $query->orWhere('folioUnico_carga', 'LIKE', $keyWord)
@@ -113,42 +120,12 @@ class Cargas extends Component
             ]
         );
 
-        // 3️⃣ Crear automáticamente registros en detallecargas solo si es nueva carga
-        if (!$this->selected_id) {
-            $indicadores = Indicador::whereHas('formularios', function ($q) {
-                $q->where('id_form', $this->id_form);
-            })->get();
-
-            foreach ($indicadores as $ind) {
-                \App\Models\DetalleCarga::create(
-                    [
-                        //'id_carga' => $carga->id_carga,
-                        //'id_ind' => $ind->id_ind,
-                        //'periodo_det' => $this->periodo,
-                        //'ejercicio_det' => $this->ejercicio,
-                        //'fecha_registro_det' => now(),
-                        //'fuente_det' => $this->fuente,
-                        //'valor_det' => 0,
-                        'id_carga' => $carga->id_carga,
-                        'id_ind' => $ind->id_ind,
-                        'periodo_det' => $this->periodo,
-                        'ejercicio_det' => $this->ejercicio,
-                    ],
-                    [
-                        'fecha_registro_det' => now(),
-                        'fuente_det' => $this->fuente,
-                        'valor_det' => 0,
-                    ]
-                );
-            }
-        }
-
         // 4️⃣ Mensaje de éxito
         session()->flash(
             'message',
             $this->selected_id
                 ? "Carga actualizada correctamente"
-                : "Carga creada correctamente con {$carga->detallecargas()->count()} indicadores"
+                : "Carga creada correctamente con {$carga->detallecargas()->count()} detalles"
         );
 
         // 5️⃣ Reset de variables y regenerar folio

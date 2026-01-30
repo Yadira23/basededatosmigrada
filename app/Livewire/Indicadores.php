@@ -15,10 +15,10 @@ class Indicadores extends Component
     public $selected_id;
     public $keyWord;
     public $tiene_formula = false;
-    
 
-    public $nombre_ind, $definicion_ind, $formula_ind, $tendencia_ind, $restriccion_ind, $formato_ind, $unidadmedida_ind, $meta_ind, $requerido_ind, $status_ind, $periodo_ind, $etiquetas_ind, $fuenteverificacion_ind; 
-    
+
+    public $nombre_ind, $definicion_ind, $formula_ind, $tendencia_ind, $restriccion_ind, $formato_ind, $unidadmedida_ind, $meta_ind, $requerido_ind, $status_ind, $periodo_ind, $etiquetas_ind, $fuenteverificacion_ind;
+
     /* =============================== 
     LISTADO + BÚSQUEDA 
     ================================*/
@@ -30,115 +30,126 @@ class Indicadores extends Component
         })->latest()->paginate(10);
     }
     public function render()
-{
-    return view('livewire.indicadores.view', [
-        'indicadores' => $this->indicadores,
-    ]);
-}
+    {
+        return view('livewire.indicadores.view', [
+            'indicadores' => $this->indicadores,
+        ]);
+    }
 
-    
+
     /* =============================== 
     GUARDAR / ACTUALIZAR
      ================================*/
     public function save()
-{
-    $this->requerido_ind = $this->requerido_ind ? 1 : 0;
+    {
+        $this->requerido_ind = $this->requerido_ind ? 1 : 0;
 
-    // VALIDACIÓN BASE
-    $rules = [
-        'nombre_ind' => 'required|string|min:5',
-        'definicion_ind' => 'required|string|min:15',
-        'formato_ind' => 'required|in:porcentaje,cantidad,promedio',
-        'tendencia_ind' => 'required|in:ascendente,descendente',
-        'requerido_ind' => 'nullable|boolean',
-        'status_ind' => 'required|boolean',
-        'periodo_ind' => 'required',
-        'fuenteverificacion_ind' => 'required|string',
-    ];
+        // VALIDACIÓN BASE
+        $rules = [
+            'nombre_ind' => 'required|string|min:5',
+            'definicion_ind' => 'required|string|min:15',
+            'formato_ind' => 'required|in:porcentaje,cantidad,promedio',
+            'tendencia_ind' => 'required|in:ascendente,descendente,estable',
+            'requerido_ind' => 'nullable|boolean',
+            'status_ind' => 'required|in:0,1',
+            'periodo_ind' => 'required',
+            'fuenteverificacion_ind' => 'required|string',
+            'unidadmedida_ind' => 'nullable|string|max:50',
 
-    if ($this->tiene_formula) {
-        $rules['formula_ind'] = 'required|string|min:3';
-    } else {
-        $this->formula_ind = null;
+        ];
+
+        if ($this->tiene_formula) {
+            $rules['formula_ind'] = 'required|string|min:3';
+        } else {
+            $this->formula_ind = null;
+        }
+
+        // META SOLO SI ES REQUERIDO
+        if ($this->requerido_ind) {
+            $rules['meta_ind'] = match ($this->formato_ind) {
+                'porcentaje' => 'required|numeric|min:0|max:100',
+                'cantidad'   => 'required|numeric|min:0',
+                'promedio'   => 'required|numeric|min:0', // aquí entra Gini
+                default      => 'nullable',
+            };
+        } else {
+            $this->meta_ind = null;
+        }
+
+        // VALIDAR
+        $this->validate($rules);
+
+        // NORMALIZAR BOOLEANOS
+        $this->requerido_ind = $this->requerido_ind ? 1 : 0;
+        $this->status_ind = (int) $this->status_ind;
+
+        // 🔥 UNIDAD DE MEDIDA (OBLIGATORIA)
+        $this->unidadmedida_ind = trim((string) $this->unidadmedida_ind);
+
+        if ($this->unidadmedida_ind === '') {
+            $this->unidadmedida_ind = match ($this->formato_ind) {
+                'porcentaje' => '%',
+                'cantidad'   => 'unidades', // genérico
+                'promedio'   => 'indice',   // para Gini/índices
+                default      => 'unidades',
+            };
+        }
+
+        // GUARDAR
+        Indicador::updateOrCreate(
+            ['id_ind' => $this->selected_id],
+            [
+                'nombre_ind' => $this->nombre_ind,
+                'definicion_ind' => $this->definicion_ind,
+                'formula_ind' => $this->formula_ind,
+                'tendencia_ind' => $this->tendencia_ind,
+                'restriccion_ind' => $this->restriccion_ind,
+                'formato_ind' => $this->formato_ind,
+                'unidadmedida_ind' => $this->unidadmedida_ind,
+                'meta_ind' => $this->meta_ind,
+                'requerido_ind' => $this->requerido_ind,
+                'status_ind' => $this->status_ind,
+                'periodo_ind' => $this->periodo_ind,
+                'etiquetas_ind' => $this->etiquetas_ind,
+                'fuenteverificacion_ind' => $this->fuenteverificacion_ind,
+            ]
+        );
+
+        session()->flash(
+            'message',
+            $this->selected_id
+                ? 'Indicador actualizado correctamente'
+                : 'Indicador creado correctamente'
+        );
+
+        $this->reset();
+        $this->dispatch('closeModal');
     }
 
-    // META SOLO SI ES REQUERIDO
-    if ($this->requerido_ind) {
-        $rules['meta_ind'] = $this->formato_ind === 'porcentaje'
-            ? 'required|numeric|min:1|max:100'
-            : 'required|numeric|min:1';
-    } else {
-        $this->meta_ind = null;
-    }
-
-    // VALIDAR
-    $this->validate($rules);
-
-    // NORMALIZAR BOOLEANOS
-    $this->requerido_ind = $this->requerido_ind ? 1 : 0;
-    $this->status_ind    = $this->status_ind ? 1 : 0;
-
-    // 🔥 UNIDAD DE MEDIDA (OBLIGATORIA)
-    $this->unidadmedida_ind = match ($this->formato_ind) {
-        'porcentaje' => '%',
-        'cantidad'   => 'unidades',
-        'promedio'   => 'puntos',
-        default      => throw new \Exception('Formato inválido'),
-    };
-
-    // GUARDAR
-    Indicador::updateOrCreate(
-        ['id_ind' => $this->selected_id],
-        [
-            'nombre_ind' => $this->nombre_ind,
-            'definicion_ind' => $this->definicion_ind,
-            'formula_ind' => $this->formula_ind,
-            'tendencia_ind' => $this->tendencia_ind,
-            'restriccion_ind' => $this->restriccion_ind,
-            'formato_ind' => $this->formato_ind,
-            'unidadmedida_ind' => $this->unidadmedida_ind,
-            'meta_ind' => $this->meta_ind,
-            'requerido_ind' => $this->requerido_ind,
-            'status_ind' => $this->status_ind,
-            'periodo_ind' => $this->periodo_ind,
-            'etiquetas_ind' => $this->etiquetas_ind,
-            'fuenteverificacion_ind' => $this->fuenteverificacion_ind,
-        ]
-    );
-
-    session()->flash(
-        'message',
-        $this->selected_id
-            ? 'Indicador actualizado correctamente'
-            : 'Indicador creado correctamente'
-    );
-
-    $this->reset();
-    $this->dispatch('closeModal');
-}
-
-/* =============================== 
+    /* =============================== 
     LIMPIAR FORM 
     ================================*/
     public function cancel()
     {
         $this->reset([
-    'selected_id',
-    'nombre_ind',
-    'definicion_ind',
-    'formula_ind',
-    'tendencia_ind',
-    'restriccion_ind',
-    'formato_ind',
-    'meta_ind',
-    'requerido_ind',
-    'status_ind',
-    'periodo_ind',
-    'etiquetas_ind',
-    'fuenteverificacion_ind',
-    'tiene_formula',
-]);
-    } 
+            'selected_id',
+            'nombre_ind',
+            'definicion_ind',
+            'formula_ind',
+            'tendencia_ind',
+            'restriccion_ind',
+            'formato_ind',
+            'meta_ind',
+            'requerido_ind',
+            'status_ind',
+            'periodo_ind',
+            'etiquetas_ind',
+            'fuenteverificacion_ind',
+            'tiene_formula',
+            'unidadmedida_ind',
+            'keyWord',
+        ]);
+    }
 
 
     /* =============================== 
@@ -163,10 +174,9 @@ class Indicadores extends Component
         $this->fuenteverificacion_ind = $ind->fuenteverificacion_ind;
 
         $this->tiene_formula = !is_null($ind->formula_ind);
+    }
 
-    } 
-    
-    
+
     /* =============================== 
     ELIMINAR 
     ================================*/
@@ -174,7 +184,4 @@ class Indicadores extends Component
     {
         Indicador::where('id_ind', $id)->delete();
     }
-
-    
-
 }

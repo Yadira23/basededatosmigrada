@@ -2,79 +2,136 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use App\Models\Municipio;
-use App\Models\Region;
 
 class MunicipioSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        $municipios = [
+        $path = database_path('seeders/data/municipios.csv');
 
-            // Región de la Cañada (id_region = 1)
-            ['clave_municipio' => 'CAN-001', 'nombre_municipio' => 'Cuicatlán', 'id_region' => 1],
-            ['clave_municipio' => 'CAN-002', 'nombre_municipio' => 'Teotitlán de Flores Magón', 'id_region' => 1],
-            ['clave_municipio' => 'CAN-003', 'nombre_municipio' => 'San Juan Bautista Cuicatlán', 'id_region' => 1],
-
-            // Región de la Costa (id_region = 2)
-            ['clave_municipio' => 'COS-001', 'nombre_municipio' => 'Puerto Escondido', 'id_region' => 2],
-            ['clave_municipio' => 'COS-002', 'nombre_municipio' => 'Santa María Huatulco', 'id_region' => 2],
-            ['clave_municipio' => 'COS-003', 'nombre_municipio' => 'San Pedro Pochutla', 'id_region' => 2],
-            ['clave_municipio' => 'COS-004', 'nombre_municipio' => 'Pinotepa Nacional', 'id_region' => 2],
-
-            // Región de la Mixteca (id_region = 3)
-            ['clave_municipio' => 'MIX-001', 'nombre_municipio' => 'Huajuapan de León', 'id_region' => 3],
-            ['clave_municipio' => 'MIX-002', 'nombre_municipio' => 'Tlaxiaco', 'id_region' => 3],
-            ['clave_municipio' => 'MIX-003', 'nombre_municipio' => 'Putla Villa de Guerrero', 'id_region' => 3],
-            ['clave_municipio' => 'MIX-004', 'nombre_municipio' => 'Juxtlahuaca', 'id_region' => 3],
-
-            // Región del Papaloapan (id_region = 4)
-            ['clave_municipio' => 'PAP-001', 'nombre_municipio' => 'Tuxtepec', 'id_region' => 4],
-            ['clave_municipio' => 'PAP-002', 'nombre_municipio' => 'San Juan Bautista Tuxtepec', 'id_region' => 4],
-            ['clave_municipio' => 'PAP-003', 'nombre_municipio' => 'Loma Bonita', 'id_region' => 4],
-
-            // Región del Istmo (id_region = 5)
-            ['clave_municipio' => 'IST-001', 'nombre_municipio' => 'Juchitán de Zaragoza', 'id_region' => 5],
-            ['clave_municipio' => 'IST-002', 'nombre_municipio' => 'Salina Cruz', 'id_region' => 5],
-            ['clave_municipio' => 'IST-003', 'nombre_municipio' => 'Tehuantepec', 'id_region' => 5],
-            ['clave_municipio' => 'IST-004', 'nombre_municipio' => 'Matías Romero', 'id_region' => 5],
-
-            // Región Sierra Norte (id_region = 6)
-            ['clave_municipio' => 'SN-001', 'nombre_municipio' => 'Ixtlán de Juárez', 'id_region' => 6],
-            ['clave_municipio' => 'SN-002', 'nombre_municipio' => 'Guelatao de Juárez', 'id_region' => 6],
-            ['clave_municipio' => 'SN-003', 'nombre_municipio' => 'Capulálpam de Méndez', 'id_region' => 6],
-            ['clave_municipio' => 'SN-004', 'nombre_municipio' => 'San Pablo Villa de Mitla', 'id_region' => 6],
-
-            // Región Sierra Sur (id_region = 7)
-            ['clave_municipio' => 'SS-001', 'nombre_municipio' => 'Miahuatlán de Porfirio Díaz', 'id_region' => 7],
-            ['clave_municipio' => 'SS-002', 'nombre_municipio' => 'Sola de Vega', 'id_region' => 7],
-            ['clave_municipio' => 'SS-003', 'nombre_municipio' => 'San Sebastián Coatlán', 'id_region' => 7],
-            ['clave_municipio' => 'SS-004', 'nombre_municipio' => 'San Mateo Río Hondo', 'id_region' => 7],
-
-            // Región Valles Centrales (id_region = 8)
-            ['clave_municipio' => 'VC-001', 'nombre_municipio' => 'Oaxaca de Juárez', 'id_region' => 8],
-            ['clave_municipio' => 'VC-002', 'nombre_municipio' => 'Santa María del Tule', 'id_region' => 8],
-            ['clave_municipio' => 'VC-003', 'nombre_municipio' => 'San Bartolo Coyotepec', 'id_region' => 8],
-            ['clave_municipio' => 'VC-004', 'nombre_municipio' => 'San Martín Tilcajete', 'id_region' => 8],
-            ['clave_municipio' => 'VC-005', 'nombre_municipio' => 'Teotitlán del Valle', 'id_region' => 8],
-            ['clave_municipio' => 'VC-006', 'nombre_municipio' => 'Mitla', 'id_region' => 8],
-
-        ];
-
-        foreach ($municipios as $m) {
-        Municipio::firstOrCreate(
-            ['clave_municipio' => $m['clave_municipio']],
-            [
-                'nombre_municipio' => $m['nombre_municipio'],
-                'id_region'        => $m['id_region'],
-            ]
-        );
+        if (!file_exists($path)) {
+            throw new \RuntimeException("No se encontró el archivo: {$path}");
         }
+
+        DB::transaction(function () use ($path) {
+
+            $handle = fopen($path, 'r');
+            if ($handle === false) {
+                throw new \RuntimeException("No se pudo abrir el archivo: {$path}");
+            }
+
+            // Detectar delimitador leyendo la primera línea cruda
+            $firstLine = fgets($handle);
+            if ($firstLine === false) {
+                fclose($handle);
+                throw new \RuntimeException("El CSV está vacío: {$path}");
+            }
+
+            // Quitar BOM si existe
+            $firstLine = preg_replace('/^\xEF\xBB\xBF/', '', $firstLine);
+
+            // Detectar delimitador (coma, punto y coma, tab)
+            $delims = ["," , ";" , "\t"];
+            $bestDelim = ",";
+            $bestCount = -1;
+            foreach ($delims as $d) {
+                $c = substr_count($firstLine, $d);
+                if ($c > $bestCount) {
+                    $bestCount = $c;
+                    $bestDelim = $d;
+                }
+            }
+
+            // Regresar el puntero al inicio para leer con fgetcsv
+            rewind($handle);
+
+            // Leer encabezado con el delimitador detectado
+            $header = fgetcsv($handle, 0, $bestDelim);
+            if (!$header) {
+                fclose($handle);
+                throw new \RuntimeException("No se pudo leer el encabezado del CSV: {$path}");
+            }
+
+            // Normalizar encabezados: minúsculas, trim, quitar BOM raro
+            $norm = function ($h) {
+                $h = preg_replace('/^\xEF\xBB\xBF/', '', (string)$h);
+                $h = trim(mb_strtolower($h));
+                // reemplazos comunes
+                $h = str_replace([' ', '-'], ['_', '_'], $h);
+                return $h;
+            };
+
+            $headerNorm = array_map($norm, $header);
+            $map = array_flip($headerNorm);
+
+            // Aceptar nombres alternativos (por si tu CSV viene diferente)
+            $aliases = [
+                'cve_municipio'     => ['cve_municipio', 'clave_municipio', 'cve_mun', 'cve_mpio', 'cve'],
+                'cve_region'        => ['cve_region', 'id_region', 'region', 'clave_region'],
+                'nombre_municipio'  => ['nombre_municipio', 'municipio', 'nom_municipio', 'nombre'],
+            ];
+
+            $idx = [];
+            foreach ($aliases as $target => $opts) {
+                $found = null;
+                foreach ($opts as $opt) {
+                    $opt = $norm($opt);
+                    if (isset($map[$opt])) {
+                        $found = $map[$opt];
+                        break;
+                    }
+                }
+                if ($found === null) {
+                    fclose($handle);
+                    throw new \RuntimeException(
+                        "Falta la columna '{$target}' en el CSV. Encabezados detectados: " . implode(', ', $headerNorm)
+                    );
+                }
+                $idx[$target] = $found;
+            }
+
+            while (($row = fgetcsv($handle, 0, $bestDelim)) !== false) {
+
+                // Salta filas vacías
+                if (count(array_filter($row, fn($v) => trim((string)$v) !== '')) === 0) {
+                    continue;
+                }
+
+                $cveMunicipio = trim((string)($row[$idx['cve_municipio']] ?? ''));
+                $cveRegion    = trim((string)($row[$idx['cve_region']] ?? ''));
+                $nombre       = trim((string)($row[$idx['nombre_municipio']] ?? ''));
+
+                if ($cveMunicipio === '' || $cveRegion === '' || $nombre === '') {
+                    continue;
+                }
+
+                // Normaliza municipio a 3 dígitos
+                $claveMunicipio = str_pad($cveMunicipio, 3, '0', STR_PAD_LEFT);
+
+                // Si cve_region viene como "6" está perfecto.
+                // Si viene como texto raro, intenta sacar número.
+                $idRegion = (int) preg_replace('/\D+/', '', $cveRegion);
+
+                if ($idRegion < 1 || $idRegion > 8) {
+                    // Si esto pasa, tu CSV no trae 1..8 como región.
+                    // Mejor salta para no meter datos incorrectos.
+                    continue;
+                }
+
+                DB::table('municipios')->updateOrInsert(
+                    ['clave_municipio' => $claveMunicipio],
+                    [
+                        'nombre_municipio' => $nombre,
+                        'id_region' => $idRegion,
+                        'updated_at' => now(),
+                        'created_at' => now(),
+                    ]
+                );
+            }
+
+            fclose($handle);
+        });
     }
 }

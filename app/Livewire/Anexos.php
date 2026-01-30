@@ -18,14 +18,13 @@ class Anexos extends Component
     protected $paginationTheme = 'bootstrap';
 
     public $selected_id, $keyWord;
-    public $nombre_anexo, $tipo_anexo, $archivo, $guia_anexo, $fin_proposito_anexo, $id_form;
+    public $nombre_anexo, $tipo_anexo, $archivo, $guia_anexo, $fin_proposito_anexo, $id_form, $id_ind;
     public $formularios;
-    public $id_ind;
     public $indicadores;
 
     protected $rules = [
         'nombre_anexo' => 'required|string|min:5|max:255',
-        'tipo_anexo' => 'required|in:PDF,WORD,EXCEL,IMAGEN,OTRO',
+        'tipo_anexo' => 'required|in:plantilla,guia',
         'archivo' => 'required|file',
         'guia_anexo' => 'nullable|string|max:255',
         'fin_proposito_anexo' => 'required|string|max:255',
@@ -62,18 +61,11 @@ class Anexos extends Component
 
     public function updatedArchivo()
     {
-        // Validar peso y extensión según tipo
-        $tipos = [
-            'PDF' => ['mimes' => 'pdf', 'max' => 5120],       // 5 MB
-            'WORD' => ['mimes' => 'doc,docx', 'max' => 5120], // 5 MB
-            'EXCEL' => ['mimes' => 'xls,xlsx', 'max' => 5120], // 5 MB
-            'IMAGEN' => ['mimes' => 'jpg,jpeg,png,gif', 'max' => 3072], // 3 MB
-            'OTRO' => ['mimes' => '*', 'max' => 2048],        // 2 MB
-        ];
+        if (!$this->archivo) return;
 
-        $tipo = $this->tipo_anexo;
+        // permite xlsx/xls/csv/pdf/doc/docx/jpg/png según lo que quieras
         $this->validate([
-            'archivo' => "required|file|mimes:{$tipos[$tipo]['mimes']}|max:{$tipos[$tipo]['max']}",
+            'archivo' => 'required|file|max:10240|mimes:xlsx,xls,csv,pdf,doc,docx,jpg,jpeg,png',
         ]);
     }
 
@@ -82,7 +74,30 @@ class Anexos extends Component
         $this->validate();
 
         // Guardar archivo en storage
-        $ruta = $this->archivo->store('anexos', 'public');
+        $subcarpeta = $this->tipo_anexo === 'plantilla' ? 'anexos/plantillas' : 'anexos/guias';
+        $ruta = $this->archivo->store($subcarpeta, 'public');
+
+        // ✅ Si está editando, borra archivo anterior (si subió uno nuevo)
+        if ($this->selected_id) {
+            $prev = Anexo::find($this->selected_id);
+            if ($prev && $prev->ruta_archivo_anexo && Storage::disk('public')->exists($prev->ruta_archivo_anexo)) {
+                Storage::disk('public')->delete($prev->ruta_archivo_anexo);
+            }
+        }
+
+        $ext = $this->archivo->getClientOriginalExtension();
+        $nombre = trim((string)$this->nombre_anexo);
+
+        if ($nombre === '') {
+            $nombre = $this->archivo->getClientOriginalName();
+        } else {
+            // si no trae extensión, se la agregamos
+            if (!preg_match('/\.[a-z0-9]+$/i', $nombre)) {
+                $nombre .= '.' . $ext;
+            }
+        }
+
+        $this->nombre_anexo = $nombre;
 
         Anexo::updateOrCreate(
             ['id_anexo' => $this->selected_id],
@@ -118,13 +133,13 @@ class Anexos extends Component
 
     public function destroy($id)
     {
-        if ($id) {
-            $anexo = Anexo::find($id);
-            if ($anexo) {
-                // Borrar archivo físico
+        $anexo = Anexo::find($id);
+
+        if ($anexo) {
+            if ($anexo->ruta_archivo_anexo && Storage::disk('public')->exists($anexo->ruta_archivo_anexo)) {
                 Storage::disk('public')->delete($anexo->ruta_archivo_anexo);
-                $anexo->delete();
             }
+            $anexo->delete();
         }
     }
 
@@ -132,23 +147,13 @@ class Anexos extends Component
     {
         $keyWord = '%' . $this->keyWord . '%';
         return view('livewire.anexos.view', [
-            'anexos' => Anexo::with('formulario.indicador')
+            'anexos' => Anexo::with(['formulario', 'indicador'])
                 ->where('nombre_anexo', 'LIKE', $keyWord)
                 ->latest()
                 ->paginate(10),
             'formularios' => $this->formularios,
+            'indicadores' => $this->indicadores,
         ]);
-    }
-
-    function formatoPeso($bytes)
-    {
-        $unidades = ['B', 'KB', 'MB', 'GB', 'TB'];
-        $i = 0;
-        while ($bytes >= 1024 && $i < count($unidades) - 1) {
-            $bytes /= 1024;
-            $i++;
-        }
-        return round($bytes, 2) . ' ' . $unidades[$i];
     }
 
     public function cancel()

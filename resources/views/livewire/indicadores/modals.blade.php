@@ -28,6 +28,7 @@
                             <option value="">Seleccione</option>
                             <option value="ascendente">Ascendente (más es mejor)</option>
                             <option value="descendente">Descendente (menos es mejor)</option>
+                            <option value="estable">Estable (mantener)</option>
                         </select>
                         @error('tendencia_ind') <span class="text-danger">{{ $message }}</span> @enderror
                     </div>
@@ -42,28 +43,21 @@
                         </select>
                         @error('formato_ind') <span class="text-danger">{{ $message }}</span> @enderror
                     </div>
-                    <div class="form-group form-check"> 
-                        <input type="checkbox" class="form-check-input" id="requerido_ind" wire:model.live="requerido_ind"> 
-                        <label class="form-check-label" for="requerido_ind"> Requerido </label> 
-                        @error('requerido_ind') 
-                        <span class="text-danger">{{ $message }}</span> 
-                        @enderror </div>
+                    <div class="form-group form-check">
+                        <input type="checkbox" class="form-check-input" id="requerido_ind" wire:model.live="requerido_ind">
+                        <label class="form-check-label" for="requerido_ind"> Requerido </label>
+                        @error('requerido_ind')
+                        <span class="text-danger">{{ $message }}</span>
+                        @enderror
+                    </div>
                     @if($requerido_ind)
                     <div class="form-group">
                         <label>Meta del indicador</label>
-                        <input
-                            wire:model.defer="meta_ind"
-                            type="number"
-                            class="form-control"
-                            min="1"
-                            @if($formato_ind==='porcentaje' )
-                            max="100" step="1"
-                            @else
-                            step="1"
-                            @endif>
+                        <input wire:model.defer="meta_ind" type="number" class="form-control" min="0" step="0.01"
+                            @if($formato_ind==='porcentaje' ) max="100" @endif>
                         @error('meta_ind') <span class="text-danger">{{ $message }}</span> @enderror
                     </div>
-                    @endif 
+                    @endif
                     <select wire:model="status_ind" class="form-control">
                         <option value="">Selecciona estado</option>
                         <option value="1">Activo</option>
@@ -82,7 +76,7 @@
                     </div>
                     <div class="form-group"> <label for="etiquetas_ind"></label> <input wire:model.defer="etiquetas_ind" type="text" class="form-control" id="etiquetas_ind" placeholder="Etiquetas Ind">@error('etiquetas_ind') <span class="error text-danger">{{ $message }}</span> @enderror </div>
                     <div class="form-group"> <label for="fuenteverificacion_ind"></label> <input wire:model.defer="fuenteverificacion_ind" type="text" class="form-control" id="fuenteverificacion_ind" placeholder="Fuenteverificacion Ind">@error('fuenteverificacion_ind') <span class="error text-danger">{{ $message }}</span> @enderror </div>
-                    
+
                 </form>
             </div>
             <div class="modal-footer"> <button type="button" class="btn btn-secondary close-btn" data-bs-dismiss="modal">Close</button> <button type="button" wire:click.prevent="save()" class="btn btn-primary">{{ $selected_id ? 'Update' : 'Create' }}</button> </div>
