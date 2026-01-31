@@ -11,6 +11,12 @@ use App\Models\DetalleCarga;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Models\Anexo;
+use App\Models\Formulario;
+use App\Models\Indicador;
+use App\Models\Usuario;
+use Symfony\Component\HttpKernel\Exception\AbortHttpException;
+use Illuminate\Support\Facades\Auth;
+
 
 class FormularioCaptura extends Component
 {
@@ -18,6 +24,9 @@ class FormularioCaptura extends Component
 
     public $id_form;
     public $id_ind;
+    public $formulario; // objeto
+    public $indicador;  // objeto
+
 
     public $metodo = null;
     public $guardando = false;
@@ -54,6 +63,25 @@ class FormularioCaptura extends Component
     {
         $this->id_form = $id_form;
         $this->id_ind  = $id_ind;
+
+        // ✅ 1) trae el formulario con su indicador
+        $this->formulario = Formulario::with('indicador')
+            ->where('id_form', $this->id_form)
+            ->where('id_ind', $this->id_ind)
+            ->firstOrFail();
+
+        $this->indicador = $this->formulario->indicador;
+
+        // ✅ 2) asegurar que el formulario esté PUBLICADO (solo "Ver")
+        if ($this->formulario->boton_accion_form !== 'Ver') {
+            abort(403, 'Este formulario aún no ha sido publicado.');
+        }
+
+        // ✅ 3) asegurar que el formulario sea de la dependencia del usuario logueado
+        $user = Auth::user();
+        if ((int)$this->formulario->id_depen !== (int)$user->id_depen) {
+            abort(403, 'Este formulario no pertenece a tu dependencia.');
+        }
 
         $this->metodo = null;
         $this->ambito_geo = 'SIN_AMBITO';

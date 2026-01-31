@@ -9,6 +9,7 @@ use App\Livewire\AdminDashboard;
 use App\Livewire\Usuario\FormularioCaptura;
 use App\Livewire\DetalleCargas;
 use App\Http\Controllers\AnexoDownloadController;
+use App\Livewire\Formularios;
 
 /*
 |--------------------------------------------------------------------------
@@ -68,7 +69,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 /* ---------------- RUTAS COMPARTIDAS (ADMIN + USUARIO) ---------------- */
 Route::middleware(['auth', 'role:admin|usuario'])->group(function () {
 
-    Route::view('/formularios', 'livewire.formularios.index');
+    Route::view('/formularios', 'livewire.formularios.index')->name('formularios.index');
     Route::view('/anexos', 'livewire.anexos.index');
     Route::view('/indicadores', 'livewire.indicadores.index');
 });
@@ -79,17 +80,17 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/usuario/formularios', function () {
         return view('usuario.formularios.index');
     })->name('usuario.formularios');
-    
+
     Route::get('/usuario/formulario/{id_form}/{id_ind}', FormularioCaptura::class)
-    ->name('usuario.formulario.captura');
+        ->name('usuario.formulario.captura');
 
     Route::get('/detallecargas/{id_carga}', DetalleCargas::class)
-    ->name('detallecargas.index');
+        ->name('detallecargas.index');
 
     Route::get('/anexos/plantilla/{id_form}/{id_ind}', [AnexoDownloadController::class, 'plantilla'])
-    ->name('anexos.plantilla');
+        ->name('anexos.plantilla');
 
     Route::get('/anexos/descargar/{id_anexo}', [AnexoDownloadController::class, 'descargar'])
-    ->name('anexos.descargar');
-});
+        ->name('anexos.descargar');
 
+});

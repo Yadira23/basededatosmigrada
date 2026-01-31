@@ -1,5 +1,11 @@
 <div class="formulario-root">
-
+    <div class="alert alert-info" style="margin-bottom:15px;">
+        <strong>Formulario:</strong> {{ $this->formulario->titulo_form ?? ('#' . $id_form) }} <br>
+        <strong>Indicador:</strong> {{ $this->indicador->nombre_ind ?? ('ID ' . $id_ind) }} <br>
+        <strong>Periodo:</strong> {{ $this->indicador->periodo_ind ?? '—' }} |
+        <strong>Unidad:</strong> {{ $this->indicador->unidadmedida_ind ?? '—' }} <br>
+        <strong>Fuente:</strong> {{ $this->indicador->fuenteverificacion_ind ?? '—' }}
+    </div>
     <h2>Paso 1 de 2: Selecciona el método de captura</h2>
 
     {{-- MÉTODOS DE CAPTURA --}}

@@ -17,19 +17,47 @@ class Formularios extends Component
 {
     use WithPagination;
     public $indicadores;
+    public $dependencias;
+
     public function mount()
     {
+
+        // ✅ Traer indicadores para el select
+        $this->indicadores = \App\Models\Indicador::orderBy('nombre_ind')->get();
+        $this->dependencias = Dependencia::select('id_depen', 'nombre_depen')
+            ->distinct()
+            ->orderBy('nombre_depen')
+            ->get();
 
         // Inicializa la acción por defecto para formularios nuevos
         if (!$this->selected_id) {
             $this->boton_accion_form = 'Publicar';
             $this->fecha_creacion_form = now()->toDateString();
         }
+        // ✅ Si vienes desde "Asignar" (url: /formularios?id_ind=##)
+        $id = request()->query('id_ind');
 
+        if ($id) {
+            $this->id_ind = $id;
 
+            // Limpia campos para crear uno nuevo (no borrar id_ind)
+            $this->resetValidation();
+            $this->reset([
+                'selected_id',
+                'titulo_form',
+                'descripcion_form',
+                'id_depen',
+                'periodo_form',
+                'secciones_form',
+            ]);
 
-        // Inicializa el usuario logueado
-        $this->indicadores = \App\Models\Indicador::orderBy('nombre_ind')->get();
+            // Re-poner defaults por si reset los limpió
+            $this->boton_accion_form = 'Publicar';
+            $this->fecha_creacion_form = now()->toDateString();
+
+            // ✅ abrir modal
+            $this->dispatch('show-modal');
+        }
     }
 
     protected $paginationTheme = 'bootstrap';
@@ -61,7 +89,6 @@ class Formularios extends Component
     {
         return view('livewire.formularios.view', [
             'formularios' => $this->filteredFormularios,
-            'dependencias' => Dependencia::all(),
         ]);
     }
 
@@ -92,8 +119,8 @@ class Formularios extends Component
         }
 
         if (!$this->selected_id) {
-    $this->boton_accion_form = 'Publicar';
-}
+            $this->boton_accion_form = 'Publicar';
+        }
 
 
         Formulario::updateOrCreate(
@@ -111,8 +138,8 @@ class Formularios extends Component
             ]
         );
 
-        $this->dispatch('closeModal');
-        $this->resetExcept([ 'fecha_creacion_form', 'boton_accion_form','id_ind' ]);
+        $this->dispatch('close-modal');
+        $this->resetExcept(['fecha_creacion_form', 'boton_accion_form', 'id_ind']);
 
         session()->flash(
             'message',
@@ -135,7 +162,6 @@ class Formularios extends Component
         $this->periodo_form = $formulario->periodo_form;
         $this->id_depen = $formulario->id_depen;
         $this->id_ind = $formulario->id_ind;
-
     }
 
     public function destroy($id)
@@ -166,71 +192,70 @@ class Formularios extends Component
                 session()->flash('message', "Formulario en modo solo lectura");
                 break;
         }
+        $formulario->save();
     }
 
     public function publicar($id)
-{
-    $formulario = Formulario::find($id);
+    {
+        $formulario = Formulario::find($id);
 
-    if ($formulario) {
-        $formulario->boton_accion_form = 'Ver'; // Al publicar, cambiar a "Ver"
+        if ($formulario) {
+            $formulario->boton_accion_form = 'Ver'; // Al publicar, cambiar a "Ver"
+            $formulario->save();
+
+            // Mostrar mensaje con la dependencia
+            $dependencia = Dependencia::find($formulario->id_depen);
+            session()->flash('message', "Formulario publicado correctamente en {$dependencia->nombre_depen}.");
+        }
+    }
+
+    public function botonFinalizarVisible($formulario)
+    {
+        $fechaCreacion = \Carbon\Carbon::parse($formulario->fecha_creacion_form);
+        $hoy = \Carbon\Carbon::now();
+
+        switch ($formulario->periodo_form) {
+            case 'Mensual':
+                $fechaFin = $fechaCreacion->copy()->addMonth();
+                break;
+            case 'Trimestral':
+                $fechaFin = $fechaCreacion->copy()->addMonths(3);
+                break;
+            case 'Semestral':
+                $fechaFin = $fechaCreacion->copy()->addMonths(6);
+                break;
+            case 'Anual':
+                $fechaFin = $fechaCreacion->copy()->addYear();
+                break;
+            default:
+                $fechaFin = $fechaCreacion;
+        }
+
+        return $hoy->gte($fechaFin); // Devuelve true si ya pasó el periodo
+    }
+
+    public function ver($id)
+    {
+        // Aquí puedes redirigir o abrir modal con detalles del formulario
+        $formulario = Formulario::find($id);
+        session()->flash('message', "Viendo formulario: {$formulario->titulo_form}");
+    }
+
+    public function finalizar($id)
+    {
+        $formulario = Formulario::find($id);
+        $formulario->boton_accion_form = 'Finalizado';
         $formulario->save();
 
-        // Mostrar mensaje con la dependencia
-        $dependencia = Dependencia::find($formulario->id_depen);
-        session()->flash('message', "Formulario publicado correctamente en {$dependencia->nombre_depen}.");
-    }
-}
-
-public function botonFinalizarVisible($formulario)
-{
-    $fechaCreacion = \Carbon\Carbon::parse($formulario->fecha_creacion_form);
-    $hoy = \Carbon\Carbon::now();
-
-    switch($formulario->periodo_form) {
-        case 'Mensual':
-            $fechaFin = $fechaCreacion->copy()->addMonth();
-            break;
-        case 'Trimestral':
-            $fechaFin = $fechaCreacion->copy()->addMonths(3);
-            break;
-        case 'Semestral':
-            $fechaFin = $fechaCreacion->copy()->addMonths(6);
-            break;
-        case 'Anual':
-            $fechaFin = $fechaCreacion->copy()->addYear();
-            break;
-        default:
-            $fechaFin = $fechaCreacion;
+        session()->flash('message', "Formulario {$formulario->titulo_form} finalizado.");
     }
 
-    return $hoy->gte($fechaFin); // Devuelve true si ya pasó el periodo
-}
+    protected $listeners = ['openCreateModal'];
 
-public function ver($id)
-{
-    // Aquí puedes redirigir o abrir modal con detalles del formulario
-    $formulario = Formulario::find($id);
-    session()->flash('message', "Viendo formulario: {$formulario->titulo_form}");
-}
-
-public function finalizar($id)
-{
-    $formulario = Formulario::find($id);
-    $formulario->boton_accion_form = 'Finalizado';
-    $formulario->save();
-
-    session()->flash('message', "Formulario {$formulario->titulo_form} finalizado.");
-}
-
-protected $listeners = ['openCreateModal'];
-
-public function openCreateModal()
-{
-    $this->resetValidation();
-    $this->reset(['selected_id','titulo_form','descripcion_form','fecha_creacion_form','id_depen','id_ind']); // ajusta según los campos
-    $this->dispatchBrowserEvent('show-modal');
-}
-
-
+    public function openCreateModal()
+    {
+        $this->resetValidation();
+        $this->reset(['selected_id', 'titulo_form', 'descripcion_form', 'fecha_creacion_form', 'id_depen', 'periodo_form', 'secciones_form']); // ajusta según los campos
+        $this->dispatch('show-modal');
+    }
 }

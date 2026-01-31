@@ -14,6 +14,8 @@ class UsuarioFormularios extends Component
         // Trae solo los formularios "Ver" de la dependencia del usuario logueado
         $this->formularios = Formulario::where('boton_accion_form', 'Ver')
             ->where('id_depen', Auth::user()->id_depen)
+            ->with('indicador') // ✅ clave para usar $formulario->indicador
+            ->orderByDesc('id_form')
             ->get();
     }
 

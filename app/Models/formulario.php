@@ -60,7 +60,7 @@ class Formulario extends Model
     // Scope para obtener solo formularios publicados
     public function scopePublicados($query)
     {
-        return $query->where('boton_accion_form', 'publicar');
+        return $query->where('boton_accion_form', 'ver');
     }
 
     // Scope para filtrar por dependencia

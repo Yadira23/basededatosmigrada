@@ -56,18 +56,11 @@
                     </div>
                     <div class="form-group">
                         <label>Indicador</label>
-                        <select wire:model.defer="id_ind" class="form-control">
-                            <option value="">Seleccione un indicador</option>
-
-                            @if(!empty($indicadores) && count($indicadores) > 0)
-                            @foreach($indicadores as $ind)
-                            <option value="{{ $ind->id_ind }}">
-                                {{ $ind->nombre_ind }}
-                            </option>
+                        <select class="form-select" wire:model="id_ind">
+                            <option value="">Selecciona indicador</option>
+                            @foreach(($this->indicadores ?? []) as $ind)
+                            <option value="{{ $ind->id_ind }}">{{ $ind->nombre_ind }}</option>
                             @endforeach
-                            @else
-                            <option value="">No hay indicadores disponibles</option>
-                            @endif
                         </select>
 
                         @error('id_ind')
@@ -76,12 +69,10 @@
                     </div>
                     <div class="form-group">
                         <label>Dependencia</label>
-                        <select wire:model.defer="id_depen" class="form-control">
+                        <select class="form-select" wire:model.defer="id_depen">
                             <option value="">Seleccione</option>
-                            @foreach($dependencias as $dep)
-                            <option value="{{ $dep->id_depen }}">
-                                {{ $dep->nombre_depen }}
-                            </option>
+                            @foreach(($this->dependencias ?? []) as $dep)
+                            <option value="{{ $dep->id_depen }}">{{ $dep->nombre_depen }}</option>
                             @endforeach
                         </select>
                         @error('id_depen') <span class="text-danger">{{ $message }}</span> @enderror
