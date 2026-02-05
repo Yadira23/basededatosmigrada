@@ -12,6 +12,9 @@ class Indicadores extends Component
 {
     use WithPagination;
     protected $paginationTheme = 'bootstrap';
+    protected $casts = [
+        'config_campos' => 'array',
+    ];
     public $selected_id;
     public $keyWord;
     public $tiene_formula = false;

@@ -27,6 +27,13 @@ class Carga extends Model
         // ✅ nuevos (cargas personalizadas)
         'ambito_geo_carga',
         'metodo_captura',
+        // 🆕 plantilla
+        'plantilla_descargada_at',
+        'plantilla_ambito',
+    ];
+
+    protected $casts = [
+        'plantilla_descargada_at' => 'datetime',
     ];
 
     protected static function boot()

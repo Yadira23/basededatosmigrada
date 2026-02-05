@@ -37,7 +37,15 @@ class DetalleCargas extends Component
 
         // ✅ si viene de la ruta, guardamos el filtro
         if ($id_carga !== null) {
-            $this->id_carga_filtro = (int) $id_carga;
+
+            // si viene numérico, es id_carga
+            if (is_numeric($id_carga)) {
+                $this->id_carga_filtro = (int)$id_carga;
+            } else {
+                // si viene string, es folio → buscar id_carga real
+                $c = Carga::where('folioUnico_carga', $id_carga)->first();
+                $this->id_carga_filtro = $c?->id_carga;
+            }
         }
     }
 
@@ -64,13 +72,13 @@ class DetalleCargas extends Component
         if (!empty($this->keyWord)) {
             $query->where(function ($q) use ($keyWord) {
                 $q->orWhere('id_detalle', 'LIKE', $keyWord)
-                  ->orWhere('id_carga', 'LIKE', $keyWord)
-                  ->orWhere('id_ind', 'LIKE', $keyWord)
-                  ->orWhere('periodo_det', 'LIKE', $keyWord)
-                  ->orWhere('ejercicio_det', 'LIKE', $keyWord)
-                  ->orWhere('fecha_registro_det', 'LIKE', $keyWord)
-                  ->orWhere('fuente_det', 'LIKE', $keyWord)
-                  ->orWhere('valor_det', 'LIKE', $keyWord);
+                    ->orWhere('id_carga', 'LIKE', $keyWord)
+                    ->orWhere('id_ind', 'LIKE', $keyWord)
+                    ->orWhere('periodo_det', 'LIKE', $keyWord)
+                    ->orWhere('ejercicio_det', 'LIKE', $keyWord)
+                    ->orWhere('fecha_registro_det', 'LIKE', $keyWord)
+                    ->orWhere('fuente_det', 'LIKE', $keyWord)
+                    ->orWhere('valor_det', 'LIKE', $keyWord);
             });
         }
 
@@ -133,7 +141,7 @@ class DetalleCargas extends Component
     {
         $this->selected_id = $id;
         $this->fill(DetalleCarga::findOrFail($id)->toArray());
-    } 
+    }
 
     public function destroy($id)
     {

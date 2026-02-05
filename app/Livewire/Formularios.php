@@ -18,6 +18,9 @@ class Formularios extends Component
     use WithPagination;
     public $indicadores;
     public $dependencias;
+    public bool $indicadorBloqueado = false;
+    public ?int $id_ind_fijo = null;
+
 
     public function mount()
     {
@@ -39,6 +42,10 @@ class Formularios extends Component
 
         if ($id) {
             $this->id_ind = $id;
+
+            // ✅ Bloquear indicador
+            $this->indicadorBloqueado = true;
+            $this->id_ind_fijo = (int) $id;
 
             // Limpia campos para crear uno nuevo (no borrar id_ind)
             $this->resetValidation();
@@ -89,6 +96,8 @@ class Formularios extends Component
     {
         return view('livewire.formularios.view', [
             'formularios' => $this->filteredFormularios,
+            'indicadores'  => $this->indicadores,   // ✅
+            'dependencias' => $this->dependencias,  // ✅
         ]);
     }
 
@@ -102,6 +111,12 @@ class Formularios extends Component
     public function save()
     {
         $this->boton_accion_form = $this->boton_accion_form ?? 'Publicar';
+
+        // ✅ Si viene bloqueado por asignación, NO permitas cambiarlo
+        if ($this->indicadorBloqueado && $this->id_ind_fijo) {
+            $this->id_ind = $this->id_ind_fijo;
+        }
+
         $this->validate(['id_ind' => 'required',]);
         $this->validate([
             'titulo_form' => 'required',
@@ -121,7 +136,6 @@ class Formularios extends Component
         if (!$this->selected_id) {
             $this->boton_accion_form = 'Publicar';
         }
-
 
         Formulario::updateOrCreate(
             ['id_form' => $this->selected_id],

@@ -36,7 +36,15 @@
 							<tbody> @forelse($indicadores as $row) <tr>
 									<!--<td>{{ $loop->iteration }}</td>-->
 									<td>{{ $row->id_ind }}</td>
-									<td>{{ $row->nombre_ind }}</td>
+									<td>
+										{{ $row->nombre_ind }}
+
+										@if(empty($row->config_campos))
+										<span class="badge bg-warning text-dark ms-1">sin campos</span>
+										@else
+										<span class="badge bg-success ms-1">campos OK</span>
+										@endif
+									</td>
 									<td>{{ $row->etiquetas_ind }}</td>
 									{{--<td>{{ $row->definicion_ind }}</td>
 									<td>
@@ -79,8 +87,28 @@
 												<li>
 													<hr class="dropdown-divider">
 												</li>
-												<li><a data-bs-toggle="modal" data-bs-target="#DataModal" class="dropdown-item" wire:click="edit({{$row->id_ind}})"><i class="bi-pencil-square"></i> Edit </a></li>
-												<li><a class="dropdown-item" onclick="confirm('Confirm Delete Indicadore id {{$row->id_ind}}? \nDeleted Indicadores cannot be recovered!')||event.stopImmediatePropagation()" wire:click="destroy({{$row->id_ind}})"><i class="bi-trash3-fill"></i> Delete </a></li>
+
+												<li>
+													<a class="dropdown-item" href="{{ route('indicadores.campos', ['id_ind' => $row->id_ind]) }}">
+														<i class="bi-ui-checks-grid"></i> Configurar campos
+													</a>
+												</li>
+
+												<li>
+													<a data-bs-toggle="modal" data-bs-target="#DataModal"
+														class="dropdown-item"
+														wire:click="edit({{ $row->id_ind }})">
+														<i class="bi-pencil-square"></i> Edit
+													</a>
+												</li>
+
+												<li>
+													<a class="dropdown-item"
+														onclick="confirm('Confirm Delete Indicadore id {{ $row->id_ind }}? \nDeleted Indicadores cannot be recovered!')||event.stopImmediatePropagation()"
+														wire:click="destroy({{ $row->id_ind }})">
+														<i class="bi-trash3-fill"></i> Delete
+													</a>
+												</li>
 											</ul>
 										</div>
 									</td>

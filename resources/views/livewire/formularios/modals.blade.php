@@ -56,12 +56,18 @@
                     </div>
                     <div class="form-group">
                         <label>Indicador</label>
-                        <select class="form-select" wire:model="id_ind">
-                            <option value="">Selecciona indicador</option>
-                            @foreach(($this->indicadores ?? []) as $ind)
+                        <select wire:model="id_ind" class="form-control" @disabled($indicadorBloqueado)>
+                            <option value="">Seleccione</option>
+                            @foreach(($indicadores ?? []) as $ind)
                             <option value="{{ $ind->id_ind }}">{{ $ind->nombre_ind }}</option>
                             @endforeach
                         </select>
+
+                        @if($indicadorBloqueado)
+                        <small class="text-muted">
+                            Indicador bloqueado porque fue asignado desde la pantalla de Indicadores.
+                        </small>
+                        @endif
 
                         @error('id_ind')
                         <span class="text-danger">{{ $message }}</span>

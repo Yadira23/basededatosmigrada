@@ -27,6 +27,10 @@ class Indicador extends Model
         'etiquetas_ind',
         'fuenteverificacion_ind',
     ];
+    protected $casts = [
+        'config_campos' => 'array',
+    ];
+
 
     // Constantes
     const FORMATOS = ['porcentaje', 'entero', 'decimal'];

@@ -91,10 +91,65 @@
 										GLOBAL
 										@endif
 									</td>
-									<td>
-										{{ data_get($row->payload_det, 'raw', '') }}
+									<td style="min-width:260px;">
+										@php
+										$payload = $row->payload_det ?? [];
+										$origen = data_get($payload, 'origen', '');
+										$campos = data_get($payload, 'campos', []);
+										$raw = data_get($payload, 'raw', '');
+										$csvInfo = data_get($payload, 'csv', []);
+										@endphp
+
+										{{-- Origen --}}
+										@if($origen)
+										<span class="badge bg-info text-dark">{{ $origen }}</span>
+										@else
+										<span class="badge bg-secondary">sin_origen</span>
+										@endif
+
+										{{-- Si viene de CSV mapeado, muestra municipio/region del archivo --}}
+										@if(!empty($csvInfo))
+										<div class="text-muted" style="font-size:12px; margin-top:4px;">
+											@if(!empty($csvInfo['municipio'])) Mun: {{ $csvInfo['municipio'] }} @endif
+											@if(!empty($csvInfo['region'])) | Reg: {{ $csvInfo['region'] }} @endif
+											@if(!empty($csvInfo['cve_mun'])) | Cve: {{ $csvInfo['cve_mun'] }} @endif
+										</div>
+										@endif
+
+										{{-- Campos dinámicos --}}
+										@if(is_array($campos) && count($campos))
+										<div style="margin-top:6px;">
+											@foreach($campos as $k => $v)
+											<div style="line-height:1.2;">
+												<b>{{ $k }}</b>: {{ is_array($v) ? json_encode($v) : $v }}
+											</div>
+											@endforeach
+										</div>
+										@endif
+
+										{{-- Raw (solo cuando exista: excel libre / texto) --}}
+										@if($raw !== '')
+										<div class="text-muted" style="margin-top:6px; font-size:12px;">
+											<b>raw:</b> {{ $raw }}
+										</div>
+										@endif
+
+										{{-- Si no hay nada, muestra guion --}}
+										@if((!is_array($campos) || !count($campos)) && $raw === '')
+										<span class="text-muted">—</span>
+										@endif
 									</td>
-									<td>{{ $row->valor_det }}</td>
+									<td>
+										@php
+										$val = $row->valor_det;
+										@endphp
+
+										@if($val === null || $val === '' || (string)$val === '0.0000')
+										<span class="text-muted">—</span>
+										@else
+										{{ $val }}
+										@endif
+									</td>
 									<td width="90">
 										<div class="dropdown">
 											<a class="btn btn-sm btn-secondary dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">

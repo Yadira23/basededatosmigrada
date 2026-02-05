@@ -9,13 +9,17 @@ use App\Models\Municipio;
 use App\Models\Carga;
 use App\Models\DetalleCarga;
 use Illuminate\Support\Facades\DB;
-use Maatwebsite\Excel\Facades\Excel;
 use App\Models\Anexo;
 use App\Models\Formulario;
 use App\Models\Indicador;
-use App\Models\Usuario;
-use Symfony\Component\HttpKernel\Exception\AbortHttpException;
 use Illuminate\Support\Facades\Auth;
+use Carbon\Carbon;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Reader\Csv;
+use Illuminate\Support\Facades\Schema;
+
 
 
 class FormularioCaptura extends Component
@@ -24,463 +28,229 @@ class FormularioCaptura extends Component
 
     public $id_form;
     public $id_ind;
-    public $formulario; // objeto
-    public $indicador;  // objeto
-
+    public $formulario;
+    public $indicador;
 
     public $metodo = null;
-    public $guardando = false;
-    public $hayPlantilla = false;
+    public bool $guardando = false;
+    public bool $hayPlantilla = false;
+
+    public bool $soloLectura = false;
 
     // SIN_AMBITO | REGION | MUNICIPIO
-    public $ambito_geo = 'SIN_AMBITO';
+    public string $ambito_geo = 'SIN_AMBITO';
 
+    // filtros manual
     public $regionFiltro = '';
     public $municipiosFiltrados;
 
-    // inputs
     public $region = '';
     public $municipio = '';
-    public $valor = '';
 
-    // ✅ nuevos inputs (para evitar repetición y guardar correcto)
-    public $fuente_dato = '';     // ej. INEGI, CONEVAL, etc.
-    public $descripcion_env = ''; // ej. "practica", "enero 2026", etc.
+    // schema dinámico
+    public array $schema = [];
+    public array $manualCampos = [];
+    public array $manualData = [];
+    public ?int $editManualIndex = null;
 
-    // data
-    public $manualData = [];
+    // metadata
+    public $fuente_dato = '';
+    public $descripcion_env = '';
 
-    // archivo
+    // archivo + flujo plantilla
     public $archivo;
-    public $archivoNombre = '';
-    public $archivoData = [];
-    public $archivoPreview = [];
+    public string $archivoNombre = '';
+    public ?int $id_carga_actual = null;
+
+    public bool $plantillaDescargada = false;
+    public bool $archivoProcesado = false;
+    public int $detallesInsertados = 0;
 
     // catálogos
     public $regiones;
+    public string $ambito_plantilla_descargada = ''; // para saber con qué ámbito se descargó
+    public string $motivoResetPlantilla = '';        // mensaje para UI
 
     public function mount($id_form, $id_ind)
     {
         $this->id_form = $id_form;
         $this->id_ind  = $id_ind;
 
-        // ✅ 1) trae el formulario con su indicador
         $this->formulario = Formulario::with('indicador')
             ->where('id_form', $this->id_form)
-            ->where('id_ind', $this->id_ind)
             ->firstOrFail();
+
+        if ((int)$this->formulario->id_ind !== (int)$this->id_ind) {
+            abort(403, 'Indicador inválido para este formulario.');
+        }
 
         $this->indicador = $this->formulario->indicador;
 
-        // ✅ 2) asegurar que el formulario esté PUBLICADO (solo "Ver")
-        if ($this->formulario->boton_accion_form !== 'Ver') {
-            abort(403, 'Este formulario aún no ha sido publicado.');
+        // ✅ schema: normalizar a un formato consistente (slug/type/label/required/min/max)
+        $raw = $this->indicador->config_campos ?? [];
+        if (is_string($raw)) $raw = json_decode($raw, true) ?: [];
+
+        $this->schema = $this->normalizarSchema($raw);
+
+        // inicializa inputs manuales
+        foreach ($this->schema as $c) {
+            $this->manualCampos[$c['slug']] = null;
         }
 
-        // ✅ 3) asegurar que el formulario sea de la dependencia del usuario logueado
+        // ✅ seguridad dependencia
         $user = Auth::user();
         if ((int)$this->formulario->id_depen !== (int)$user->id_depen) {
             abort(403, 'Este formulario no pertenece a tu dependencia.');
         }
 
-        $this->metodo = null;
-        $this->ambito_geo = 'SIN_AMBITO';
+        // ✅ estado publicación
+        $estado = (string) $this->formulario->boton_accion_form;
+        if (!in_array($estado, ['Ver', 'Finalizado'], true)) {
+            abort(403, 'Este formulario aún no ha sido publicado.');
+        }
+
+        // ✅ vencimiento por periodo
+        $fechaCreacion = Carbon::parse($this->formulario->fecha_creacion_form);
+        $hoy = Carbon::now();
+
+        $fechaFin = match ($this->formulario->periodo_form) {
+            'Mensual' => $fechaCreacion->copy()->addMonth(),
+            'Trimestral' => $fechaCreacion->copy()->addMonths(3),
+            'Semestral' => $fechaCreacion->copy()->addMonths(6),
+            'Anual' => $fechaCreacion->copy()->addYear(),
+            default => $fechaCreacion,
+        };
+
+        if ($hoy->gte($fechaFin)) {
+            $this->soloLectura = true;
+            if ($this->formulario->boton_accion_form !== 'Finalizado') {
+                $this->formulario->boton_accion_form = 'Finalizado';
+                $this->formulario->save();
+            }
+        } else {
+            $this->soloLectura = ($this->formulario->boton_accion_form !== 'Ver');
+        }
+
+        //$this->metodo = null;
+        //$this->ambito_geo = 'SIN_AMBITO';
 
         $this->regiones = Region::orderBy('nombre_region')->get();
         $this->municipiosFiltrados = collect();
 
-        $this->fuente_dato = '';
-        $this->descripcion_env = '';
+        //$this->fuente_dato = '';
+        //$this->descripcion_env = '';
 
-        $this->hayPlantilla = Anexo::where('id_form', $this->id_form)
-            ->where('id_ind', $this->id_ind)
-            ->where('tipo_anexo', Anexo::TIPO_PLANTILLA) // 'plantilla'
-            ->exists();
+        // Si el indicador tiene config_campos, el sistema puede generar plantilla
+        $this->hayPlantilla = !empty($this->schema);
     }
 
-    public function seleccionar($metodo)
-    {
-        $this->metodo = $metodo;
-
-        // si cambia a manual, limpiamos archivo
-        if ($metodo !== 'archivo') {
-            $this->resetArchivo();
-        }
-    }
-
-    public function agregarManual()
-    {
-        if ($this->valor === '' || $this->valor === null) return;
-
-        $valor = (float) $this->valor;
-
-        if ($this->ambito_geo === 'SIN_AMBITO') {
-            $this->manualData[] = [
-                'ambito_geo' => 'SIN_AMBITO',
-                'id_region' => null,
-                'id_mun' => null,
-                'nombre' => 'GLOBAL',
-                'valor' => $valor,
-            ];
-            $this->valor = '';
-            return;
-        }
-
-        if ($this->ambito_geo === 'REGION') {
-            if (!$this->region) return;
-
-            $yaExiste = collect($this->manualData)->contains(
-                fn($row) => ($row['ambito_geo'] ?? '') === 'REGION'
-                    && (int)($row['id_region'] ?? 0) === (int)$this->region
-            );
-
-            if ($yaExiste) {
-                session()->flash('error', 'Esa región ya fue agregada. Edita el registro existente.');
-                return;
-            }
-
-            $r = Region::where('id_region', $this->region)->first();
-            if (!$r) return;
-
-            $this->manualData[] = [
-                'ambito_geo' => 'REGION',
-                'id_region' => (int)$r->id_region,
-                'id_mun' => null,
-                'nombre' => $r->nombre_region,
-                'valor' => $valor,
-            ];
-
-            $this->region = '';
-            $this->valor = '';
-            return;
-        }
-
-        if ($this->ambito_geo === 'MUNICIPIO') {
-            if (!$this->municipio) return;
-
-            $yaExiste = collect($this->manualData)->contains(
-                fn($row) => ($row['ambito_geo'] ?? '') === 'MUNICIPIO'
-                    && (int)($row['id_mun'] ?? 0) === (int)$this->municipio
-            );
-
-            if ($yaExiste) {
-                session()->flash('error', 'Ese municipio ya fue agregado. Edita el registro existente.');
-                return;
-            }
-
-            $m = Municipio::where('id_mun', $this->municipio)->first();
-            if (!$m) return;
-
-            $this->manualData[] = [
-                'ambito_geo' => 'MUNICIPIO',
-                'id_region' => (int)$m->id_region,
-                'id_mun' => (int)$m->id_mun,
-                'nombre' => $m->nombre_municipio,
-                'valor' => $valor,
-            ];
-
-            $this->municipio = '';
-            $this->valor = '';
-            return;
-        }
-    }
-
-    public function eliminarManual($index)
-    {
-        if (!isset($this->manualData[$index])) return;
-        unset($this->manualData[$index]);
-        $this->manualData = array_values($this->manualData);
-    }
-
-    public function editarManual($index)
-    {
-        if (!isset($this->manualData[$index])) return;
-
-        $row = $this->manualData[$index];
-
-        $this->ambito_geo = $row['ambito_geo'] ?? 'SIN_AMBITO';
-        $this->region = $row['id_region'] ?? '';
-        $this->municipio = $row['id_mun'] ?? '';
-        $this->valor = $row['valor'] ?? '';
-
-        $this->eliminarManual($index);
-    }
-
-    public function updatedArchivo()
-    {
-        if (!$this->archivo) return;
-
-        $this->validateOnly('archivo');
-
-        $this->archivoNombre = $this->archivo->getClientOriginalName();
-        $ext = strtolower($this->archivo->getClientOriginalExtension());
-
-        try {
-            if (in_array($ext, ['csv', 'txt'])) {
-                $this->archivoData = $this->leerCsvComoFilas($this->archivo->getRealPath());
-                $this->archivoPreview = $this->convertirArchivoAFilas($this->archivoData);
-                session()->flash('success', 'CSV cargado correctamente.');
-                return;
-            }
-
-            if (in_array($ext, ['xlsx', 'xls'])) {
-                $this->archivoData = $this->leerExcelComoFilas($this->archivo->getRealPath());
-                $this->archivoPreview = $this->convertirArchivoAFilas($this->archivoData);
-                session()->flash('success', 'Excel cargado correctamente.');
-                return;
-            }
-
-            session()->flash('error', 'Formato no permitido. Solo CSV / XLSX / XLS.');
-            $this->resetArchivo();
-        } catch (\Throwable $e) {
-            $this->resetArchivo();
-            session()->flash('error', 'No se pudo leer el archivo: ' . $e->getMessage());
-        }
-    }
-
-    public function resetArchivo()
-    {
-        $this->archivo = null;
-        $this->archivoNombre = '';
-        $this->archivoData = [];
-        $this->archivoPreview = [];
-    }
-
-    /**
-     * ✅ ENVIAR (GUARDAR) ÚNICO: guarda manual o archivo según $metodo
-     */
-    public function guardarTodo()
-    {
-        if ($this->guardando) return;
-        $this->guardando = true;
-
-        try {
-            // ✅ validación base
-            $this->validate([
-                'metodo' => 'required|in:manual,archivo',
-                'id_form' => 'required|integer',
-                'id_ind'  => 'required|integer',
-
-                // ✅ opcionales pero recomendables
-                'fuente_dato' => 'nullable|string|max:255',
-                'descripcion_env' => 'nullable|string|max:255',
-            ]);
-
-            // ✅ validar según método
-            if ($this->metodo === 'manual') {
-                $this->validate([
-                    'manualData' => 'required|array|min:1',
-                    'manualData.*.valor' => 'required|numeric',
-                ]);
-                $filas = $this->manualData;
-            } else {
-                $this->validate([
-                    'archivo' => 'required|file|max:10240|mimes:csv,txt,xlsx,xls',
-                ]);
-
-                if (empty($this->archivoPreview)) {
-                    throw new \Exception('Sube un archivo y verifica que tenga filas.');
-                }
-
-                $filas = $this->archivoPreview;
-                if (empty($filas)) {
-                    throw new \Exception('El archivo no tiene líneas válidas.');
-                }
-            }
-
-            // ✅ datos de carga
-            $periodo   = now()->format('Y-m');
-            $ejercicio = now()->year;
-
-            // ✅ método real
-            $metodoCaptura = $this->metodo; // 'manual' | 'archivo'
-
-            // ✅ fuente real del dato (INEGI, etc.)
-            $fuenteDato = trim((string)$this->fuente_dato);
-            $fuenteDato = $fuenteDato !== '' ? $fuenteDato : 'N/D'; // ✅ nunca null
-
-
-            // ✅ descripción (si no capturan nada, ponemos una genérica NO duplicada con método)
-            $desc = trim((string)$this->descripcion_env);
-            if ($desc === '') {
-                $desc = $this->metodo === 'manual'
-                    ? 'Registro manual'
-                    : 'Importación de archivo';
-            }
-
-            DB::transaction(function () use ($filas, $periodo, $ejercicio, $metodoCaptura, $fuenteDato, $desc) {
-
-                // ✅ crear carga
-                $carga = Carga::create([
-                    'fecha_carga' => now(),
-                    'periodo' => $periodo,
-                    'ejercicio' => $ejercicio,
-
-                    // ✅ fuente real (INEGI/etc.)
-                    'fuente' => $fuenteDato,
-
-                    // ✅ método real
-                    'metodo_captura' => $metodoCaptura,
-
-                    // (si lo usas en tu modelo, lo puedes guardar también)
-                    'ambito_geo_carga' => $this->ambito_geo,
-
-                    'status_env' => 'Enviado',
-                    'descripcion_env' => $desc,
-                    'observacion_env' => '',
-                    'id_form' => $this->id_form,
-                ]);
-
-                $filas = array_values($filas); // ✅ reindexa 0..N
-
-                foreach ($filas as $idx => $item) {
-
-                    // ✅ usa fila_det si viene del preview; si no, usa idx+1
-                    $filaDet = isset($item['fila_det']) && (int)$item['fila_det'] > 0
-                        ? (int)$item['fila_det']
-                        : ($idx + 1);
-
-                    $ambito = $item['ambito_geo'] ?? 'SIN_AMBITO';
-
-                    $payload = $item['payload_det'] ?? [
-                        'tipo' => $this->metodo,
-                        'raw' => ($item['nombre'] ?? 'GLOBAL') . ' ' . ($item['valor'] ?? ''),
-                        'nombre' => $item['nombre'] ?? null,
-                        'valor' => $item['valor'] ?? null,
-                    ];
-
-                    if (is_string($payload)) {
-                        $decoded = json_decode($payload, true);
-                        $payload = is_array($decoded) ? $decoded : ['raw' => $payload];
-                    }
-
-                    $valorDet = $item['valor_det'] ?? ($item['valor'] ?? null);
-
-                    // ✅ asegura consistencia por ámbito (no mezclar mun/region si no aplica)
-                    $idRegion = $item['id_region'] ?? null;
-                    $idMun    = $item['id_mun'] ?? null;
-
-                    if ($ambito === 'SIN_AMBITO') {
-                        $idRegion = null;
-                        $idMun = null;
-                    } elseif ($ambito === 'REGION') {
-                        $idMun = null;
-                    } elseif ($ambito === 'MUNICIPIO') {
-                        // si quieres NO guardar región cuando es municipio, descomenta:
-                        // $idRegion = null;
-                    }
-
-                    // ✅ fuente por fila: si el item trae fuente_det úsala; si no, usa fuenteDato global
-                    $fuenteFila = $item['fuente_det'] ?? $fuenteDato;
-
-                    // ✅ NO tronar por duplicado: actualiza si ya existe esa llave única
-                    DetalleCarga::updateOrCreate(
-                        [
-                            'id_carga' => $carga->id_carga,
-                            'id_ind' => $this->id_ind,
-                            'ambito_geo' => $ambito,
-                            'periodo_det' => $periodo,
-                            'ejercicio_det' => $ejercicio,
-                            'fila_det' => $filaDet,
-                        ],
-                        [
-                            // ✅ usa los ya “limpios”
-                            'id_region' => $idRegion,
-                            'id_mun' => $idMun,
-
-                            'fecha_registro_det' => now()->toDateString(),
-
-                            // ✅ fuente REAL del dato
-                            'fuente_det' => $fuenteFila,
-
-                            'valor_det' => $valorDet,
-                            'payload_det' => $payload,
-                        ]
-                    );
-                }
-            });
-
-            // ✅ limpiar estado (solo si todo salió bien)
-            $this->manualData = [];
-            $this->region = '';
-            $this->municipio = '';
-            $this->valor = '';
-            $this->resetArchivo();
-
-            session()->flash('success', 'Guardado correctamente (Carga + Detalles).');
-        } catch (\Throwable $e) {
-            session()->flash('error', 'Error al guardar: ' . $e->getMessage());
-        } finally {
-            $this->guardando = false; // ✅ SIEMPRE se libera
-        }
-    }
-
-    /**
-     * Convierte líneas a filas "libres" (texto + número opcional)
-     * ✅ Limpia BOM / invisibles y evita filas extra
-     * ✅ Solo detecta número si está al final separado por espacio
-     */
-
-    private function convertirArchivoAFilas(array $lineas): array
+    /* =========================
+       ✅ NORMALIZADOR DE SCHEMA
+    ========================== */
+    private function normalizarSchema(array $raw): array
     {
         $out = [];
-        $fila = 1;
 
-        foreach ($lineas as $linea) {
-
-            // limpiar BOM y caracteres invisibles
-            $raw = preg_replace('/^\xEF\xBB\xBF/', '', (string)$linea);
-            $raw = preg_replace('/[[:^print:]]/', '', $raw);
-            $raw = trim($raw);
-
-            // si queda vacío, NO crear fila
-            if ($raw === '') {
-                continue;
-            }
-
-            // normaliza espacios internos
-            $raw = preg_replace('/\s+/', ' ', $raw);
-
-            // detectar número SOLO si está al final separado por espacio
-            $valor = null;
-            if (preg_match('/\s(-?\d+(?:\.\d+)?)\s*$/', $raw, $m)) {
-                $valor = (float)$m[1];
-            }
+        foreach ($raw as $c) {
+            // soporta ambas llaves: name o slug
+            $slug = $c['slug'] ?? $c['name'] ?? null;
+            if (!$slug) continue;
 
             $out[] = [
-                'ambito_geo' => 'SIN_AMBITO',
-                'id_region' => null,
-                'id_mun' => null,
-                'fila_det' => $fila++,
-
-                // puede ser null (texto)
-                'valor_det' => $valor,
-
-                // texto completo SIEMPRE
-                'payload_det' => [
-                    'tipo' => 'archivo_libre',
-                    'raw' => $raw,
-                ],
+                'slug' => (string)$slug,
+                'label' => (string)($c['label'] ?? $c['nombre'] ?? $slug),
+                'type' => $c['type'] ?? $c['tipo'] ?? 'number',
+                'required' => (bool)($c['required'] ?? $c['requerido'] ?? false),
+                'min' => $c['min'] ?? null,
+                'max' => $c['max'] ?? null,
             ];
         }
 
         return $out;
     }
 
+    public function seleccionar($metodo)
+    {
+        $this->metodo = $metodo;
+        if ($metodo === 'archivo') {
+            $this->prepararCargaBorradorArchivo();
+            $this->refrescarEstadoPlantilla();
+        } else {
+            $this->resetArchivoState();
+        }
+    }
+
+    private function prepararCargaBorradorArchivo()
+    {
+        if ($this->soloLectura) return;
+        if ($this->id_carga_actual) return;
+
+        // crea carga BORRADOR para poder marcar plantilla_descargada_at y guardar detalles luego
+        $carga = Carga::create([
+            // ✅ FIX: si tu BD NO lo genera sola, esto evita errores
+            'folioUnico_carga' => 'CAR-' . now()->timestamp,
+            'fecha_carga' => now(),
+            'periodo' => now()->format('Y-m'),
+            'ejercicio' => now()->year,
+            'fuente' => 'N/D',
+            'status_env' => 'Borrador',
+            'ambito_geo_carga' => $this->ambito_geo,
+            'metodo_captura' => 'ARCHIVO', // OJO enum
+            'descripcion_env' => 'Borrador (archivo)',
+            'observacion_env' => '',
+            'id_form' => $this->id_form,
+        ]);
+
+        $this->id_carga_actual = (int)$carga->id_carga;
+        $this->plantillaDescargada = false;
+        $this->archivoProcesado = false;
+        $this->detallesInsertados = 0;
+    }
+
+    public function refrescarEstadoPlantilla()
+    {
+        if (!$this->id_carga_actual) {
+            $this->plantillaDescargada = false;
+            return;
+        }
+        $carga = Carga::find($this->id_carga_actual);
+        $this->plantillaDescargada = !is_null($carga?->plantilla_descargada_at);
+    }
+
+    /* =========================
+       ✅ MANUAL DINÁMICO (Opción B)
+    ========================== */
     public function updatedAmbitoGeo($value)
     {
         $this->region = '';
         $this->municipio = '';
-        $this->valor = '';
         $this->regionFiltro = '';
         $this->municipiosFiltrados = collect();
 
-        // si no quieres mezclar ámbitos, limpias tabla:
+        // si no quieres mezclar ámbitos: limpia filas manuales
         $this->manualData = [];
+        $this->editManualIndex = null;
+
+        // si ya estaba en archivo, actualiza borrador (si existe)
+        if ($this->metodo === 'archivo' && $this->id_carga_actual) {
+            Carga::where('id_carga', $this->id_carga_actual)
+                ->update(['ambito_geo_carga' => $this->ambito_geo]);
+        }
+
+        // Si ya había plantilla descargada y cambió el ámbito => forzar re-descarga
+        if ($this->plantillaDescargada && $this->ambito_plantilla_descargada !== $this->ambito_geo) {
+            $this->resetArchivoState();
+            $this->plantillaDescargada = false;
+
+            $this->motivoResetPlantilla = "Cambiaste el ámbito. Debes descargar una nueva plantilla para {$this->ambito_geo}.";
+            session()->flash('warning', $this->motivoResetPlantilla);
+        }
     }
 
     public function updatedRegionFiltro($value)
     {
+        if ($this->soloLectura) return;
+
         $this->municipio = '';
         $this->municipiosFiltrados = collect();
 
@@ -492,6 +262,153 @@ class FormularioCaptura extends Component
             ->get();
     }
 
+    private function validarFilaManual()
+    {
+        if ($this->ambito_geo === 'REGION' && !$this->region) {
+            throw new \Exception("Selecciona una región.");
+        }
+        if ($this->ambito_geo === 'MUNICIPIO' && !$this->municipio) {
+            throw new \Exception("Selecciona un municipio.");
+        }
+
+        // validar campos del schema
+        foreach ($this->schema as $c) {
+            $slug = $c['slug'];
+            $val = $this->manualCampos[$slug] ?? null;
+
+            if ($c['required'] && ($val === null || $val === '')) {
+                throw new \Exception("El campo '{$c['label']}' es requerido.");
+            }
+
+            if (($c['type'] === 'number' || $c['type'] === 'porcentaje') && $val !== null && $val !== '') {
+                if (!is_numeric($val)) throw new \Exception("El campo '{$c['label']}' debe ser numérico.");
+                $num = (float)$val;
+
+                if ($c['min'] !== null && $num < $c['min']) throw new \Exception("{$c['label']} debe ser >= {$c['min']}.");
+                if ($c['max'] !== null && $num > $c['max']) throw new \Exception("{$c['label']} debe ser <= {$c['max']}.");
+
+                // decimales: number = entero, porcentaje = decimal ok
+                if ($c['type'] === 'number' && floor($num) != $num) {
+                    throw new \Exception("{$c['label']} no acepta decimales.");
+                }
+            }
+        }
+    }
+
+    public function agregarManual()
+    {
+        if ($this->soloLectura) {
+            session()->flash('error', 'Este formulario está finalizado. Solo lectura.');
+            return;
+        }
+
+        try {
+            if (empty($this->schema)) {
+                throw new \Exception("Este indicador no tiene config_campos. Pídele al admin que lo configure.");
+            }
+
+            $this->validarFilaManual();
+
+            // nombre (para tabla)
+            $nombre = 'GLOBAL';
+            $idRegion = null;
+            $idMun = null;
+
+            if ($this->ambito_geo === 'REGION') {
+                $r = Region::find($this->region);
+                if (!$r) throw new \Exception("Región inválida.");
+                $nombre = $r->nombre_region;
+                $idRegion = (int)$r->id_region;
+            }
+
+            if ($this->ambito_geo === 'MUNICIPIO') {
+                $m = Municipio::find($this->municipio);
+                if (!$m) throw new \Exception("Municipio inválido.");
+                $nombre = $m->nombre_municipio;
+                $idMun = (int)$m->id_mun;
+                $idRegion = (int)$m->id_region;
+            }
+
+            // evita duplicados por ubicación (opcional)
+            $yaExiste = collect($this->manualData)->contains(function ($row) use ($idRegion, $idMun) {
+                if (($row['ambito_geo'] ?? '') !== $this->ambito_geo) return false;
+                if ($this->ambito_geo === 'SIN_AMBITO') return true; // solo una global
+                if ($this->ambito_geo === 'REGION') return (int)($row['id_region'] ?? 0) === (int)$idRegion;
+                if ($this->ambito_geo === 'MUNICIPIO') return (int)($row['id_mun'] ?? 0) === (int)$idMun;
+                return false;
+            });
+
+            if ($yaExiste && $this->editManualIndex === null) {
+                throw new \Exception("Esa ubicación ya fue agregada. Edita el registro existente.");
+            }
+
+            $fila = [
+                'ambito_geo' => $this->ambito_geo,
+                'id_region' => $this->ambito_geo === 'SIN_AMBITO' ? null : $idRegion,
+                'id_mun' => $this->ambito_geo === 'MUNICIPIO' ? $idMun : null,
+                'nombre' => $nombre,
+                'payload_det' => [
+                    'origen' => 'manual_dinamico',
+                    'campos' => $this->manualCampos,
+                ],
+            ];
+
+            if ($this->editManualIndex !== null) {
+                $this->manualData[$this->editManualIndex] = $fila;
+                $this->editManualIndex = null;
+            } else {
+                $this->manualData[] = $fila;
+            }
+
+            // limpia inputs
+            foreach ($this->schema as $c) {
+                $this->manualCampos[$c['slug']] = null;
+            }
+            $this->region = '';
+            $this->municipio = '';
+
+            session()->flash('success', 'Fila agregada.');
+        } catch (\Throwable $e) {
+            session()->flash('error', $e->getMessage());
+        }
+    }
+
+    public function editarManual($index)
+    {
+        if ($this->soloLectura) {
+            session()->flash('error', 'Solo lectura.');
+            return;
+        }
+
+        $row = $this->manualData[$index] ?? null;
+        if (!$row) return;
+
+        $this->editManualIndex = $index;
+        $this->ambito_geo = $row['ambito_geo'] ?? 'SIN_AMBITO';
+        $this->region = $row['id_region'] ?? '';
+        $this->municipio = $row['id_mun'] ?? '';
+
+        $campos = $row['payload_det']['campos'] ?? [];
+        foreach ($this->schema as $c) {
+            $this->manualCampos[$c['slug']] = $campos[$c['slug']] ?? null;
+        }
+    }
+
+    public function eliminarManual($index)
+    {
+        if ($this->soloLectura) {
+            session()->flash('error', 'Solo lectura.');
+            return;
+        }
+        if (!isset($this->manualData[$index])) return;
+        unset($this->manualData[$index]);
+        $this->manualData = array_values($this->manualData);
+    }
+
+    /* =========================
+       ARCHIVO (tu lógica + ajustes)
+    ========================== */
+
     protected function rules()
     {
         return [
@@ -499,44 +416,487 @@ class FormularioCaptura extends Component
         ];
     }
 
-    private function leerCsvComoFilas(string $path): array
+    public function updatedArchivo()
     {
-        $lines = file($path, FILE_IGNORE_NEW_LINES);
-        $lines = array_values(array_filter($lines, fn($l) => trim($l) !== ''));
-
-        $max = 500;
-        if (count($lines) > $max) {
-            $lines = array_slice($lines, 0, $max);
-            session()->flash('error', "El archivo trae muchas filas. Mostrando solo las primeras {$max}.");
+        if ($this->soloLectura) {
+            session()->flash('error', 'Este formulario está finalizado. No puedes subir archivos.');
+            $this->archivo = null;
+            return;
         }
 
-        return $lines;
+        if (!$this->archivo) return;
+
+        $this->validateOnly('archivo');
+
+        $this->archivoNombre = $this->archivo->getClientOriginalName();
+        // si cambia archivo, hay que reprocesar
+        $this->archivoProcesado = false;
+        $this->detallesInsertados = 0;
     }
 
-    private function leerExcelComoFilas(string $path): array
+    public function descargarPlantilla()
     {
-        $sheets = Excel::toArray([], $path);
-        $rows = $sheets[0] ?? [];
-
-        $out = [];
-        foreach ($rows as $row) {
-            $out[] = implode(' | ', array_map(fn($c) => is_null($c) ? '' : (string)$c, $row));
+        if ($this->soloLectura) {
+            session()->flash('error', 'Solo lectura.');
+            return;
         }
 
-        $out = array_values(array_filter($out, fn($l) => trim($l) !== ''));
+        $this->prepararCargaBorradorArchivo();
 
-        $max = 500;
-        if (count($out) > $max) {
-            $out = array_slice($out, 0, $max);
-            session()->flash('error', "El Excel trae muchas filas. Mostrando solo las primeras {$max}.");
+        $carga = Carga::findOrFail($this->id_carga_actual);
+        $indicador = Indicador::findOrFail($this->id_ind);
+
+        $campos = $indicador->config_campos ?? [];
+        if (is_string($campos)) $campos = json_decode($campos, true) ?: [];
+        if (empty($campos)) {
+            session()->flash('error', 'Este indicador no tiene config_campos definidos.');
+            return;
         }
 
-        return $out;
+        $ambito = $this->ambito_geo;
+
+        $colAHeader = match ($ambito) {
+            'MUNICIPIO' => 'Municipio',
+            'REGION' => 'Región',
+            default => 'Ámbito',
+        };
+
+        $usaClave = in_array($ambito, ['MUNICIPIO', 'REGION'], true);
+        $colBHeader = $ambito === 'MUNICIPIO' ? 'Clave municipio (opcional)' : 'ID Región (opcional)';
+
+        $headerRow = 7;
+        $dataStart = 8;
+
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Plantilla');
+
+        $sheet->setCellValue('A1', mb_strtoupper((string)$indicador->nombre_ind));
+        $sheet->setCellValue('A2', 'Periodo: ' . (string)($carga->periodo ?? $indicador->periodo_ind ?? '—'));
+        $sheet->setCellValue('A3', 'Folio: ' . (string)$carga->folioUnico_carga);
+        $sheet->setCellValue('A4', 'Ámbito: ' . (string)$ambito);
+
+        $sheet->setCellValue("A{$headerRow}", $colAHeader);
+        if ($usaClave) {
+            $sheet->setCellValue("B{$headerRow}", $colBHeader);
+        }
+
+        // Campos desde E (col 5)
+        $colIndex = 5;
+        foreach ($campos as $c) {
+            $label = $c['label'] ?? $c['slug'] ?? 'campo';
+            $sheet->setCellValueByColumnAndRow($colIndex, $headerRow, $label);
+            $colIndex++;
+        }
+
+        // filas base opcionales
+        if ($ambito === 'MUNICIPIO') {
+            $municipios = Municipio::orderBy('nombre_municipio')->get();
+            $r = $dataStart;
+            foreach ($municipios as $m) {
+                $sheet->setCellValue("A{$r}", $m->nombre_municipio);
+                if ($usaClave && isset($m->clave_municipio)) {
+                    $sheet->setCellValue("B{$r}", $m->clave_municipio);
+                }
+                $r++;
+            }
+        } elseif ($ambito === 'REGION') {
+            $regiones = Region::orderBy('nombre_region')->get();
+            $r = $dataStart;
+            foreach ($regiones as $reg) {
+                $sheet->setCellValue("A{$r}", $reg->nombre_region);
+                if ($usaClave) $sheet->setCellValue("B{$r}", $reg->id_region);
+                $r++;
+            }
+        } else {
+            $sheet->setCellValue("A{$dataStart}", 'Estado');
+        }
+
+        // marcar descargada
+        $carga->plantilla_descargada_at = now();
+        $carga->plantilla_ambito = $ambito;
+        $carga->save();
+
+        $this->plantillaDescargada = true;
+        $this->ambito_plantilla_descargada = $ambito;
+        $this->motivoResetPlantilla = '';
+
+        $filename = 'Plantilla_' . ($indicador->id_ind ?? 'ind') . '_' . $ambito . '_' . $carga->folioUnico_carga . '.xlsx';
+
+        return response()->streamDownload(function () use ($spreadsheet) {
+            $writer = new Xlsx($spreadsheet);
+            $writer->save('php://output');
+        }, $filename);
+    }
+
+    public function procesarArchivo()
+    {
+        if ($this->soloLectura) {
+            session()->flash('error', 'Solo lectura.');
+            return;
+        }
+
+        $this->validate([
+            'archivo' => 'required|file|mimes:xlsx,xls,csv|max:10240',
+        ]);
+
+        $this->prepararCargaBorradorArchivo();
+        $carga = Carga::findOrFail($this->id_carga_actual);
+
+        // ✅ FIX: sincroniza el flag local con BD
+        $this->plantillaDescargada = !is_null($carga->plantilla_descargada_at);
+        if (is_null($carga->plantilla_descargada_at)) {
+            session()->flash('error', 'Debes descargar la plantilla antes de subir el archivo.');
+            return;
+        }
+
+        try {
+            $indicador = Indicador::findOrFail($this->id_ind);
+
+            $campos = $indicador->config_campos ?? [];
+            if (is_string($campos)) $campos = json_decode($campos, true) ?: [];
+            if (empty($campos)) {
+                session()->flash('error', 'Este indicador no tiene config_campos definidos.');
+                return;
+            }
+
+            $ambito = $this->ambito_geo;
+
+            if (!empty($carga->plantilla_ambito) && $carga->plantilla_ambito !== $ambito) {
+                session()->flash('error', "El ámbito actual ({$ambito}) no coincide con el de la plantilla descargada ({$carga->plantilla_ambito}). Descarga una nueva plantilla.");
+                return;
+            }
+
+            $headerRow = 7;
+            $dataStart = 8;
+
+            $colAEsperado = match ($ambito) {
+                'MUNICIPIO' => 'Municipio',
+                'REGION' => 'Región',
+                default => 'Ámbito',
+            };
+
+            $ext  = strtolower($this->archivo->getClientOriginalExtension());
+            $path = $this->archivo->getRealPath();
+
+            if ($ext === 'csv') {
+                $reader = new Csv();
+                $reader->setDelimiter(',');
+                $reader->setEnclosure('"');
+                $reader->setInputEncoding('UTF-8');
+            } else {
+                $reader = IOFactory::createReaderForFile($path);
+            }
+
+            $spreadsheet = $reader->load($path);
+            $sheet = $spreadsheet->getActiveSheet();
+
+            // ✅ VALIDACIONES DE ENCABEZADOS
+            $headerA = trim((string)$sheet->getCell("A{$headerRow}")->getValue());
+            if (mb_strtolower($headerA) !== mb_strtolower($colAEsperado)) {
+                session()->flash('error', "Estructura inválida: en A{$headerRow} se esperaba '{$colAEsperado}'.");
+                return;
+            }
+
+            // valida columnas dinámicas desde E (col 5)
+            $colIndex = 5;
+            foreach ($campos as $c) {
+                $labelEsperado = trim((string)($c['label'] ?? $c['slug']));
+                $labelArchivo  = trim((string)$sheet->getCellByColumnAndRow($colIndex, $headerRow)->getValue());
+
+                if (mb_strtolower($labelArchivo) !== mb_strtolower($labelEsperado)) {
+                    session()->flash('error', "Estructura inválida: columna {$this->colLetra($colIndex)} debía ser '{$labelEsperado}' y llegó '{$labelArchivo}'.");
+                    return;
+                }
+                $colIndex++;
+            }
+
+            $maxRow = (int)$sheet->getHighestRow();
+            $insertados = 0;
+            $errores = [];
+
+            DB::transaction(function () use ($sheet, $maxRow, $dataStart, $headerRow, $ambito, $campos, $carga, $indicador, $ext, &$insertados, &$errores) {
+                DetalleCarga::where('id_carga', $carga->id_carga)
+                    ->where('id_ind', $indicador->id_ind)
+                    ->delete();
+
+                for ($r = $dataStart; $r <= $maxRow; $r++) {
+                    $dim = trim((string)$sheet->getCell("A{$r}")->getValue());
+                    if ($dim === '') continue;
+                    $id_region = null;
+                    $id_mun = null;
+
+                    if ($ambito === 'MUNICIPIO') {
+                        $headerB = trim((string)$sheet->getCell("B{$headerRow}")->getValue());
+                        if (mb_strtolower($headerB) !== mb_strtolower('Clave municipio (opcional)')) {
+                            $errores[] = "Encabezado inválido en B{$headerRow}.";
+                            continue;
+                        }
+
+                        $clave = trim((string)$sheet->getCell("B{$r}")->getValue());
+
+                        $mun = null;
+                        if ($clave !== '' && Schema::hasColumn('municipios', 'clave_municipio')) {
+                            $mun = Municipio::where('clave_municipio', $clave)->first();
+                        }
+                        if (!$mun) {
+                            $mun = Municipio::where('nombre_municipio', $dim)->first();
+                        }
+                        if (!$mun) {
+                            $errores[] = "Fila {$r}: municipio no encontrado ({$dim}).";
+                            continue;
+                        }
+                        $id_mun = (int)$mun->id_mun;
+                        $id_region = (int)$mun->id_region;
+                    }
+
+                    if ($ambito === 'REGION') {
+                        $id = trim((string)$sheet->getCell("B{$r}")->getValue());
+                        $reg = null;
+                        if ($id !== '') $reg = Region::where('id_region', $id)->first();
+                        if (!$reg) $reg = Region::where('nombre_region', $dim)->first();
+                        if (!$reg) {
+                            $errores[] = "Fila {$r}: región no encontrada ({$dim}).";
+                            continue;
+                        }
+                        $id_region = (int)$reg->id_region;
+                    }
+
+                    // payload en formato compatible con tu esquema general
+                    $camposPayload = [];
+                    $colIndex = 5;
+
+                    foreach ($campos as $c) {
+                        $slug = (string)($c['slug'] ?? '');
+                        if ($slug === '') {
+                            $errores[] = "Fila {$r}: hay un campo sin slug en config_campos.";
+                            continue 2;
+                        }
+
+                        $type = $c['type'] ?? 'number';
+                        $required = (bool)($c['required'] ?? false);
+                        $min = $c['min'] ?? null;
+                        $max = $c['max'] ?? null;
+
+                        $raw = $sheet->getCellByColumnAndRow($colIndex, $r)->getValue();
+                        $val = is_string($raw) ? trim($raw) : $raw;
+
+                        if ($required && ($val === '' || $val === null)) {
+                            $errores[] = "Fila {$r}: el campo '{$slug}' es requerido.";
+                            continue 2;
+                        }
+
+                        if (($type === 'number' || $type === 'porcentaje') && $val !== '' && $val !== null) {
+                            if (!is_numeric($val)) {
+                                $errores[] = "Fila {$r}: '{$slug}' debe ser numérico.";
+                                continue 2;
+                            }
+                            $num = (float)$val;
+
+                            if ($min !== null && $min !== '' && $num < (float)$min) {
+                                $errores[] = "Fila {$r}: '{$slug}' menor al mínimo ({$min}).";
+                                continue 2;
+                            }
+                            if ($max !== null && $max !== '' && $num > (float)$max) {
+                                $errores[] = "Fila {$r}: '{$slug}' mayor al máximo ({$max}).";
+                                continue 2;
+                            }
+
+                            if ($type === 'number' && floor($num) != $num) {
+                                $errores[] = "Fila {$r}: '{$slug}' no acepta decimales.";
+                                continue 2;
+                            }
+
+                            $camposPayload[$slug] = $num;
+                        } else {
+                            $camposPayload[$slug] = $val;
+                        }
+
+                        $colIndex++;
+                    }
+
+                    DetalleCarga::create([
+                        'id_carga' => $carga->id_carga,
+                        'id_ind' => $indicador->id_ind,
+                        'ambito_geo' => $ambito,
+                        'id_region' => $id_region,
+                        'id_mun' => $id_mun,
+                        'fila_det' => $r,
+                        'periodo_det' => $carga->periodo,
+                        'ejercicio_det' => $carga->ejercicio,
+                        'fecha_registro_det' => now()->toDateString(),
+                        'fuente_det' => 'Carga por Archivo',
+                        'valor_det' => null,
+                        'payload_det' => [
+                            'origen' => 'plantilla',
+                            'campos' => $camposPayload,
+                            'archivo' => [
+                                'nombre' => $this->archivoNombre,
+                                'tipo' => $ext,
+                            ],
+                        ],
+                    ]);
+                    $insertados++;
+                }
+            });
+
+            if (!empty($errores)) {
+                session()->flash('error', "Se detectaron errores. Insertados: {$insertados}. Primeros: " . implode(' | ', array_slice($errores, 0, 6)));
+                $this->archivoProcesado = false;
+                $this->detallesInsertados = $insertados;
+                return;
+            }
+
+            $this->archivoProcesado = true;
+            $this->detallesInsertados = $insertados;
+            session()->flash('success', "Archivo procesado correctamente. Filas insertadas: {$insertados}");
+        } catch (\Throwable $e) {
+            session()->flash('error', "No se pudo procesar el archivo: " . $e->getMessage());
+            $this->archivoProcesado = false;
+        }
+    }
+
+    private function colLetra(int $colIndex): string
+    {
+        $col = '';
+        while ($colIndex > 0) {
+            $colIndex--;
+            $col = chr($colIndex % 26 + 65) . $col;
+            $colIndex = intdiv($colIndex, 26);
+        }
+        return $col;
+    }
+
+    private function resetArchivoState()
+    {
+        $this->archivo = null;
+        $this->archivoNombre = '';
+        $this->archivoProcesado = false;
+        $this->detallesInsertados = 0;
+        $this->plantillaDescargada = false;
+        // NO borramos id_carga_actual a propósito: si vuelves al método archivo no quieres perder el borrador
+    }
+
+    /* =========================
+       GUARDAR TODO (manual o archivo)
+    ========================== */
+    public function guardarTodo()
+    {
+        if ($this->soloLectura) {
+            session()->flash('error', 'Este formulario está finalizado. Solo lectura.');
+            return;
+        }
+
+        if ($this->guardando) return;
+        $this->guardando = true;
+
+        try {
+            $this->validate([
+                'metodo' => 'required|in:manual,archivo',
+                'fuente_dato' => 'nullable|string|max:255',
+                'descripcion_env' => 'nullable|string|max:255',
+            ]);
+
+            $fuenteDato = trim((string)$this->fuente_dato);
+            if ($fuenteDato === '') $fuenteDato = 'N/D';
+
+            $desc = trim((string)$this->descripcion_env);
+            if ($desc === '') {
+                $desc = $this->metodo === 'manual' ? 'Registro manual' : 'Importación de archivo';
+            }
+
+            if ($this->metodo === 'manual') {
+                if (empty($this->manualData)) {
+                    throw new \Exception('Agrega al menos 1 fila manual.');
+                }
+
+                $periodo = now()->format('Y-m');
+                $ejercicio = now()->year;
+
+                DB::transaction(function () use ($periodo, $ejercicio, $fuenteDato, $desc) {
+
+                    $carga = Carga::create([
+                        'fecha_carga' => now(),
+                        'periodo' => $periodo,
+                        'ejercicio' => $ejercicio,
+                        'fuente' => $fuenteDato,
+                        'status_env' => 'Enviado',
+                        'ambito_geo_carga' => $this->ambito_geo,
+                        'metodo_captura' => 'MANUAL',
+                        'descripcion_env' => $desc,
+                        'observacion_env' => '',
+                        'id_form' => $this->id_form,
+                    ]);
+
+                    foreach (array_values($this->manualData) as $idx => $item) {
+
+                        $ambito = $item['ambito_geo'] ?? 'SIN_AMBITO';
+
+                        DetalleCarga::create([
+                            'id_carga' => $carga->id_carga,
+                            'id_ind' => $this->id_ind,
+                            'ambito_geo' => $ambito,
+                            'id_region' => $item['id_region'] ?? null,
+                            'id_mun' => $item['id_mun'] ?? null,
+                            'periodo_det' => $periodo,
+                            'ejercicio_det' => $ejercicio,
+                            'fila_det' => $idx + 1,
+                            'fecha_registro_det' => now()->toDateString(),
+                            'fuente_det' => $fuenteDato,
+                            'valor_det' => null,
+                            'payload_det' => $item['payload_det'] ?? [],
+                        ]);
+                    }
+                });
+
+                // limpiar manual
+                $this->manualData = [];
+                $this->editManualIndex = null;
+                foreach ($this->schema as $c) $this->manualCampos[$c['slug']] = null;
+                $this->region = '';
+                $this->municipio = '';
+
+                session()->flash('success', 'Enviado correctamente (manual).');
+                return;
+            }
+
+            // ARCHIVO: solo “finaliza” la carga borrador
+            if (!$this->id_carga_actual) {
+                throw new \Exception('No existe carga borrador para archivo.');
+            }
+            if (!$this->plantillaDescargada) {
+                $this->refrescarEstadoPlantilla();
+                if (!$this->plantillaDescargada) throw new \Exception('Primero descarga la plantilla.');
+            }
+            if (!$this->archivoProcesado) {
+                throw new \Exception('Primero sube y procesa el archivo.');
+            }
+
+            // valida que sí hay detalles
+            $count = DetalleCarga::where('id_carga', $this->id_carga_actual)->where('id_ind', $this->id_ind)->count();
+            if ($count <= 0) {
+                throw new \Exception('No hay detalles insertados. Vuelve a procesar el archivo.');
+            }
+
+            Carga::where('id_carga', $this->id_carga_actual)->update([
+                'fuente' => $fuenteDato,
+                'descripcion_env' => $desc,
+                'status_env' => 'Enviado',
+                'ambito_geo_carga' => $this->ambito_geo,
+                'metodo_captura' => 'ARCHIVO',
+                'fecha_carga' => now(),
+            ]);
+
+            session()->flash('success', 'Enviado correctamente (archivo).');
+        } catch (\Throwable $e) {
+            session()->flash('error', 'Error: ' . $e->getMessage());
+        } finally {
+            $this->guardando = false;
+        }
     }
 
     public function render()
     {
-
         return view('livewire.usuarios.formulario-captura', [
             'regiones' => $this->regiones,
             'municipiosFiltrados' => $this->municipiosFiltrados,
@@ -545,8 +905,15 @@ class FormularioCaptura extends Component
             'ambito_geo' => $this->ambito_geo,
             'regionFiltro' => $this->regionFiltro,
             'archivoNombre' => $this->archivoNombre,
-            'archivoData' => $this->archivoData,
-            'archivoPreview' => $this->archivoPreview,
+            'soloLectura' => $this->soloLectura,
+            'formulario' => $this->formulario,
+            'indicador' => $this->indicador,
+            'schema' => $this->schema,
+            'manualCampos' => $this->manualCampos,
+            'plantillaDescargada' => $this->plantillaDescargada,
+            'archivoProcesado' => $this->archivoProcesado,
+            'detallesInsertados' => $this->detallesInsertados,
+            'hayPlantilla' => $this->hayPlantilla,
         ])->extends('layouts.app')->section('content');
     }
 }

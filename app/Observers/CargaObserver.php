@@ -13,17 +13,7 @@ class CargaObserver
      */
     public function created(Carga $carga): void
     {
-        foreach(Indicador::all() as $indicador) {
-            DetalleCarga::create([
-                'id_carga' => $carga->id_carga,
-                'id_ind' => $indicador->id_ind,
-                'periodo_det' => $carga->periodo,
-                'ejercicio_det' => $carga->ejercicio,
-                'fecha_registro_det' => now(),
-                'fuente_det' => $carga->fuente,
-                'valor_det' => 0  // valor inicial
-            ]);
-        }
+        return;
     }
 
     /**

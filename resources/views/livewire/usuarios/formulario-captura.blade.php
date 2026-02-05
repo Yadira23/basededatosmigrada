@@ -6,52 +6,31 @@
         <strong>Unidad:</strong> {{ $this->indicador->unidadmedida_ind ?? '—' }} <br>
         <strong>Fuente:</strong> {{ $this->indicador->fuenteverificacion_ind ?? '—' }}
     </div>
-    <h2>Paso 1 de 2: Selecciona el método de captura</h2>
+
+    @if($soloLectura)
+    <div class="alert alert-warning" style="margin-bottom:15px;">
+        <strong>Formulario finalizado:</strong> ya no puedes capturar ni enviar información. Solo puedes consultar lo que ya existe.
+    </div>
+    @endif
+
+    <h2>Selecciona el método de captura</h2>
 
     {{-- MÉTODOS DE CAPTURA --}}
     <div class="metodos">
         <div id="manual"
-            class="card {{ $metodo === 'manual' ? 'selected' : '' }}"
-            wire:click="seleccionar('manual')">
+            class="card {{ $metodo === 'manual' ? 'selected' : '' }} {{ $soloLectura ? 'disabled-card' : '' }}"
+            @if(!$soloLectura) wire:click="seleccionar('manual')" @endif>
             <h3>Captura Manual</h3>
-            <p>Ingresa los valores manualmente por región. Ideal para pocos datos o correcciones.</p>
+            <p>Ingresa los valores manualmente (dinámico según el indicador).</p>
         </div>
 
         <div id="archivo"
-            class="card {{ $metodo === 'archivo' ? 'selected' : '' }}"
-            wire:click="seleccionar('archivo')">
+            class="card {{ $metodo === 'archivo' ? 'selected' : '' }} {{ $soloLectura ? 'disabled-card' : '' }}"
+            @if(!$soloLectura) wire:click="seleccionar('archivo')" @endif>
             <h3>Subir Archivo</h3>
-            <p>Sube un archivo Excel o CSV con todos los datos. Perfecto para grandes volúmenes.</p>
-
-            {{-- ✅ INPUT SOLO CUANDO SE SELECCIONA ARCHIVO --}}
-            @if($metodo === 'archivo')
-            @if($hayPlantilla)
-            <a class="btn btn-outline-success mb-2"
-                href="{{ route('anexos.plantilla', ['id_form' => $id_form, 'id_ind' => $id_ind]) }}">
-                Descargar plantilla
-            </a>
-            @else
-            <div class="alert alert-warning mb-2">
-                No hay plantilla disponible para este indicador. Pídele al administrador que la suba.
-            </div>
-            @endif
-            <input type="file"
-                id="archivoInput"
-                class="file-input"
-                wire:model.live="archivo"
-                wire:click.stop
-                onclick="event.stopPropagation()"
-                accept=".txt,.csv,.xlsx,.xls" />
-
-            <div style="margin-top:6px;">
-                <span wire:loading wire:target="archivo">Cargando archivo...</span>
-
-                @error('archivo')
-                <div style="color:red; margin-top:6px;">{{ $message }}</div>
-                @enderror
-            </div>
-            @endif
+            <p>Descarga la plantilla del indicador, llena y vuelve a subirla.</p>
         </div>
+
     </div>
 
     {{-- INFORMACIÓN --}}
@@ -85,189 +64,285 @@
     </div>
     @endif
 
-    {{-- ✅ FORMULARIO MANUAL (UN SOLO DIV, NO @else) --}}
+    {{-- =========================
+         ✅ FORMULARIO MANUAL DINÁMICO
+       ========================= --}}
     <div id="manualForm" @class(['manual-form', 'd-none'=> $metodo !== 'manual'])>
-
         <h3>Captura Manual</h3>
 
-        {{-- ÁMBITO (GLOBAL / REGIÓN / MUNICIPIO) --}}
-        <div style="margin-bottom:10px;">
-            <label>Capturar por:</label>
-            <select wire:model.live="ambito_geo">
-                <option value="SIN_AMBITO">Global (sin región/municipio)</option>
-                <option value="REGION">Región</option>
-                <option value="MUNICIPIO">Municipio</option>
-            </select>
+        <fieldset @disabled($soloLectura) style="border:0; padding:0; margin:0;">
+            {{-- ÁMBITO --}}
+            <div style="margin-bottom:10px;">
+                <label>Capturar por:</label>
+                <select wire:model.live="ambito_geo">
+                    <option value="SIN_AMBITO">Global (sin región/municipio)</option>
+                    <option value="REGION">Región</option>
+                    <option value="MUNICIPIO">Municipio</option>
+                </select>
+            </div>
+
+            <form id="formManual" wire:submit.prevent="agregarManual">
+                {{-- REGIÓN --}}
+                @if($ambito_geo === 'REGION')
+                <div style="flex:1 1 100%; margin-bottom:10px;">
+                    <label>Región:</label>
+                    <select wire:model.live="region">
+                        <option value="">Selecciona una región</option>
+
+                        @foreach($regiones as $r)
+                        @php
+                        $regionUsada = collect($manualData)->contains(function($row) use ($r) {
+                        return ($row['ambito_geo'] ?? '') === 'REGION'
+                        && (int)($row['id_region'] ?? 0) === (int)$r->id_region;
+                        });
+                        @endphp
+
+                        <option value="{{ $r->id_region }}" @disabled($regionUsada)>
+                            {{ $r->nombre_region }} @if($regionUsada) (ya agregado) @endif
+                        </option>
+                        @endforeach
+                    </select>
+                </div>
+                @endif
+
+                {{-- MUNICIPIO --}}
+                @if($ambito_geo === 'MUNICIPIO')
+                <div style="flex:1 1 100%; margin-bottom:10px;">
+                    <label>Región (para filtrar municipios):</label>
+                    <select wire:model.live="regionFiltro">
+                        <option value="">Selecciona una región</option>
+                        @foreach($regiones as $r)
+                        <option value="{{ $r->id_region }}">{{ $r->nombre_region }}</option>
+                        @endforeach
+                    </select>
+
+                    <label style="margin-top:8px; display:block;">Municipio:</label>
+                    <select wire:model.live="municipio" @disabled(empty($regionFiltro))>
+                        <option value="">Selecciona un municipio</option>
+
+                        @foreach($municipiosFiltrados as $m)
+                        @php
+                        $munUsado = collect($manualData)->contains(function($row) use ($m) {
+                        return ($row['ambito_geo'] ?? '') === 'MUNICIPIO'
+                        && (int)($row['id_mun'] ?? 0) === (int)$m->id_mun;
+                        });
+                        @endphp
+
+                        <option value="{{ $m->id_mun }}" @disabled($munUsado)>
+                            {{ $m->nombre_municipio }} @if($munUsado) (ya agregado) @endif
+                        </option>
+                        @endforeach
+                    </select>
+                </div>
+                @endif
+
+                {{-- CAMPOS DINÁMICOS --}}
+                <div style="flex:1 1 100%; margin-bottom:10px;">
+                    <h4 style="margin:10px 0;">Campos del indicador</h4>
+
+                    @if(empty($schema))
+                    <div class="alert alert-warning">
+                        Este indicador aún no tiene campos dinámicos configurados (config_campos).
+                    </div>
+                    @else
+                    @foreach($schema as $campo)
+                    @php
+                    $slug = $campo['slug'] ?? '';
+                    $label = $campo['label'] ?? $slug;
+                    $required = !empty($campo['required']);
+                    $step = (($campo['type'] ?? '') === 'porcentaje') ? 0.01 : 1;
+                    @endphp
+
+                    <div style="margin-bottom:10px;">
+                        <label>
+                            {{ $label }}
+                            @if($required) <span style="color:red;">*</span> @endif
+                        </label>
+
+                        <input type="number"
+                            wire:model.live="manualCampos.{{ $slug }}"
+                            step="{{ $step }}"
+                            @if(isset($campo['min'])) min="{{ $campo['min'] }}" @endif
+                            @if(isset($campo['max'])) max="{{ $campo['max'] }}" @endif>
+                    </div>
+                    @endforeach
+                    @endif
+                </div>
+
+                <button type="submit">
+                    {{ isset($editManualIndex) && $editManualIndex !== null ? 'Guardar edición' : 'Agregar fila' }}
+                </button>
+            </form>
+
+            {{-- TABLA MANUAL --}}
+            <h4>Filas capturadas:</h4>
+
+            <table id="tablaManual">
+                <thead>
+                    <tr>
+                        <th>
+                            @if($ambito_geo === 'MUNICIPIO')
+                            Municipio
+                            @elseif($ambito_geo === 'REGION')
+                            Región
+                            @else
+                            Global
+                            @endif
+                        </th>
+
+                        @foreach($schema as $campo)
+                        <th>{{ $campo['label'] ?? ($campo['slug'] ?? '') }}</th>
+                        @endforeach
+
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @forelse($manualData as $i => $row)
+                    @php $camposRow = $row['payload_det']['campos'] ?? []; @endphp
+                    <tr>
+                        <td>{{ $row['nombre'] ?? '—' }}</td>
+
+                        @foreach($schema as $campo)
+                        @php $slug = $campo['slug'] ?? ''; @endphp
+                        <td>{{ $camposRow[$slug] ?? '' }}</td>
+                        @endforeach
+
+                        <td>
+                            <button type="button" wire:click="editarManual({{ $i }})">Editar</button>
+                            <button type="button" wire:click="eliminarManual({{ $i }})">Eliminar</button>
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="{{ 2 + count($schema) }}">Aún no hay registros.</td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+
+            <button type="button"
+                wire:click="guardarTodo"
+                class="btn btn-primary"
+                @disabled($soloLectura || $guardando)
+                wire:loading.attr="disabled"
+                wire:target="guardarTodo">
+                <span wire:loading.remove wire:target="guardarTodo">Enviar</span>
+                <span wire:loading wire:target="guardarTodo">Guardando...</span>
+            </button>
+        </fieldset>
+    </div>
+
+    {{-- =========================
+         ✅ ARCHIVO (plantilla + subir + procesar + enviar)
+       ========================= --}}
+    <div id="tablaArchivoContainer" @class(['archivo-form', 'd-none'=> $metodo !== 'archivo'])>
+        @if($metodo === 'archivo')
+
+        <div class="alert alert-info mb-2">
+            <strong>Ámbito:</strong> {{ $ambito_geo }}
         </div>
 
-        <form id="formManual" wire:submit.prevent="agregarManual">
+        {{-- Selector de ámbito (si decides que el usuario pueda elegirlo) --}}
+        <div class="mb-2">
+            <label class="form-label"><strong>Ámbito</strong></label><br>
+            <label><input type="radio" wire:model="ambito_geo" value="SIN_AMBITO" @disabled($soloLectura)> SIN_AMBITO</label>
+            <label class="ms-3"><input type="radio" wire:model="ambito_geo" value="REGION" @disabled($soloLectura)> REGION</label>
+            <label class="ms-3"><input type="radio" wire:model="ambito_geo" value="MUNICIPIO" @disabled($soloLectura)> MUNICIPIO</label>
+        </div>
 
-            {{-- REGIÓN --}}
-            @if($ambito_geo === 'REGION')
-            <div style="flex:1 1 100%; margin-bottom:10px;">
-                <label>Región:</label>
-                <select wire:model.live="region">
-                    <option value="">Selecciona una región</option>
+        @if(!empty($motivoResetPlantilla))
+        <div class="alert alert-warning mb-2">{{ $motivoResetPlantilla }}</div>
+        @endif
 
-                    @foreach($regiones as $r)
-                    @php
-                    $regionUsada = collect($manualData)->contains(function($row) use ($r) {
-                    return ($row['ambito_geo'] ?? '') === 'REGION'
-                    && (int)($row['id_region'] ?? 0) === (int)$r->id_region;
-                    });
-                    @endphp
+        {{-- ✅ Plantilla --}}
+        <div class="mb-2">
+            <button type="button" class="btn btn-outline-success"
+                wire:click="descargarPlantilla"
+                @disabled($soloLectura)>
+                Descargar plantilla
+            </button>
 
-                    <option value="{{ $r->id_region }}" @disabled($regionUsada)>
-                        {{ $r->nombre_region }} @if($regionUsada) (ya agregado) @endif
-                    </option>
-                    @endforeach
-                </select>
+            <div class="mt-2">
+                <strong>Plantilla descargada:</strong>
+                @if($plantillaDescargada) <span class="text-success">SÍ ✅</span>
+                @else <span class="text-danger">NO ❌</span>
+                @endif
+            </div>
+
+            @if(!$plantillaDescargada)
+            <div class="alert alert-warning mt-2 mb-0">
+                Debes descargar la plantilla antes de poder subir tu archivo.
             </div>
             @endif
+        </div>
 
-            {{-- MUNICIPIO --}}
-            @if($ambito_geo === 'MUNICIPIO')
-            <div style="flex:1 1 100%; margin-bottom:10px;">
-                <label>Región (para filtrar municipios):</label>
-                <select wire:model.live="regionFiltro">
-                    <option value="">Selecciona una región</option>
-                    @foreach($regiones as $r)
-                    <option value="{{ $r->id_region }}">{{ $r->nombre_region }}</option>
-                    @endforeach
-                </select>
+        {{-- ✅ Archivo --}}
+        <div class="mb-2">
+            <input type="file" class="form-control"
+                wire:model.live="archivo"
+                accept=".xlsx,.xls,.csv"
+                @disabled($soloLectura || !$plantillaDescargada)>
 
-                <label style="margin-top:8px; display:block;">Municipio:</label>
-                <select wire:model.live="municipio" @disabled(empty($regionFiltro))>
-                    <option value="">Selecciona un municipio</option>
+            @error('archivo')
+            <div class="text-danger mt-1">{{ $message }}</div>
+            @enderror
 
-                    @foreach($municipiosFiltrados as $m)
-                    @php
-                    $munUsado = collect($manualData)->contains(function($row) use ($m) {
-                    return ($row['ambito_geo'] ?? '') === 'MUNICIPIO'
-                    && (int)($row['id_mun'] ?? 0) === (int)$m->id_mun;
-                    });
-                    @endphp
-
-                    <option value="{{ $m->id_mun }}" @disabled($munUsado)>
-                        {{ $m->nombre_municipio }} @if($munUsado) (ya agregado) @endif
-                    </option>
-                    @endforeach
-                </select>
+            @if(!empty($archivoNombre))
+            <div class="alert alert-secondary mt-2 mb-0">
+                Archivo seleccionado: <strong>{{ $archivoNombre }}</strong>
             </div>
+            @else
+            <small class="text-muted d-block mt-1">Ningún archivo seleccionado</small>
             @endif
+        </div>
 
-            <div style="margin-bottom:10px;">
-                <label>Valor:</label>
-                <input type="number" id="valor" wire:model="valor" required>
+        {{-- ✅ Procesar --}}
+        <div class="mb-2">
+            <button type="button" class="btn btn-primary"
+                wire:click="procesarArchivo"
+                @disabled($soloLectura || !$plantillaDescargada || !$archivo)">
+                Procesar archivo
+            </button>
+
+            <div class="mt-2">
+                <strong>Archivo procesado:</strong>
+                @if($archivoProcesado) <span class="text-success">SÍ ✅</span>
+                @else <span class="text-danger">NO ❌</span>
+                @endif
+                <div><strong>Filas insertadas:</strong> {{ $detallesInsertados }}</div>
             </div>
+        </div>
 
-            <button type="submit">Agregar</button>
-        </form>
+        {{-- ✅ Enviar --}}
+        <div>
+            <button type="button" wire:click="guardarTodo"
+                class="btn btn-success"
+                @disabled($soloLectura || $guardando || !$archivoProcesado)
+                wire:loading.attr="disabled"
+                wire:target="guardarTodo">
+                <span wire:loading.remove wire:target="guardarTodo">Enviar</span>
+                <span wire:loading wire:target="guardarTodo">Enviando...</span>
+            </button>
 
-        <h4>Datos ingresados:</h4>
-        <table id="tablaManual">
-            <thead>
-                <tr>
-                    <th>
-                        @if($ambito_geo === 'MUNICIPIO')
-                        Municipio
-                        @elseif($ambito_geo === 'REGION')
-                        Región
-                        @else
-                        Global
-                        @endif
-                    </th>
-                    <th>Valor</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
+            @if(!$archivoProcesado)
+            <small class="text-muted d-block mt-1">
+                Primero debes subir y procesar el archivo para poder enviar.
+            </small>
+            @endif
+        </div>
 
-            <tbody>
-                @forelse($manualData as $i => $row)
-                <tr>
-                    <td>{{ $row['nombre'] }}</td>
-                    <td>{{ $row['valor'] }}</td>
-                    <td>
-                        <button type="button" wire:click="editarManual({{ $i }})">Editar</button>
-                        <button type="button" wire:click="eliminarManual({{ $i }})">Eliminar</button>
-                    </td>
-                </tr>
-                @empty
-                <tr>
-                    <td colspan="3">Aún no hay registros.</td>
-                </tr>
-                @endforelse
-            </tbody>
-        </table>
-
-        <button type="button"
-            wire:click="guardarTodo"
-            class="btn btn-primary"
-            wire:loading.attr="disabled"
-            wire:target="guardarTodo">
-
-            <span wire:loading.remove wire:target="guardarTodo">
-                Enviar
-            </span>
-
-            <span wire:loading wire:target="guardarTodo">
-                Guardando...
-            </span>
-        </button>
-
+        @endif
     </div>
-
-    {{-- ✅ TABLA DE ARCHIVO (PREVIEW) --}}
-    <div id="tablaArchivoContainer" @class(['archivo-form', 'd-none'=> $metodo !== 'archivo'])>
-        <h3>Datos del archivo (preview)</h3>
-
-        <table id="tablaArchivo">
-            <thead>
-                <tr>
-                    <th>Fila</th>
-                    <th>Texto (raw)</th>
-                    <th>Número detectado</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse($archivoPreview as $i => $row)
-                <tr>
-                    <td>{{ $i + 1 }}</td>
-                    <td>{{ $row['payload_det']['raw'] ?? '' }}</td>
-                    <td>
-                        @if(isset($row['valor_det']) && $row['valor_det'] !== null)
-                        {{ $row['valor_det'] }}
-                        @else
-                        —
-                        @endif
-                    </td>
-                </tr>
-                @empty
-                <tr>
-                    <td colspan="3">Aún no hay datos cargados.</td>
-                </tr>
-                @endforelse
-            </tbody>
-        </table>
-
-        <button type="button"
-            wire:click="guardarTodo"
-            class="btn btn-primary"
-            wire:loading.attr="disabled">
-            Enviar
-        </button>
-    </div>
-
-
 </div>
+
 @push('styles')
 <style>
     .d-none {
         display: none !important;
     }
 
-    /* TU CSS IGUAL */
-    /* ===== ESTILO GENERAL ===== */
     .formulario-root {
         font-family: Arial, sans-serif;
         margin: 20px auto;
@@ -280,7 +355,6 @@
         color: #333;
     }
 
-    /* ===== MÉTODOS ===== */
     .metodos {
         display: flex;
         gap: 20px;
@@ -308,7 +382,6 @@
         background-color: #d0f0d0;
     }
 
-    /* ===== INFORMACIÓN ===== */
     .info {
         text-align: center;
         margin-bottom: 20px;
@@ -316,7 +389,6 @@
         color: #555;
     }
 
-    /* ===== FORMULARIO MANUAL ===== */
     .manual-form {
         border: 1px solid #ccc;
         padding: 15px 20px;
@@ -362,7 +434,12 @@
         background-color: #2e5e2e;
     }
 
-    /* ===== TABLAS ===== */
+    .disabled-card {
+        opacity: 0.6;
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+
     table {
         border-collapse: collapse;
         width: 100%;
@@ -379,7 +456,6 @@
         background-color: #eee;
     }
 
-    /* ===== ARCHIVO ===== */
     .archivo-form {
         border: 1px solid #ccc;
         padding: 15px 20px;
@@ -400,11 +476,9 @@
             const anio = ahora.getFullYear();
             const horas = String(ahora.getHours()).padStart(2, '0');
             const minutos = String(ahora.getMinutes()).padStart(2, '0');
-
             const span = document.getElementById('fechaHora');
             if (span) span.innerText = `${dia}/${mes}/${anio} ${horas}:${minutos}`;
         }
-
         actualizarFechaHora();
         setInterval(actualizarFechaHora, 60000);
     });

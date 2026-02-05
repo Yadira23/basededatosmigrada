@@ -10,6 +10,7 @@ use App\Livewire\Usuario\FormularioCaptura;
 use App\Livewire\DetalleCargas;
 use App\Http\Controllers\AnexoDownloadController;
 use App\Livewire\Formularios;
+use App\Livewire\IndicadorCampos;
 
 /*
 |--------------------------------------------------------------------------
@@ -93,4 +94,6 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/anexos/descargar/{id_anexo}', [AnexoDownloadController::class, 'descargar'])
         ->name('anexos.descargar');
 
+    Route::get('/indicadores/{id_ind}/campos', IndicadorCampos::class)
+        ->name('indicadores.campos');
 });
