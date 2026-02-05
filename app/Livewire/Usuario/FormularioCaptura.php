@@ -19,6 +19,14 @@ use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Reader\Csv;
 use Illuminate\Support\Facades\Schema;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\PlantillaIndicadorExport;
+use App\Models\MapeoIndicador; // si es tu tabla de campos
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
+
+
 
 
 
@@ -447,7 +455,11 @@ class FormularioCaptura extends Component
         $indicador = Indicador::findOrFail($this->id_ind);
 
         $campos = $indicador->config_campos ?? [];
-        if (is_string($campos)) $campos = json_decode($campos, true) ?: [];
+        if (is_string($campos)) {
+            $campos = json_decode($campos, true) ?: [];
+        } elseif (!is_array($campos)) {
+            $campos = [];
+        }
         if (empty($campos)) {
             session()->flash('error', 'Este indicador no tiene config_campos definidos.');
             return;
@@ -512,6 +524,84 @@ class FormularioCaptura extends Component
             $sheet->setCellValue("A{$dataStart}", 'Estado');
         }
 
+        /* =========================
+       ✅ HOJA 2: AYUDA
+       ========================= */
+        $ayuda = $spreadsheet->createSheet();
+        $ayuda->setTitle('Ayuda');
+        // opcional: asegurar que el índice 1 sea Ayuda
+        $spreadsheet->setActiveSheetIndex(1);
+
+
+        // Encabezado de ayuda
+        $ayuda->setCellValue('A1', 'GUÍA DE CAPTURA');
+        $ayuda->setCellValue('A2', 'Indicador: ' . (string)$indicador->nombre_ind);
+        $ayuda->setCellValue('A3', 'Periodo: ' . (string)($carga->periodo ?? $indicador->periodo_ind ?? '—'));
+        $ayuda->setCellValue('A4', 'Ámbito: ' . (string)$ambito);
+        $ayuda->setCellValue('A5', 'Fuente: ' . (string)($indicador->fuenteverificacion_ind ?? '—'));
+        $ayuda->setCellValue('A6', 'Definición: ' . (string)($indicador->definicion_ind ?? '—'));
+        $ayuda->setCellValue('A7', 'Restricción: ' . (string)($indicador->restriccion_ind ?? '—'));
+
+        // Reglas
+        $row = 9;
+
+        $ayuda->setCellValue("A{$row}", 'REGLAS');
+        $row++;
+
+        $reglas = [
+            'No cambies los encabezados de la hoja "Plantilla".',
+            'Captura los datos debajo de los encabezados (no arriba).',
+            'Si un campo es porcentaje, captura solo el número (ej. 12.5) a menos que se indique lo contrario.',
+            'Usa punto decimal (.) y evita separadores de miles con coma.',
+            'No insertes filas vacías entre registros.',
+            'Si no sabes qué significa una abreviación, revisa el diccionario abajo.',
+        ];
+
+        foreach ($reglas as $txt) {
+            $ayuda->setCellValue("A{$row}", '• ' . $txt);
+            $row++;
+        }
+
+        $row++; // espacio
+
+        // Diccionario de campos
+        $ayuda->setCellValue("A{$row}", 'DICCIONARIO DE CAMPOS');
+        $row++;
+
+        // Cabeceras del diccionario
+        $ayuda->setCellValue("A{$row}", 'Campo (label)');
+        $ayuda->setCellValue("B{$row}", 'Clave (slug)');
+        $ayuda->setCellValue("C{$row}", 'Tipo');
+        $ayuda->setCellValue("D{$row}", 'Obligatorio');
+        $ayuda->setCellValue("E{$row}", 'Descripción / Nota');
+        $row++;
+
+        foreach ($campos as $c) {
+            $label = (string)($c['label'] ?? $c['slug'] ?? 'campo');
+            $slug  = (string)($c['slug'] ?? '');
+            $tipo  = (string)($c['type'] ?? '');
+            $req   = !empty($c['required']) ? 'SI' : 'NO';
+            $min   = $c['min'] ?? '';
+            $max   = $c['max'] ?? '';
+
+            $notaRango = '';
+            if ($min !== '' || $max !== '') {
+                $notaRango = 'Rango: ' . ($min === '' ? '—' : $min) . ' a ' . ($max === '' ? '—' : $max);
+            }
+
+            $ayuda->setCellValue("A{$row}", $label);
+            $ayuda->setCellValue("B{$row}", $slug);
+            $ayuda->setCellValue("C{$row}", $tipo);
+            $ayuda->setCellValue("D{$row}", $req);
+            $ayuda->setCellValue("E{$row}", $notaRango);
+            $row++;
+        }
+
+        // (Opcional pero útil) Ajuste básico de anchos
+        foreach (['A', 'B', 'C', 'D', 'E'] as $col) {
+            $ayuda->getColumnDimension($col)->setAutoSize(true);
+        }
+
         // marcar descargada
         $carga->plantilla_descargada_at = now();
         $carga->plantilla_ambito = $ambito;
@@ -523,6 +613,7 @@ class FormularioCaptura extends Component
 
         $filename = 'Plantilla_' . ($indicador->id_ind ?? 'ind') . '_' . $ambito . '_' . $carga->folioUnico_carga . '.xlsx';
 
+        $spreadsheet->setActiveSheetIndex(0);
         return response()->streamDownload(function () use ($spreadsheet) {
             $writer = new Xlsx($spreadsheet);
             $writer->save('php://output');
@@ -749,6 +840,39 @@ class FormularioCaptura extends Component
 
             $this->archivoProcesado = true;
             $this->detallesInsertados = $insertados;
+            // =============================
+            // ✅ EVIDENCIA: guardar archivo + registrar en anexos
+            // =============================
+            try {
+                $archivo = $this->archivo;
+
+                $original = $archivo->getClientOriginalName();
+                $extOriginal = strtolower($archivo->getClientOriginalExtension());
+                $peso = $archivo->getSize(); // bytes
+
+                // nombre seguro para storage (evita espacios, colisiones, etc.)
+                $nombreSeguro = 'EVIDENCIA_' . ($indicador->id_ind ?? 'ind') . '_'
+                    . ($carga->folioUnico_carga ?? 'folio') . '_'
+                    . now()->format('Ymd_His') . '_' . Str::random(6) . '.' . $extOriginal;
+
+                $ruta = $archivo->storeAs('anexos/evidencias', $nombreSeguro, 'public');
+
+                Anexo::create([
+                    'nombre_anexo'        => $original,
+                    'tipo_anexo'          => 'evidencia',
+                    'peso_anexo'          => $peso,
+                    'guia_anexo'          => "Evidencia del capturador. Ámbito: {$ambito}. Filas insertadas: {$insertados}.",
+                    'fin_proposito_anexo' => 'Evidencia de captura del indicador',
+                    'fecha_subida_anexo'  => now(),
+                    'ruta_archivo_anexo'  => $ruta,
+                    'id_form'             => $this->id_form,
+                    'id_ind'              => $this->id_ind,
+                ]);
+            } catch (\Throwable $e) {
+                // no tumba el proceso de datos, solo avisa
+                Log::warning('No se pudo guardar evidencia en anexos: ' . $e->getMessage());
+            }
+
             session()->flash('success', "Archivo procesado correctamente. Filas insertadas: {$insertados}");
         } catch (\Throwable $e) {
             session()->flash('error', "No se pudo procesar el archivo: " . $e->getMessage());
