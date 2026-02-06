@@ -65,17 +65,38 @@
                                         </span>
                                     </td>
                                     <td>
-                                        {{-- Botones de estado dinámicos --}}
-                                        @if($row->status_env == 'Enviado')
-                                        <button wire:click="changeStatus({{ $row->id_carga }}, 'Pendiente')" class="btn btn-sm btn-primary">Enviado</button>
-                                        @elseif($row->status_env == 'Pendiente')
-                                        <button wire:click="changeStatus({{ $row->id_carga }}, 'En Revisión')" class="btn btn-sm btn-warning">Pendiente</button>
-                                        @elseif($row->status_env == 'En Revisión')
-                                        <button class="btn btn-sm btn-info" disabled>En Revisión</button>
-                                        @elseif($row->status_env == 'Aprobado')
-                                        <button class="btn btn-sm btn-success" disabled>Aprobado</button>
-                                        @elseif($row->status_env == 'Rechazado')
-                                        <button class="btn btn-sm btn-danger" disabled>Rechazado</button>
+                                        @php
+                                        // Normaliza para que funcione aunque en BD venga "Enviado", "En Revisión", etc.
+                                        $st = mb_strtoupper(trim((string)($row->status_env ?? '')));
+                                        // Quita acento si llega "REVISIÓN"
+                                        $st = str_replace('REVISIÓN', 'REVISION', $st);
+                                        @endphp
+
+                                        @if($st === 'ENVIADO')
+                                        <button wire:click="changeStatus({{ $row->id_carga }}, 'EN REVISION')"
+                                            class="btn btn-sm btn-warning">Tomar revisión</button>
+
+                                        @elseif($st === 'EN REVISION')
+                                        <button wire:click="aprobar({{ $row->id_carga }})"
+                                            class="btn btn-sm btn-success">Aprobar</button>
+
+                                        <button wire:click="openObservation({{ $row->id_carga }})"
+                                            class="btn btn-sm btn-danger"
+                                            data-bs-toggle="modal" data-bs-target="#ObservationModal">
+                                            Observar
+                                        </button>
+
+                                        @elseif($st === 'OBSERVADO')
+                                        <button class="btn btn-sm btn-danger" disabled>OBSERVADO</button>
+
+                                        @elseif($st === 'APROBADO')
+                                        <button class="btn btn-sm btn-success" disabled>APROBADO</button>
+
+                                        @elseif($st === 'BORRADOR')
+                                        <span class="badge bg-secondary">BORRADOR</span>
+
+                                        @else
+                                        <span class="text-muted">{{ $row->status_env ?? '—' }}</span>
                                         @endif
                                     </td>
                                     <td>{{ $row->descripcion_env }}</td>

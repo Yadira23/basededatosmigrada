@@ -24,7 +24,7 @@ class Cargas extends Component
     public function mount()
     {
         $this->fecha_carga = now()->format('Y-m-d'); // fecha de hoy
-        $this->status_env = 'Enviado'; // estado inicial
+        $this->status_env = 'ENVIADO'; // estado inicial
         $this->generateFolio(); // folio único automático
 
         // Inicializar los campos de detalle si quieres un valor por defecto
@@ -152,13 +152,17 @@ class Cargas extends Component
     public function changeStatus($id, $nuevoStatus)
     {
         $carga = Carga::findOrFail($id);
+
+        // ✅ solo permitir tomar revisión desde ENVIADO
+        if ($nuevoStatus === 'EN REVISION' && $carga->status_env !== 'ENVIADO') {
+            session()->flash('message', "Solo puedes pasar a EN REVISION si está en ENVIADO.");
+            return;
+        }
+
         $carga->status_env = $nuevoStatus;
         $carga->save();
 
-        session()->flash(
-            'message',
-            "El estado de la carga {$carga->folioUnico_carga} se cambió a {$nuevoStatus} para el formulario {$carga->formulario->titulo_form}"
-        );
+        session()->flash('message', "Estado cambiado a {$nuevoStatus}.");
     }
 
     public function saveObservation()
@@ -170,18 +174,19 @@ class Cargas extends Component
         $carga = Carga::findOrFail($this->selected_id);
 
         $carga->update([
-            'observacion_env' => $this->observacion_env
+            'observacion_env' => $this->observacion_env,
+            'status_env' => 'OBSERVADO', // ✅ clave: corrección
         ]);
 
         session()->flash(
             'message',
-            "Observación guardada para la carga {$carga->folioUnico_carga}"
+            "Carga {$carga->folioUnico_carga} marcada como OBSERVADO."
         );
 
         $this->dispatch('closeObservationModal');
-
         $this->reset(['observacion_env', 'selected_id']);
     }
+
 
     public function openObservation($id)
     {
@@ -208,5 +213,17 @@ class Cargas extends Component
     public function updatedIdForm($value)
     {
         $this->loadIndicadores($value);
+    }
+
+    public function aprobar($id)
+    {
+        $carga = Carga::findOrFail($id);
+
+        $carga->update([
+            'status_env' => 'APROBADO',
+            'observacion_env' => '', // opcional: limpia
+        ]);
+
+        session()->flash('message', "Carga {$carga->folioUnico_carga} aprobada.");
     }
 }

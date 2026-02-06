@@ -46,7 +46,7 @@ class AdminDashboard extends Component
 
         // Cargas
         $this->cargasPendientes = DB::table('cargas')
-            ->where('status_env', 'en revisión')
+            ->where('status_env', 'EN REVISION')
             ->count();
 
         $this->cargasPorEstado = DB::table('cargas')

@@ -857,6 +857,14 @@ class FormularioCaptura extends Component
 
                 $ruta = $archivo->storeAs('anexos/evidencias', $nombreSeguro, 'public');
 
+                // =============================
+                // 🧹 Evitar duplicados de evidencia
+                // =============================
+                Anexo::where('id_form', $this->id_form)
+                    ->where('id_ind', $this->id_ind)
+                    ->where('tipo_anexo', 'evidencia')
+                    ->delete();
+
                 Anexo::create([
                     'nombre_anexo'        => $original,
                     'tipo_anexo'          => 'evidencia',
@@ -944,7 +952,7 @@ class FormularioCaptura extends Component
                         'periodo' => $periodo,
                         'ejercicio' => $ejercicio,
                         'fuente' => $fuenteDato,
-                        'status_env' => 'Enviado',
+                        'status_env' => 'ENVIADO',
                         'ambito_geo_carga' => $this->ambito_geo,
                         'metodo_captura' => 'MANUAL',
                         'descripcion_env' => $desc,
@@ -1005,7 +1013,7 @@ class FormularioCaptura extends Component
             Carga::where('id_carga', $this->id_carga_actual)->update([
                 'fuente' => $fuenteDato,
                 'descripcion_env' => $desc,
-                'status_env' => 'Enviado',
+                'status_env' => 'ENVIADO',
                 'ambito_geo_carga' => $this->ambito_geo,
                 'metodo_captura' => 'ARCHIVO',
                 'fecha_carga' => now(),
