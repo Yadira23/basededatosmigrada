@@ -167,6 +167,7 @@
                                     <th>Estatus</th>
                                     <th>Observación</th>
                                     <th>Fecha</th>
+                                    <th>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -192,6 +193,25 @@
                                     </td>
                                     <td class="text-muted">
                                         {{ optional($c->created_at)->format('Y-m-d H:i') }}
+                                    </td>
+                                    <td>
+                                        @php
+                                        $st = mb_strtoupper(trim((string)($c->status_env ?? '')));
+                                        $st = str_replace('REVISIÓN', 'REVISION', $st);
+                                        @endphp
+
+                                        @if($st === 'OBSERVADO')
+                                        <a href="{{ route('usuario.formulario.captura', [$c->id_form, $c->id_ind]) }}?carga={{ $c->id_carga }}"
+                                            class="btn btn-sm btn-warning">
+                                            Corregir
+                                        </a>
+                                        @elseif($st === 'EN REVISION')
+                                        <button class="btn btn-sm btn-secondary" disabled>En revisión</button>
+                                        @elseif($st === 'APROBADO')
+                                        <button class="btn btn-sm btn-success" disabled>Aprobado</button>
+                                        @else
+                                        <span class="text-muted">—</span>
+                                        @endif
                                     </td>
                                 </tr>
                                 @endforeach

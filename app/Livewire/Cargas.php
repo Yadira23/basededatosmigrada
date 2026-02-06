@@ -153,16 +153,23 @@ class Cargas extends Component
     {
         $carga = Carga::findOrFail($id);
 
-        // ✅ solo permitir tomar revisión desde ENVIADO
-        if ($nuevoStatus === 'EN REVISION' && $carga->status_env !== 'ENVIADO') {
-            session()->flash('message', "Solo puedes pasar a EN REVISION si está en ENVIADO.");
+        // Normaliza (mayúsculas + sin espacios raros)
+        $estadoActual = mb_strtoupper(trim((string)($carga->status_env ?? '')));
+        $estadoActual = str_replace('REVISIÓN', 'REVISION', $estadoActual);
+
+        $nuevo = mb_strtoupper(trim((string)$nuevoStatus));
+        $nuevo = str_replace('REVISIÓN', 'REVISION', $nuevo);
+
+        // ✅ Permitir "Tomar revisión" desde ENVIADO o REENVIADO
+        if ($nuevo === 'EN REVISION' && !in_array($estadoActual, ['ENVIADO', 'REENVIADO'])) {
+            session()->flash('message', "Solo puedes pasar a EN REVISION si está en ENVIADO o REENVIADO.");
             return;
         }
 
-        $carga->status_env = $nuevoStatus;
+        $carga->status_env = $nuevo; // guarda normalizado
         $carga->save();
 
-        session()->flash('message', "Estado cambiado a {$nuevoStatus}.");
+        session()->flash('message', "Estado cambiado a {$nuevo}.");
     }
 
     public function saveObservation()
@@ -215,15 +222,41 @@ class Cargas extends Component
         $this->loadIndicadores($value);
     }
 
-    public function aprobar($id)
+    public function aprobar($id_carga)
     {
-        $carga = Carga::findOrFail($id);
+        $carga = \App\Models\Carga::findOrFail($id_carga);
 
-        $carga->update([
-            'status_env' => 'APROBADO',
-            'observacion_env' => '', // opcional: limpia
-        ]);
+        $estado = strtoupper(trim((string)$carga->status_env));
 
-        session()->flash('message', "Carga {$carga->folioUnico_carga} aprobada.");
+        // ✅ permite aprobar si está EN REVISION o REENVIADO
+        if (!in_array($estado, ['EN REVISION', 'REENVIADO'])) {
+            session()->flash('error', 'Solo puedes aprobar cargas en revisión.');
+            return;
+        }
+
+        $carga->status_env = 'APROBADO';
+        $carga->observacion_env = null; // limpia observación
+        $carga->save();
+
+        session()->flash('success', 'Carga aprobada correctamente.');
+    }
+
+    public function observar($id_carga)
+    {
+        $carga = \App\Models\Carga::findOrFail($id_carga);
+
+        $estado = strtoupper(trim((string)$carga->status_env));
+
+        // ✅ permite observar si está EN REVISION o REENVIADO
+        if (!in_array($estado, ['EN REVISION', 'REENVIADO'])) {
+            session()->flash('error', 'Solo puedes observar cargas en revisión.');
+            return;
+        }
+
+        $carga->status_env = 'OBSERVADO';
+
+        $carga->save();
+
+        session()->flash('success', 'Carga marcada como observada.');
     }
 }

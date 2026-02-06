@@ -72,11 +72,11 @@
                                         $st = str_replace('REVISIÓN', 'REVISION', $st);
                                         @endphp
 
-                                        @if($st === 'ENVIADO')
+                                        @if($st === 'ENVIADO' || $st === 'REENVIADO')
                                         <button wire:click="changeStatus({{ $row->id_carga }}, 'EN REVISION')"
                                             class="btn btn-sm btn-warning">Tomar revisión</button>
 
-                                        @elseif($st === 'EN REVISION')
+                                        @elseif($st === 'EN REVISION' || $st === 'REENVIADO')
                                         <button wire:click="aprobar({{ $row->id_carga }})"
                                             class="btn btn-sm btn-success">Aprobar</button>
 
@@ -117,7 +117,7 @@
 
                                         {{-- Botón dinámico --}}
                                         <button class="btn btn-sm mt-1
-        {{ $row->observacion_env ? 'btn-outline-warning' : 'btn-secondary' }}"
+                                            {{ $row->observacion_env ? 'btn-outline-warning' : 'btn-secondary' }}"
                                             data-bs-toggle="modal"
                                             data-bs-target="#ObservationModal"
                                             wire:click="openObservation({{ $row->id_carga }})">

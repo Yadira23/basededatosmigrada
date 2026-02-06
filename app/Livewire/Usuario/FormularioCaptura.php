@@ -60,6 +60,7 @@ class FormularioCaptura extends Component
     public array $manualCampos = [];
     public array $manualData = [];
     public ?int $editManualIndex = null;
+    public $archivoData = [];
 
     // metadata
     public $fuente_dato = '';
@@ -69,6 +70,9 @@ class FormularioCaptura extends Component
     public $archivo;
     public string $archivoNombre = '';
     public ?int $id_carga_actual = null;
+    public bool $modoCorreccion = false;
+    public bool $metodoBloqueado = false;
+    public $mensajeObservacion = null;
 
     public bool $plantillaDescargada = false;
     public bool $archivoProcesado = false;
@@ -150,6 +154,73 @@ class FormularioCaptura extends Component
 
         // Si el indicador tiene config_campos, el sistema puede generar plantilla
         $this->hayPlantilla = !empty($this->schema);
+
+        $this->id_carga_actual = request()->query('carga');
+
+        if ($this->id_carga_actual) {
+            $carga = \App\Models\Carga::find($this->id_carga_actual);
+
+            if ($carga) {
+                $this->modoCorreccion = true;
+                $this->metodoBloqueado = true;
+                $this->mensajeObservacion = $carga->observacion_env;
+
+                // ✅ método original (MANUAL | ARCHIVO) → manual|archivo
+                $this->metodo = (strtoupper((string)$carga->metodo_captura) === 'ARCHIVO') ? 'archivo' : 'manual';
+
+                // ✅ si quieres que también respete el ámbito original:
+                if (!empty($carga->ambito_geo_carga)) {
+                    $this->ambito_geo = $carga->ambito_geo_carga;
+                }
+
+                $this->cargarDatosDeCarga($carga);
+            }
+        }
+    }
+
+    public function cargarDatosDeCarga(\App\Models\Carga $carga): void
+    {
+        $detalles = \App\Models\DetalleCarga::where('id_carga', $carga->id_carga)
+            ->where('id_ind', $this->id_ind)
+            ->orderBy('id_detalle')
+            ->get();
+
+        if ($this->metodo === 'manual') {
+            $this->manualData = [];
+
+            foreach ($detalles as $d) {
+                $payload = $d->payload_det;
+
+                // si viene como string JSON (por si acaso), decodifica
+                if (is_string($payload)) {
+                    $payload = json_decode($payload, true) ?: [];
+                }
+                if (!is_array($payload)) $payload = [];
+
+                // Nombre visible (para tu tabla manual: $row['nombre'])
+                $nombre = 'Global';
+                if ($d->ambito_geo === 'REGION') {
+                    $nombre = optional(\App\Models\Region::find($d->id_region))->nombre_region ?? '—';
+                } elseif ($d->ambito_geo === 'MUNICIPIO') {
+                    $nombre = optional(\App\Models\Municipio::find($d->id_mun))->nombre_municipio ?? '—';
+                }
+
+                $this->manualData[] = [
+                    'ambito_geo' => $d->ambito_geo,
+                    'id_region'  => $d->id_region,
+                    'id_mun'     => $d->id_mun,
+                    'nombre'     => $nombre,
+
+                    // ✅ lo que tu Blade usa:
+                    'payload_det' => [
+                        'campos' => $payload['campos'] ?? [],
+                    ],
+                ];
+            }
+        } else {
+            // opcional preview para archivo
+            $this->archivoData = $detalles->take(10)->toArray();
+        }
     }
 
     /* =========================
@@ -179,6 +250,11 @@ class FormularioCaptura extends Component
 
     public function seleccionar($metodo)
     {
+        if ($this->metodoBloqueado) {
+            session()->flash('error', 'Esta carga está en corrección. No puedes cambiar el método de captura.');
+            return;
+        }
+
         $this->metodo = $metodo;
         if ($metodo === 'archivo') {
             $this->prepararCargaBorradorArchivo();
@@ -413,6 +489,82 @@ class FormularioCaptura extends Component
         $this->manualData = array_values($this->manualData);
     }
 
+    public function reenviarCorreccion()
+    {
+        if ($this->soloLectura) {
+            session()->flash('error', 'Solo lectura.');
+            return;
+        }
+
+        $carga = \App\Models\Carga::findOrFail($this->id_carga_actual);
+
+        DB::transaction(function () use ($carga) {
+
+            $metodo = strtoupper((string)$carga->metodo_captura);
+
+            if ($metodo === 'MANUAL') {
+                // ✅ MANUAL: reemplaza reinsertando desde lo capturado en pantalla
+                \App\Models\DetalleCarga::where('id_carga', $carga->id_carga)
+                    ->where('id_ind', $this->id_ind)
+                    ->delete();
+
+                $this->guardarManualEnDetalle($carga->id_carga);
+            } else {
+                // ✅ ARCHIVO: NO borres aquí. Solo valida que ya se procesó archivo.
+                $hay = \App\Models\DetalleCarga::where('id_carga', $carga->id_carga)
+                    ->where('id_ind', $this->id_ind)
+                    ->exists();
+
+                if (!$hay) {
+                    throw new \Exception('Sube y procesa el archivo antes de reenviar la corrección.');
+                }
+            }
+
+            $carga->status_env = 'REENVIADO';
+            $carga->save();
+        });
+
+        session()->flash('success', 'Corrección reenviada correctamente.');
+    }
+    private function guardarManualEnDetalle($idCarga): void
+    {
+        // Para numeración de filas
+        $fila = 1;
+
+        foreach ((array)$this->manualData as $row) {
+            $ambito = $row['ambito_geo'] ?? $this->ambito_geo ?? 'SIN_AMBITO';
+            $idRegion = $row['id_region'] ?? null;
+            $idMun = $row['id_mun'] ?? null;
+
+            $campos = $row['payload_det']['campos'] ?? [];
+
+            \App\Models\DetalleCarga::create([
+                'id_carga' => $idCarga,
+                'id_ind'   => $this->id_ind,
+
+                'ambito_geo' => $ambito,
+                'id_region'  => $ambito === 'REGION' || $ambito === 'MUNICIPIO' ? $idRegion : null,
+                'id_mun'     => $ambito === 'MUNICIPIO' ? $idMun : null,
+
+                'fila_det' => $fila++,
+
+                'periodo_det' => $this->periodo_det ?? (string)($this->formularioPeriodo ?? '') ?: now()->format('Y-m'),
+                'ejercicio_det' => (int)($this->ejercicio_det ?? now()->format('Y')),
+                'fecha_registro_det' => now()->toDateString(),
+                'fuente_det' => 'Registro manual',
+
+                // En manual tu valor_det no aplica (porque es dinámico)
+                'valor_det' => null,
+
+                // ✅ JSON compatible con tu vista
+                'payload_det' => [
+                    'origen' => 'manual',
+                    'campos' => $campos,
+                ],
+            ]);
+        }
+    }
+
     /* =========================
        ARCHIVO (tu lógica + ajustes)
     ========================== */
@@ -634,6 +786,16 @@ class FormularioCaptura extends Component
         $this->prepararCargaBorradorArchivo();
         $carga = Carga::findOrFail($this->id_carga_actual);
 
+        if ($this->modoCorreccion && strtoupper((string)$carga->metodo_captura) !== 'ARCHIVO') {
+            session()->flash('error', 'Esta carga se creó como MANUAL. No puedes corregirla subiendo archivo.');
+            return;
+        }
+
+        // ✅ Siempre reemplaza detalles del indicador al procesar archivo (modo normal o corrección)
+        \App\Models\DetalleCarga::where('id_carga', $carga->id_carga)
+            ->where('id_ind', $this->id_ind)
+            ->delete();
+
         // ✅ FIX: sincroniza el flag local con BD
         $this->plantillaDescargada = !is_null($carga->plantilla_descargada_at);
         if (is_null($carga->plantilla_descargada_at)) {
@@ -707,9 +869,6 @@ class FormularioCaptura extends Component
             $errores = [];
 
             DB::transaction(function () use ($sheet, $maxRow, $dataStart, $headerRow, $ambito, $campos, $carga, $indicador, $ext, &$insertados, &$errores) {
-                DetalleCarga::where('id_carga', $carga->id_carga)
-                    ->where('id_ind', $indicador->id_ind)
-                    ->delete();
 
                 for ($r = $dataStart; $r <= $maxRow; $r++) {
                     $dim = trim((string)$sheet->getCell("A{$r}")->getValue());

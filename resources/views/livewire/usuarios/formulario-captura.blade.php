@@ -7,6 +7,14 @@
         <strong>Fuente:</strong> {{ $this->indicador->fuenteverificacion_ind ?? '—' }}
     </div>
 
+    {{-- 🚨 MODO CORRECCIÓN --}}
+    @if($modoCorreccion)
+    <div class="alert alert-warning" style="margin-bottom:15px;">
+        <strong>Modo corrección:</strong><br>
+        <strong>Observación:</strong> {{ $mensajeObservacion ?? '—' }}
+    </div>
+    @endif
+
     @if($soloLectura)
     <div class="alert alert-warning" style="margin-bottom:15px;">
         <strong>Formulario finalizado:</strong> ya no puedes capturar ni enviar información. Solo puedes consultar lo que ya existe.
@@ -225,7 +233,7 @@
             <button type="button"
                 wire:click="guardarTodo"
                 class="btn btn-primary"
-                @disabled($soloLectura || $guardando)
+                @disabled($soloLectura || $guardando || $modoCorreccion)
                 wire:loading.attr="disabled"
                 wire:target="guardarTodo">
                 <span wire:loading.remove wire:target="guardarTodo">Enviar</span>
@@ -319,7 +327,7 @@
         <div>
             <button type="button" wire:click="guardarTodo"
                 class="btn btn-success"
-                @disabled($soloLectura || $guardando || !$archivoProcesado)
+                @disabled($soloLectura || $guardando || !$archivoProcesado || $modoCorreccion)
                 wire:loading.attr="disabled"
                 wire:target="guardarTodo">
                 <span wire:loading.remove wire:target="guardarTodo">Enviar</span>
@@ -335,6 +343,24 @@
 
         @endif
     </div>
+    {{-- =========================
+     🔁 REENVIAR CORRECCIÓN
+   ========================= --}}
+    @if($modoCorreccion)
+    <div class="mt-4">
+        <button type="button"
+            class="btn btn-primary"
+            wire:click="reenviarCorreccion"
+            wire:loading.attr="disabled">
+            🔁 Reenviar corrección
+        </button>
+
+        <small class="text-muted d-block mt-1">
+            Al reenviar se reemplazan los datos anteriores de esta carga.
+        </small>
+    </div>
+    @endif
+
 </div>
 
 @push('styles')

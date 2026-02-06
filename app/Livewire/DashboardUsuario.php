@@ -6,6 +6,7 @@ use Livewire\Component;
 use App\Models\Formulario;
 use App\Models\Carga;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class DashboardUsuario extends Component
 {
@@ -39,9 +40,12 @@ class DashboardUsuario extends Component
 
         $this->cargasRealizadas = (clone $base)->count();
 
-        // Últimas cargas
+        // Últimas cargas (con id_ind)
         $this->ultimasCargas = (clone $base)
-            ->latest('created_at')
+            ->leftJoin('detallecargas as dc', 'dc.id_carga', '=', 'cargas.id_carga')
+            ->select('cargas.*', DB::raw('MIN(dc.id_ind) as id_ind'))
+            ->groupBy('cargas.id_carga')
+            ->latest('cargas.created_at')
             ->take(5)
             ->get();
 
