@@ -1,10 +1,7 @@
-@extends('layouts.app')
+@extends('layouts.usuario')
 
-@section('titulo', 'Dashboard Usuario')
+@section('titulo', 'Panel de Usuario')
 
 @section('content')
     <livewire:dashboard-usuario />
 @endsection
-
-
-

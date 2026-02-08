@@ -68,19 +68,25 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 
 
 /* ---------------- RUTAS COMPARTIDAS (ADMIN + USUARIO) ---------------- */
-Route::middleware(['auth', 'role:admin|usuario'])->group(function () {
-
+Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::view('/formularios', 'livewire.formularios.index')->name('formularios.index');
     Route::view('/anexos', 'livewire.anexos.index');
     Route::view('/indicadores', 'livewire.indicadores.index');
 });
 
+Route::middleware(['auth', 'role:usuario'])->get('/formularios', function () {
+    return redirect()->route('usuario.indicadores');
+});
 
 Route::middleware(['auth'])->group(function () {
 
-    Route::get('/usuario/formularios', function () {
+    Route::get('/usuario/indicadores', function () {
         return view('usuario.formularios.index');
-    })->name('usuario.formularios');
+    })->name('usuario.indicadores');
+
+    Route::get('/usuario/formularios', function () {
+        return redirect()->route('usuario.indicadores');
+    });
 
     Route::get('/usuario/formulario/{id_form}/{id_ind}', FormularioCaptura::class)
         ->name('usuario.formulario.captura');
@@ -96,4 +102,6 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/indicadores/{id_ind}/campos', IndicadorCampos::class)
         ->name('indicadores.campos');
+
+    Route::get('/formularios', Formularios::class)->name('formularios.index');
 });

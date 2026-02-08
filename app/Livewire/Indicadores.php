@@ -11,27 +11,53 @@ use App\Models\Formulario;
 class Indicadores extends Component
 {
     use WithPagination;
+
     protected $paginationTheme = 'bootstrap';
+
     protected $casts = [
         'config_campos' => 'array',
     ];
+
     public $selected_id;
     public $keyWord;
+
     public $tiene_formula = false;
 
+    public $nombre_ind,
+           $definicion_ind,
+           $formula_ind,
+           $tendencia_ind,
+           $restriccion_ind,
+           $formato_ind,
+           $unidadmedida_ind,
+           $meta_ind,
+           $requerido_ind,
+           $status_ind,
+           $periodo_ind,
+           $etiquetas_ind,
+           $fuenteverificacion_ind;
 
-    public $nombre_ind, $definicion_ind, $formula_ind, $tendencia_ind, $restriccion_ind, $formato_ind, $unidadmedida_ind, $meta_ind, $requerido_ind, $status_ind, $periodo_ind, $etiquetas_ind, $fuenteverificacion_ind;
-
-    /* =============================== 
-    LISTADO + BÚSQUEDA 
+    /* ===============================
+       LISTADO + BÚSQUEDA
     ================================*/
-    #[Computed] public function indicadores()
+    #[Computed]
+    public function indicadores()
     {
         $keyWord = '%' . $this->keyWord . '%';
+
         return Indicador::where(function ($query) use ($keyWord) {
-            $query->orWhere('nombre_ind', 'LIKE', $keyWord)->orWhere('definicion_ind', 'LIKE', $keyWord)->orWhere('formula_ind', 'LIKE', $keyWord)->orWhere('tendencia_ind', 'LIKE', $keyWord)->orWhere('periodo_ind', 'LIKE', $keyWord)->orWhere('etiquetas_ind', 'LIKE', $keyWord);
-        })->latest()->paginate(10);
+            $query
+                ->orWhere('nombre_ind', 'LIKE', $keyWord)
+                ->orWhere('definicion_ind', 'LIKE', $keyWord)
+                ->orWhere('formula_ind', 'LIKE', $keyWord)
+                ->orWhere('tendencia_ind', 'LIKE', $keyWord)
+                ->orWhere('periodo_ind', 'LIKE', $keyWord)
+                ->orWhere('etiquetas_ind', 'LIKE', $keyWord);
+        })
+        ->latest()
+        ->paginate(10);
     }
+
     public function render()
     {
         return view('livewire.indicadores.view', [
@@ -39,26 +65,24 @@ class Indicadores extends Component
         ]);
     }
 
-
-    /* =============================== 
-    GUARDAR / ACTUALIZAR
-     ================================*/
+    /* ===============================
+       GUARDAR / ACTUALIZAR
+    ================================*/
     public function save()
     {
         $this->requerido_ind = $this->requerido_ind ? 1 : 0;
 
         // VALIDACIÓN BASE
         $rules = [
-            'nombre_ind' => 'required|string|min:5',
-            'definicion_ind' => 'required|string|min:15',
-            'formato_ind' => 'required|in:porcentaje,cantidad,promedio',
-            'tendencia_ind' => 'required|in:ascendente,descendente,estable',
-            'requerido_ind' => 'nullable|boolean',
-            'status_ind' => 'required|in:0,1',
-            'periodo_ind' => 'required',
-            'fuenteverificacion_ind' => 'required|string',
-            'unidadmedida_ind' => 'nullable|string|max:50',
-
+            'nombre_ind'              => 'required|string|min:5',
+            'definicion_ind'          => 'required|string|min:15',
+            'formato_ind'             => 'required|in:porcentaje,cantidad,promedio',
+            'tendencia_ind'           => 'required|in:ascendente,descendente,estable',
+            'requerido_ind'           => 'nullable|boolean',
+            'status_ind'              => 'required|in:0,1',
+            'periodo_ind'             => 'required',
+            'fuenteverificacion_ind'  => 'required|string',
+            'unidadmedida_ind'        => 'nullable|string|max:50',
         ];
 
         if ($this->tiene_formula) {
@@ -72,7 +96,7 @@ class Indicadores extends Component
             $rules['meta_ind'] = match ($this->formato_ind) {
                 'porcentaje' => 'required|numeric|min:0|max:100',
                 'cantidad'   => 'required|numeric|min:0',
-                'promedio'   => 'required|numeric|min:0', // aquí entra Gini
+                'promedio'   => 'required|numeric|min:0',
                 default      => 'nullable',
             };
         } else {
@@ -92,8 +116,8 @@ class Indicadores extends Component
         if ($this->unidadmedida_ind === '') {
             $this->unidadmedida_ind = match ($this->formato_ind) {
                 'porcentaje' => '%',
-                'cantidad'   => 'unidades', // genérico
-                'promedio'   => 'indice',   // para Gini/índices
+                'cantidad'   => 'unidades',
+                'promedio'   => 'indice',
                 default      => 'unidades',
             };
         }
@@ -102,18 +126,18 @@ class Indicadores extends Component
         Indicador::updateOrCreate(
             ['id_ind' => $this->selected_id],
             [
-                'nombre_ind' => $this->nombre_ind,
-                'definicion_ind' => $this->definicion_ind,
-                'formula_ind' => $this->formula_ind,
-                'tendencia_ind' => $this->tendencia_ind,
-                'restriccion_ind' => $this->restriccion_ind,
-                'formato_ind' => $this->formato_ind,
-                'unidadmedida_ind' => $this->unidadmedida_ind,
-                'meta_ind' => $this->meta_ind,
-                'requerido_ind' => $this->requerido_ind,
-                'status_ind' => $this->status_ind,
-                'periodo_ind' => $this->periodo_ind,
-                'etiquetas_ind' => $this->etiquetas_ind,
+                'nombre_ind'             => $this->nombre_ind,
+                'definicion_ind'         => $this->definicion_ind,
+                'formula_ind'            => $this->formula_ind,
+                'tendencia_ind'          => $this->tendencia_ind,
+                'restriccion_ind'        => $this->restriccion_ind,
+                'formato_ind'            => $this->formato_ind,
+                'unidadmedida_ind'       => $this->unidadmedida_ind,
+                'meta_ind'               => $this->meta_ind,
+                'requerido_ind'          => $this->requerido_ind,
+                'status_ind'             => $this->status_ind,
+                'periodo_ind'            => $this->periodo_ind,
+                'etiquetas_ind'          => $this->etiquetas_ind,
                 'fuenteverificacion_ind' => $this->fuenteverificacion_ind,
             ]
         );
@@ -129,8 +153,8 @@ class Indicadores extends Component
         $this->dispatch('closeModal');
     }
 
-    /* =============================== 
-    LIMPIAR FORM 
+    /* ===============================
+       LIMPIAR FORM
     ================================*/
     public function cancel()
     {
@@ -154,34 +178,32 @@ class Indicadores extends Component
         ]);
     }
 
-
-    /* =============================== 
-    EDITAR
-     ================================*/
+    /* ===============================
+       EDITAR
+    ================================*/
     public function edit($id)
     {
         $ind = Indicador::findOrFail($id);
-        $this->selected_id = $ind->id_ind;
-        $this->nombre_ind = $ind->nombre_ind;
-        $this->definicion_ind = $ind->definicion_ind;
-        $this->formula_ind = $ind->formula_ind;
-        $this->tendencia_ind = $ind->tendencia_ind;
-        $this->restriccion_ind = $ind->restriccion_ind;
-        $this->formato_ind = $ind->formato_ind;
-        $this->unidadmedida_ind = $ind->unidadmedida_ind;
-        $this->meta_ind = $ind->meta_ind;
-        $this->requerido_ind = $ind->requerido_ind;
-        $this->status_ind = $ind->status_ind;
-        $this->periodo_ind = $ind->periodo_ind;
-        $this->etiquetas_ind = $ind->etiquetas_ind;
-        $this->fuenteverificacion_ind = $ind->fuenteverificacion_ind;
 
-        $this->tiene_formula = !is_null($ind->formula_ind);
+        $this->selected_id             = $ind->id_ind;
+        $this->nombre_ind              = $ind->nombre_ind;
+        $this->definicion_ind          = $ind->definicion_ind;
+        $this->formula_ind             = $ind->formula_ind;
+        $this->tendencia_ind           = $ind->tendencia_ind;
+        $this->restriccion_ind         = $ind->restriccion_ind;
+        $this->formato_ind             = $ind->formato_ind;
+        $this->unidadmedida_ind        = $ind->unidadmedida_ind;
+        $this->meta_ind                = $ind->meta_ind;
+        $this->requerido_ind           = $ind->requerido_ind;
+        $this->status_ind              = $ind->status_ind;
+        $this->periodo_ind             = $ind->periodo_ind;
+        $this->etiquetas_ind           = $ind->etiquetas_ind;
+        $this->fuenteverificacion_ind  = $ind->fuenteverificacion_ind;
+        $this->tiene_formula           = !is_null($ind->formula_ind);
     }
 
-
-    /* =============================== 
-    ELIMINAR 
+    /* ===============================
+       ELIMINAR
     ================================*/
     public function destroy($id)
     {

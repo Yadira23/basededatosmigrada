@@ -14,8 +14,8 @@
         </div>
 
         <div class="d-none d-sm-flex">
-            <a href="{{ url('/formularios') }}" class="btn btn-primary btn-sm shadow-sm mr-2">
-                <i class="fas fa-file-alt mr-1"></i> Formularios
+            <a href="{{ route('usuario.indicadores') }}" class="btn btn-primary btn-sm shadow-sm mr-2">
+                <i class="fas fa-chart-line mr-1"></i> Indicadores
             </a>
         </div>
     </div>
@@ -29,7 +29,7 @@
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                Formularios disponibles
+                                Indicadores disponibles
                             </div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
                                 {{ $formulariosDisponibles ?? 0 }}
@@ -40,8 +40,8 @@
                         </div>
                     </div>
                     <div class="mt-2">
-                        <a class="small text-primary" href="{{ url('/formularios') }}">
-                            Ir a formularios <i class="fas fa-arrow-right ml-1"></i>
+                        <a class="small text-primary" href="{{ route('usuario.indicadores') }}">
+                            Ver indicadores <i class="fas fa-arrow-right ml-1"></i>
                         </a>
                     </div>
                 </div>
@@ -131,11 +131,11 @@
                     <h6 class="m-0 font-weight-bold text-primary">Acciones rápidas</h6>
                 </div>
                 <div class="card-body">
-                    <a href="{{ url('/formularios') }}" class="btn btn-primary btn-block mb-2">
-                        <i class="fas fa-pen mr-2"></i> Capturar información
+                    <a href="{{ route('usuario.indicadores') }}" class="btn btn-primary btn-block mb-2">
+                        <i class="fas fa-pen mr-2"></i> Capturar indicador
                     </a>
-                    <a href="{{ url('/formularios') }}" class="btn btn-outline-primary btn-block mb-2">
-                        <i class="fas fa-file-upload mr-2"></i> Subir archivo
+                    <a href="{{ route('usuario.indicadores') }}" class="btn btn-outline-primary btn-block mb-2">
+                        <i class="fas fa-file-upload mr-2"></i> Subir archivo (indicador)
                     </a>
                     <a href="{{ url('/anexos') }}" class="btn btn-outline-secondary btn-block">
                         <i class="fas fa-paperclip mr-2"></i> Anexos / Plantillas
