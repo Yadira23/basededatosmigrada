@@ -98,7 +98,7 @@ class Formularios extends Component
             'formularios' => $this->filteredFormularios,
             'indicadores'  => $this->indicadores,   // ✅
             'dependencias' => $this->dependencias,  // ✅
-        ]);
+        ])->extends('layouts.admin')->section('content');
     }
 
     public function cancel()
