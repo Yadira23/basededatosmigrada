@@ -134,9 +134,6 @@
                     <a href="{{ route('usuario.indicadores') }}" class="btn btn-primary btn-block mb-2">
                         <i class="fas fa-pen mr-2"></i> Capturar indicador
                     </a>
-                    <a href="{{ route('usuario.indicadores') }}" class="btn btn-outline-primary btn-block mb-2">
-                        <i class="fas fa-file-upload mr-2"></i> Subir archivo (indicador)
-                    </a>
                     <a href="{{ url('/anexos') }}" class="btn btn-outline-secondary btn-block">
                         <i class="fas fa-paperclip mr-2"></i> Anexos / Plantillas
                     </a>
@@ -200,17 +197,25 @@
                                         $st = str_replace('REVISIÓN', 'REVISION', $st);
                                         @endphp
 
-                                        @if($st === 'OBSERVADO')
-                                        <a href="{{ route('usuario.formulario.captura', [$c->id_form, $c->id_ind]) }}?carga={{ $c->id_carga }}"
-                                            class="btn btn-sm btn-warning">
-                                            Corregir
+                                        {{-- 👁 VER (siempre que haya carga) --}}
+                                        <a class="btn btn-sm btn-outline-primary"
+                                            href="{{ route('usuario.envio.ver.carga', $c->id_carga) }}">
+                                            <i class="fas fa-eye"></i> Ver
                                         </a>
-                                        @elseif($st === 'EN REVISION')
-                                        <button class="btn btn-sm btn-secondary" disabled>En revisión</button>
-                                        @elseif($st === 'APROBADO')
-                                        <button class="btn btn-sm btn-success" disabled>Aprobado</button>
-                                        @else
-                                        <span class="text-muted">—</span>
+
+                                        {{-- ✏️ CORREGIR (solo si OBSERVADO) --}}
+                                        @if($st === 'OBSERVADO')
+                                        @php
+                                        $id_ind = \App\Models\Formulario::where('id_form', $c->id_form)->value('id_ind');
+                                        @endphp
+
+                                        <a class="btn btn-sm btn-warning ml-1"
+                                            href="{{ route('usuario.formulario.captura', [
+                                                    'id_form' => $c->id_form,
+                                                    'id_ind'  => $id_ind
+                                                ]) }}?id_carga={{ $c->id_carga }}&modo=correccion">
+                                            <i class="fas fa-edit mr-1"></i> Corregir
+                                        </a>
                                         @endif
                                     </td>
                                 </tr>

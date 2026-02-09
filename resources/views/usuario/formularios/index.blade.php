@@ -237,12 +237,23 @@
                             }
                             @endphp
 
-                            <a class="btn btn-sm {{ $btnClass }} mt-1 shadow-sm"
-                                href="{{ route('usuario.formulario.captura', [
-                                     'id_form' => $form->id_form,
-                                     'id_ind'  => $form->id_ind
-                                ]) }}">
-                                <i class="bi bi-pencil-square me-1"></i>
+                            @php
+                            // Ruta según estado
+                            $href = route('usuario.formulario.captura', [
+                            'id_form' => $form->id_form,
+                            'id_ind' => $form->id_ind
+                            ]);
+
+                            $icon = 'bi-pencil-square';
+
+                            if (in_array($estado, ['ENVIADO','EN REVISION','APROBADO','REENVIADO'])) {
+                            $href = route('usuario.envio.ver', $form->id_form);
+                            $icon = 'bi-eye';
+                            }
+                            @endphp
+
+                            <a class="btn btn-sm {{ $btnClass }} mt-1 shadow-sm" href="{{ $href }}">
+                                <i class="bi {{ $icon }} me-1"></i>
                                 {{ $btnText }}
                             </a>
                         </div>

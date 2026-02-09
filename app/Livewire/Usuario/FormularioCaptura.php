@@ -55,6 +55,10 @@ class FormularioCaptura extends Component
     public $region = '';
     public $municipio = '';
 
+    public $id_carga = null;
+    public $cargaActual = null;
+
+
     // schema dinámico
     public array $schema = [];
     public array $manualCampos = [];
@@ -85,6 +89,8 @@ class FormularioCaptura extends Component
 
     public function mount($id_form, $id_ind)
     {
+        $this->id_carga = request('id_carga');
+        $this->modoCorreccion = request('modo') === 'correccion';
         $this->id_form = $id_form;
         $this->id_ind  = $id_ind;
 
@@ -155,26 +161,33 @@ class FormularioCaptura extends Component
         // Si el indicador tiene config_campos, el sistema puede generar plantilla
         $this->hayPlantilla = !empty($this->schema);
 
-        $this->id_carga_actual = request()->query('carga');
+        $this->id_carga_actual = $this->id_carga;
 
-        if ($this->id_carga_actual) {
-            $carga = \App\Models\Carga::find($this->id_carga_actual);
+        if ($this->modoCorreccion && $this->id_carga_actual) {
 
-            if ($carga) {
-                $this->modoCorreccion = true;
-                $this->metodoBloqueado = true;
-                $this->mensajeObservacion = $carga->observacion_env;
+            $carga = Carga::find($this->id_carga_actual);
 
-                // ✅ método original (MANUAL | ARCHIVO) → manual|archivo
-                $this->metodo = (strtoupper((string)$carga->metodo_captura) === 'ARCHIVO') ? 'archivo' : 'manual';
-
-                // ✅ si quieres que también respete el ámbito original:
-                if (!empty($carga->ambito_geo_carga)) {
-                    $this->ambito_geo = $carga->ambito_geo_carga;
-                }
-
-                $this->cargarDatosDeCarga($carga);
+            if (!$carga) {
+                abort(404, 'Carga no encontrada para corrección.');
             }
+
+            // seguridad extra: la carga debe ser del mismo formulario
+            if ((int)$carga->id_form !== (int)$this->id_form) {
+                abort(403, 'Esta carga no pertenece a este formulario.');
+            }
+
+            $this->metodoBloqueado = true;
+            $this->mensajeObservacion = $carga->observacion_env;
+
+            // método original
+            $this->metodo = (strtoupper((string)$carga->metodo_captura) === 'ARCHIVO') ? 'archivo' : 'manual';
+
+            // ámbito original si existe
+            if (!empty($carga->ambito_geo_carga)) {
+                $this->ambito_geo = $carga->ambito_geo_carga;
+            }
+
+            $this->cargarDatosDeCarga($carga);
         }
     }
 
@@ -1205,6 +1218,10 @@ class FormularioCaptura extends Component
             'archivoProcesado' => $this->archivoProcesado,
             'detallesInsertados' => $this->detallesInsertados,
             'hayPlantilla' => $this->hayPlantilla,
-        ])->extends('layouts.app')->section('content');
+            'modoCorreccion' => $this->modoCorreccion,
+            'metodoBloqueado' => $this->metodoBloqueado,
+            'mensajeObservacion' => $this->mensajeObservacion,
+            'id_carga_actual' => $this->id_carga_actual,
+        ])->extends('layouts.usuario')->section('content');
     }
 }

@@ -11,6 +11,7 @@ use App\Livewire\DetalleCargas;
 use App\Http\Controllers\AnexoDownloadController;
 use App\Livewire\Formularios;
 use App\Livewire\IndicadorCampos;
+use App\Http\Controllers\UsuarioEnvioController;
 
 /*
 |--------------------------------------------------------------------------
@@ -104,4 +105,24 @@ Route::middleware(['auth'])->group(function () {
         ->name('indicadores.campos');
 
     Route::get('/formularios', Formularios::class)->name('formularios.index');
+
+    // ✅ VER ÚLTIMO ENVÍO (solo lectura)
+    Route::get('/usuario/indicadores/{id_form}/envio', [UsuarioEnvioController::class, 'show'])
+        ->name('usuario.envio.ver');
+
+    // ✅ VER HISTORIAL DE ENVÍOS (lista)
+    Route::get('/usuario/indicadores/{id_form}/historial', [UsuarioEnvioController::class, 'history'])
+        ->name('usuario.envio.historial');
+
+    // ✅ VER ENVÍO ESPECÍFICO (por id_carga)
+    Route::get('/usuario/envios/{id_carga}', [UsuarioEnvioController::class, 'showByCarga'])
+        ->name('usuario.envio.ver.carga');
+
+    // Descargar ARCHIVO enviado
+    Route::get('/usuario/envios/{id_carga}/archivo', [UsuarioEnvioController::class, 'downloadArchivo'])
+        ->name('usuario.envio.descargar.archivo');
+
+    // Descargar LOG del procesamiento
+    Route::get('/usuario/envios/{id_carga}/log', [UsuarioEnvioController::class, 'downloadLog'])
+        ->name('usuario.envio.descargar.log');
 });
