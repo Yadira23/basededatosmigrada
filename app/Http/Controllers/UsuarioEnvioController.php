@@ -38,7 +38,10 @@ class UsuarioEnvioController extends Controller
             'total' => 0,
         ];
 
-        if ($ultima && $ultima->metodo_captura === 'MANUAL') {
+        $metodo = strtolower((string)($ultima->metodo_captura ?? ''));
+
+        if ($ultima && in_array($metodo, ['manual', 'manual_dinamico'], true)) {
+
             $rows = DB::table('detallecargas')
                 ->where('id_carga', $ultima->id_carga)
                 ->orderBy('id_detalle')
@@ -77,7 +80,7 @@ class UsuarioEnvioController extends Controller
 
         $archivoEvidencia = null;
 
-        if ($ultima && $ultima->metodo_captura === 'ARCHIVO') {
+        if ($ultima && in_array($metodo, ['archivo', 'plantilla'], true)) {
             $folio = $ultima->folioUnico_carga;
             $dir = storage_path('app/public/anexos/evidencias');
 
@@ -117,7 +120,9 @@ class UsuarioEnvioController extends Controller
             'total' => 0,
         ];
 
-        if ($ultima && $ultima->metodo_captura === 'MANUAL') {
+        $metodo = strtolower((string)($ultima->metodo_captura ?? ''));
+
+        if ($ultima && in_array($metodo, ['manual', 'manual_dinamico'], true)) {
             $rows = DB::table('detallecargas')
                 ->where('id_carga', $ultima->id_carga)
                 ->orderBy('id_detalle')
@@ -155,7 +160,7 @@ class UsuarioEnvioController extends Controller
 
         $archivoEvidencia = null;
 
-        if ($ultima && $ultima->metodo_captura === 'ARCHIVO') {
+        if ($ultima && in_array($metodo, ['archivo', 'plantilla'], true)) {
             $folio = $ultima->folioUnico_carga;
             $dir = storage_path('app/public/anexos/evidencias');
 
@@ -239,7 +244,7 @@ class UsuarioEnvioController extends Controller
     {
         $carga = Carga::where('id_carga', $id_carga)->firstOrFail();
 
-        // Seguridad: validar que ese formulario sea de la dependencia del usuario
+        // Seguridad por dependencia
         Formulario::publicados()
             ->porDependencia(auth()->user()->id_depen)
             ->where('id_form', $carga->id_form)
@@ -247,20 +252,35 @@ class UsuarioEnvioController extends Controller
 
         $folio = $carga->folioUnico_carga;
 
-        $posibles = [
-            "envios/{$folio}.log",
-            "envios/{$folio}.txt",
-            "envios/{$folio}_log.txt",
-            "envios/{$folio}_errores.txt",
+        $dirs = [
+            storage_path('app/envios'),
+            storage_path('app/public/envios'),
+            storage_path('app/public/anexos'),
+            storage_path('app/public/anexos/logs'),
+            storage_path('app/public/anexos/evidencias'),
         ];
 
-        foreach ($posibles as $rel) {
-            if (Storage::disk('local')->exists($rel)) {
-                $fullPath = storage_path('app/' . $rel); // ✅ ruta física real
-                return response()->download($fullPath, basename($rel));
+        $candidatos = collect();
+
+        foreach ($dirs as $dir) {
+            if (File::isDirectory($dir)) {
+                $files = collect(File::files($dir))
+                    ->filter(function ($f) use ($folio) {
+                        $name = $f->getFilename();
+                        $ext = strtolower($f->getExtension());
+                        return Str::contains($name, $folio) && in_array($ext, ['log', 'txt'], true);
+                    })
+                    ->sortByDesc(fn($f) => $f->getMTime());
+
+                $candidatos = $candidatos->merge($files);
             }
         }
 
-        abort(404, 'No se encontró el log de procesamiento para este folio.');
+        if ($candidatos->isEmpty()) {
+            abort(404, 'No se encontró el log de procesamiento para este folio.');
+        }
+
+        $file = $candidatos->first();
+        return response()->download($file->getPathname(), $file->getFilename());
     }
 }

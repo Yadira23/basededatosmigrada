@@ -56,7 +56,7 @@
             </li>
 
             <li class="nav-item">
-                <a class="nav-link" href="{{ url('/anexos') }}">
+                <a class="nav-link" href="{{ route('usuario.anexos') }}">
                     <i class="fas fa-paperclip"></i>
                     <span>Anexos</span>
                 </a>

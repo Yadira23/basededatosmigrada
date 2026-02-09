@@ -32,7 +32,7 @@
         <hr class="sidebar-divider my-0">
 
         <!-- Dashboard -->
-        <li class="nav-item">
+        <li class="nav-item {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
             <a class="nav-link" href="{{ route('admin.dashboard') }}">
                 <i class="fas fa-fw fa-tachometer-alt"></i>
                 <span>Dashboard</span>

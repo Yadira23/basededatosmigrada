@@ -12,6 +12,9 @@ use App\Http\Controllers\AnexoDownloadController;
 use App\Livewire\Formularios;
 use App\Livewire\IndicadorCampos;
 use App\Http\Controllers\UsuarioEnvioController;
+use App\Http\Controllers\UsuarioAnexosController;
+use App\Http\Controllers\Auth\ForgotPasswordController;
+use App\Http\Controllers\Auth\ResetPasswordController;
 
 /*
 |--------------------------------------------------------------------------
@@ -27,6 +30,18 @@ Route::get('/', function () {
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [LoginController::class, 'login'])->name('login.post');
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
+
+Route::get('/forgot-password', [ForgotPasswordController::class, 'showLinkRequestForm'])
+    ->name('password.request');
+
+Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLinkEmail'])
+    ->name('password.email');
+
+Route::get('/reset-password/{token}', [ResetPasswordController::class, 'showResetForm'])
+    ->name('password.reset');
+
+Route::post('/reset-password', [ResetPasswordController::class, 'reset'])
+    ->name('password.update');
 /* ---------------- REDIRECCIÓN POR ROL ---------------- */
 Route::middleware('auth')->get('/redirect-por-rol', function () {
 
@@ -77,6 +92,15 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 
 Route::middleware(['auth', 'role:usuario'])->get('/formularios', function () {
     return redirect()->route('usuario.indicadores');
+});
+
+Route::middleware(['auth', 'role:usuario'])->group(function () {
+    //Route::get('/usuario/anexos', function () {
+    //    return view('usuario.anexos.index');
+    //})->name('usuario.anexos');
+
+    Route::get('/usuario/anexos', [UsuarioAnexosController::class, 'index'])
+        ->name('usuario.anexos');
 });
 
 Route::middleware(['auth'])->group(function () {

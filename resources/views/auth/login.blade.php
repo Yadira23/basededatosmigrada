@@ -20,7 +20,8 @@
         </div>
 
         {{-- FORM --}}
-        <form method="POST" action="{{ route('login') }}" class="auth-form">
+        <form method="POST" action="{{ route('login.post') }}" class="auth-form">
+
             @csrf
 
             <div class="field">

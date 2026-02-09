@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Foundation\Auth\SendsPasswordResetEmails;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Password;
 
 class ForgotPasswordController extends Controller
 {
@@ -19,4 +21,33 @@ class ForgotPasswordController extends Controller
     */
 
     use SendsPasswordResetEmails;
+    public function showLinkRequestForm()
+    {
+        return view('auth.forgot-password');
+    }
+
+    public function sendResetLinkEmail(Request $request)
+    {
+        $request->validate([
+            'email' => ['required', 'email'],
+        ]);
+
+        // 🔎 Buscar usuario por email_usr (tu columna real)
+        $user = \App\Models\Usuario::where('email_usr', $request->email)->first();
+
+        if (!$user) {
+            return back()->withErrors([
+                'email' => 'No existe un usuario con ese correo.',
+            ]);
+        }
+
+        // 📩 Enviar enlace de recuperación
+        $status = \Illuminate\Support\Facades\Password::sendResetLink([
+            'email' => $user->email_usr,
+        ]);
+
+        return $status === \Illuminate\Support\Facades\Password::RESET_LINK_SENT
+            ? back()->with('status', __($status))
+            : back()->withErrors(['email' => __($status)]);
+    }
 }

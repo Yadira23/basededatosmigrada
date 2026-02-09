@@ -14,11 +14,32 @@ class Usuario extends Authenticatable
     protected $table = 'usuarios';
     protected $primaryKey = 'id_usuario';
     protected $keyType = 'int';
-    
+
     public $incrementing = true;
     protected $guard_name = 'web';
 
     protected $fillable = ['usuario_usr', 'nombre_usr', 'apellido_paterno', 'apellido_materno', 'email_usr', 'password', 'id_depen', 'estado_usr', 'telefono_usr'];
+
+
+    public function getEmailAttribute()
+    {
+        return $this->email_usr;
+    }
+
+    public function setEmailAttribute($value)
+    {
+        $this->email_usr = $value;
+    }
+
+    public function getEmailForPasswordReset()
+    {
+        return $this->email_usr;
+    }
+
+    public function getAuthIdentifierName()
+    {
+        return 'email_usr';
+    }
 
     /**
      * @return \Illuminate\Database\Eloquent\Relations\HasOne
@@ -37,8 +58,7 @@ class Usuario extends Authenticatable
     }
 
     protected function getDefaultGuardName(): string
-{
-    return 'web';
-}
-
+    {
+        return 'web';
+    }
 }

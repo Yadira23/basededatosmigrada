@@ -134,7 +134,7 @@
                     <a href="{{ route('usuario.indicadores') }}" class="btn btn-primary btn-block mb-2">
                         <i class="fas fa-pen mr-2"></i> Capturar indicador
                     </a>
-                    <a href="{{ url('/anexos') }}" class="btn btn-outline-secondary btn-block">
+                    <a href="{{ route('usuario.anexos') }}" class="btn btn-outline-secondary btn-block">
                         <i class="fas fa-paperclip mr-2"></i> Anexos / Plantillas
                     </a>
                     <hr>
