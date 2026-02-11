@@ -131,6 +131,8 @@
 /* Acento por color (solo borde superior) */
 .kpi-primary{ border-top:4px solid #4e73df; }
 .kpi-success{ border-top:4px solid #1cc88a; }
+.kpi-dark{ border-top:4px solid #343a40; }
+.kpi-violet{ border-top:4px solid #8b5cf6; }
 .kpi-warning{ border-top:4px solid #f6c23e; }
 .kpi-info{ border-top:4px solid #36b9cc; }
 
@@ -301,6 +303,32 @@
   border: 1px solid rgba(0,0,0,.04);
   background: rgba(255,255,255,.75);
 }
+
+.kpi-small .card-body {
+    padding: 12px 14px;
+}
+
+.kpi-small h5,
+.kpi-small h4 {
+    font-size: 1.3rem;
+    margin-bottom: 4px;
+}
+
+.kpi-small .text-xs {
+    font-size: 11px;
+    letter-spacing: .3px;
+}
+
+.kpi-small .kpi-value {
+    font-size: 1.6rem;
+    font-weight: 700;
+}
+
+.kpi-small i {
+    font-size: 1.2rem !important;
+    opacity: .7;
+}
+
 
 
 

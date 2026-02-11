@@ -80,6 +80,9 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::view('/DetalleCargas', 'livewire.DetalleCargas.index');
 
     Route::get('/carga/crear', CargaCreate::class)->name('carga.create');
+
+    Route::get('/admin/cargas/{id_carga}/revision', \App\Livewire\Admin\Cargas\CargaRevision::class)
+        ->name('admin.cargas.revision');
 });
 
 

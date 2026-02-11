@@ -73,8 +73,10 @@
                                         @endphp
 
                                         @if($st === 'ENVIADO' || $st === 'REENVIADO')
-                                        <button wire:click="changeStatus({{ $row->id_carga }}, 'EN REVISION')"
-                                            class="btn btn-sm btn-warning">Tomar revisión</button>
+                                        <a href="{{ route('admin.cargas.revision', $row->id_carga) }}"
+                                            class="btn btn-sm btn-warning">
+                                            Revisar
+                                        </a>
 
                                         @elseif($st === 'EN REVISION' || $st === 'REENVIADO')
                                         <button wire:click="aprobar({{ $row->id_carga }})"

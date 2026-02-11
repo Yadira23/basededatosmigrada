@@ -27,7 +27,7 @@
     @endphp
 
     <div class="row">
-        <div class="col-xl-4 col-md-6 mb-3">
+        <div class="col-xl-2 col-md-4 col-sm-6 mb-3">
             <div class="card kpi-card pro-kpi kpi-primary">
                 <div class="card-body">
                     <div class="kpi-top">
@@ -44,7 +44,7 @@
             </div>
         </div>
 
-        <div class="col-xl-4 col-md-6 mb-3">
+        <div class="col-xl-2 col-md-4 col-sm-6 mb-3">
             <div class="card kpi-card pro-kpi kpi-success">
                 <div class="card-body">
                     <div class="kpi-top">
@@ -61,7 +61,7 @@
             </div>
         </div>
 
-        <div class="col-xl-4 col-md-6 mb-3">
+        <div class="col-xl-2 col-md-4 col-sm-6 mb-3">
             <div class="card kpi-card pro-kpi kpi-warning">
                 <div class="card-body">
                     <div class="kpi-top">
@@ -78,7 +78,7 @@
             </div>
         </div>
 
-        <div class="col-xl-4 col-md-6 mb-3">
+        <div class="col-xl-2 col-md-4 col-sm-6 mb-3">
             <div class="card kpi-card pro-kpi kpi-info">
                 <div class="card-body">
                     <div class="kpi-top">
@@ -95,7 +95,7 @@
             </div>
         </div>
 
-        <div class="col-xl-4 col-md-6 mb-3">
+        <div class="col-xl-2 col-md-4 col-sm-6 mb-3">
             <div class="card kpi-card pro-kpi kpi-primary">
                 <div class="card-body">
                     <div class="kpi-top">
@@ -112,7 +112,7 @@
             </div>
         </div>
 
-        <div class="col-xl-4 col-md-6 mb-3">
+        <div class="col-xl-2 col-md-4 col-sm-6 mb-3">
             <div class="card kpi-card pro-kpi kpi-success">
                 <div class="card-body">
                     <div class="kpi-top">
