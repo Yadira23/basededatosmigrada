@@ -122,6 +122,13 @@
 
     </div>
 
+    {{-- NOTIFICACIONES (Recordatorios / avisos del admin) --}}
+    <div class="row">
+        <div class="col-12 mb-4">
+            @livewire('usuarios.notificaciones-usuario')
+        </div>
+    </div>
+
     {{-- Acciones + Actividad --}}
     <div class="row">
 
@@ -189,26 +196,39 @@
                                         @endif
                                     </td>
                                     <td class="text-muted">
-                                        {{ optional($c->created_at)->format('Y-m-d H:i') }}
+                                        <div>{{ optional($c->created_at)->format('Y-m-d H:i') }}</div>
+                                        <small class="text-muted">
+                                            Última act.: {{ optional($c->updated_at)->format('Y-m-d H:i') }}
+                                        </small>
                                     </td>
                                     <td>
                                         @php
                                         $st = mb_strtoupper(trim((string)($c->status_env ?? '')));
                                         $st = str_replace('REVISIÓN', 'REVISION', $st);
+
+                                        // id_ind del formulario (lo necesitamos para continuar / corregir)
+                                        $id_ind = \App\Models\Formulario::where('id_form', $c->id_form)->value('id_ind');
                                         @endphp
 
-                                        {{-- 👁 VER (siempre que haya carga) --}}
+                                        {{-- 👁 VER (siempre disponible) --}}
                                         <a class="btn btn-sm btn-outline-primary"
                                             href="{{ route('usuario.envio.ver.carga', $c->id_carga) }}">
                                             <i class="fas fa-eye"></i> Ver
                                         </a>
 
-                                        {{-- ✏️ CORREGIR (solo si OBSERVADO) --}}
-                                        @if($st === 'OBSERVADO')
-                                        @php
-                                        $id_ind = \App\Models\Formulario::where('id_form', $c->id_form)->value('id_ind');
-                                        @endphp
+                                        {{-- ▶️ CONTINUAR (solo BORRADOR) --}}
+                                        @if($st === 'BORRADOR')
+                                        <a class="btn btn-sm btn-success ml-1"
+                                            href="{{ route('usuario.formulario.captura', [
+                                                    'id_form' => $c->id_form,
+                                                    'id_ind'  => $id_ind
+                                                ]) }}?id_carga={{ $c->id_carga }}">
+                                            <i class="fas fa-play mr-1"></i> Continuar
+                                        </a>
+                                        @endif
 
+                                        {{-- ✏️ CORREGIR (solo OBSERVADO) --}}
+                                        @if($st === 'OBSERVADO')
                                         <a class="btn btn-sm btn-warning ml-1"
                                             href="{{ route('usuario.formulario.captura', [
                                                     'id_form' => $c->id_form,

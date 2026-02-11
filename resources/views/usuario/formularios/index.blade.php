@@ -221,36 +221,60 @@
                             <div class="text-muted small">Acción</div>
 
                             @php
-                            // botón según estado (sin cambiar rutas ni lógica)
                             $btnClass = 'btn-primary';
                             $btnText = 'Capturar indicador';
 
-                            if ($estado === 'OBSERVADO') {
+                            $estadoNorm = mb_strtoupper(trim((string)$estado));
+                            $estadoNorm = str_replace('REVISIÓN','REVISION',$estadoNorm);
+
+                            if ($estadoNorm === 'OBSERVADO') {
                             $btnClass = 'btn-warning';
                             $btnText = 'Corregir indicador';
-                            } elseif (in_array($estado, ['ENVIADO','EN REVISION','APROBADO','REENVIADO'])) {
+                            } elseif ($estadoNorm === 'BORRADOR') {
+                            $btnClass = 'btn-success';
+                            $btnText = 'Continuar';
+                            } elseif (in_array($estadoNorm, ['ENVIADO','EN REVISION','APROBADO','REENVIADO'])) {
                             $btnClass = 'btn-outline-secondary';
-                            $btnText = 'Ver / Continuar';
-                            } elseif ($estado === 'SIN CAPTURA') {
+                            $btnText = 'Ver envío';
+                            } elseif ($estadoNorm === 'SIN CAPTURA') {
                             $btnClass = 'btn-primary';
                             $btnText = 'Capturar indicador';
                             }
                             @endphp
 
                             @php
-                            // Ruta según estado
-                            $href = route('usuario.formulario.captura', [
+                            // Ruta base a captura
+                            $hrefCaptura = route('usuario.formulario.captura', [
                             'id_form' => $form->id_form,
                             'id_ind' => $form->id_ind
                             ]);
 
+                            $href = $hrefCaptura;
                             $icon = 'bi-pencil-square';
 
-                            if (in_array($estado, ['ENVIADO','EN REVISION','APROBADO','REENVIADO'])) {
+                            // Normalizar estado
+                            $estadoNorm = mb_strtoupper(trim((string)$estado));
+                            $estadoNorm = str_replace('REVISIÓN','REVISION',$estadoNorm);
+
+                            // ✅ Si es BORRADOR: continuar con id_carga
+                            if ($estadoNorm === 'BORRADOR' && $ultima) {
+                            $href = $hrefCaptura . '?id_carga=' . $ultima->id_carga;
+                            $icon = 'bi-play-circle';
+                            }
+
+                            // ✅ Si ya fue enviado/revisado/aprobado: ver detalle
+                            if (in_array($estadoNorm, ['ENVIADO','EN REVISION','APROBADO','REENVIADO'])) {
                             $href = route('usuario.envio.ver', $form->id_form);
                             $icon = 'bi-eye';
                             }
+
+                            // ✅ Si es observado: corregir con id_carga + modo
+                            if ($estadoNorm === 'OBSERVADO' && $ultima) {
+                            $href = $hrefCaptura . '?id_carga=' . $ultima->id_carga . '&modo=correccion';
+                            $icon = 'bi-pencil-square';
+                            }
                             @endphp
+
 
                             <a class="btn btn-sm {{ $btnClass }} mt-1 shadow-sm" href="{{ $href }}">
                                 <i class="bi {{ $icon }} me-1"></i>

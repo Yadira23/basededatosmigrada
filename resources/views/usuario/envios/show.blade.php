@@ -157,7 +157,30 @@
                     </div>
                 </div>
 
-                {{-- ✅ 2) SI NO HAY CAPTURA (aunque diga ENVIADO): mostrar “sin captura” --}}
+                {{-- ✅ 2) BORRADOR: mensaje + continuar captura --}}
+                @elseif($estadoNorm === 'BORRADOR')
+                <div class="alert alert-info">
+                    <div class="font-weight-bold mb-1">
+                        <i class="fas fa-pencil-alt mr-1"></i>
+                        Este envío está en borrador
+                    </div>
+                    <div class="small">
+                        Aún no se ha enviado información. Puedes continuar la captura para completarla y enviarla.
+                    </div>
+
+                    <div class="mt-3">
+                        <a class="btn btn-sm btn-success"
+                            href="{{ route('usuario.formulario.captura', [
+                                        'id_form' => $form->id_form,
+                                        'id_ind'  => $form->id_ind
+                                ]) }}?id_carga={{ $ultima->id_carga }}">
+                            <i class="fas fa-play mr-1"></i>
+                            Continuar captura
+                        </a>
+                    </div>
+                </div>
+
+                {{-- ✅ 3) SI NO HAY CAPTURA (aunque diga ENVIADO): mostrar “sin captura” --}}
                 @elseif(!$hayCaptura && !in_array($estadoNorm, ['ENVIADO','EN REVISION','REENVIADO','APROBADO']))
                 <div class="alert alert-secondary">
                     <div class="font-weight-bold mb-1">
@@ -178,7 +201,7 @@
                     </div>
                 </div>
 
-                {{-- ✅ 3) HAY CAPTURA: mensaje correcto según estado --}}
+                {{-- ✅ 4) HAY CAPTURA: mensaje correcto según estado --}}
                 @else
                 @if($estadoNorm === 'ENVIADO' || $estadoNorm === 'REENVIADO')
                 <div class="alert alert-info">
@@ -219,6 +242,7 @@
             @endif
 
         </div>
+
         {{-- =========================
      DATOS ENVIADOS (ARCHIVO)
    ========================= --}}

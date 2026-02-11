@@ -163,6 +163,72 @@ class FormularioCaptura extends Component
 
         $this->id_carga_actual = $this->id_carga;
 
+        /* =========================================================
+   ✅ CASO A: CONTINUAR BORRADOR NORMAL (sin corrección)
+   /usuario/formulario/... ?id_carga=XX
+========================================================= */
+        if (!$this->modoCorreccion && $this->id_carga_actual) {
+
+            $carga = Carga::find($this->id_carga_actual);
+
+            if (!$carga) {
+                abort(404, 'Carga no encontrada.');
+            }
+
+            // ✅ seguridad extra: la carga debe ser del mismo formulario
+            if ((int)$carga->id_form !== (int)$this->id_form) {
+                abort(403, 'Esta carga no pertenece a este formulario.');
+            }
+
+            // ✅ método fijo desde BD
+            $this->metodo = (strtoupper((string)$carga->metodo_captura) === 'ARCHIVO') ? 'archivo' : 'manual';
+
+            // ✅ bloquear cambio de método (ya inició)
+            $this->metodoBloqueado = true;
+
+            // ✅ ámbito guardado
+            if (!empty($carga->ambito_geo_carga)) {
+                $this->ambito_geo = $carga->ambito_geo_carga;
+            }
+
+            // ✅ si NO es borrador => solo lectura
+            $estadoNorm = mb_strtoupper(trim((string)($carga->status_env ?? '')));
+            $estadoNorm = str_replace('REVISIÓN', 'REVISION', $estadoNorm);
+
+            if ($estadoNorm !== 'BORRADOR') {
+                $this->soloLectura = true;
+            }
+
+            // ✅ si es ARCHIVO: flags para UI
+            if ($this->metodo === 'archivo') {
+                $this->plantillaDescargada = !is_null($carga->plantilla_descargada_at);
+
+                $this->archivoProcesado = DetalleCarga::where('id_carga', $carga->id_carga)
+                    ->where('id_ind', $this->id_ind)
+                    ->exists();
+
+                $this->detallesInsertados = DetalleCarga::where('id_carga', $carga->id_carga)
+                    ->where('id_ind', $this->id_ind)
+                    ->count();
+            }
+
+            // ✅ si es MANUAL: cargar filas guardadas del borrador (autoguardado)
+            if ($this->metodo === 'manual') {
+                $hayDetalles = DetalleCarga::where('id_carga', $carga->id_carga)
+                    ->where('id_ind', $this->id_ind)
+                    ->exists();
+
+                if ($hayDetalles) {
+                    $this->cargarDatosDeCarga($carga); // ✅ llena $this->manualData
+                }
+            }
+        }
+
+
+        /* =========================================================
+   ✅ CASO B: CORRECCIÓN
+   /usuario/formulario/... ?id_carga=XX&modo=correccion
+========================================================= */
         if ($this->modoCorreccion && $this->id_carga_actual) {
 
             $carga = Carga::find($this->id_carga_actual);
@@ -176,18 +242,35 @@ class FormularioCaptura extends Component
                 abort(403, 'Esta carga no pertenece a este formulario.');
             }
 
-            $this->metodoBloqueado = true;
-            $this->mensajeObservacion = $carga->observacion_env;
-
-            // método original
+            // método original fijo
             $this->metodo = (strtoupper((string)$carga->metodo_captura) === 'ARCHIVO') ? 'archivo' : 'manual';
+
+            // en corrección siempre bloqueado
+            $this->metodoBloqueado = true;
+
+            // mostrar observación
+            $this->mensajeObservacion = $carga->observacion_env;
 
             // ámbito original si existe
             if (!empty($carga->ambito_geo_carga)) {
                 $this->ambito_geo = $carga->ambito_geo_carga;
             }
 
+            // carga datos existentes
             $this->cargarDatosDeCarga($carga);
+
+            // flags de archivo (para UI)
+            if ($this->metodo === 'archivo') {
+                $this->plantillaDescargada = !is_null($carga->plantilla_descargada_at);
+
+                $this->archivoProcesado = DetalleCarga::where('id_carga', $carga->id_carga)
+                    ->where('id_ind', $this->id_ind)
+                    ->exists();
+
+                $this->detallesInsertados = DetalleCarga::where('id_carga', $carga->id_carga)
+                    ->where('id_ind', $this->id_ind)
+                    ->count();
+            }
         }
     }
 
@@ -268,23 +351,99 @@ class FormularioCaptura extends Component
             return;
         }
 
+        // ✅ PASO 3A: si ya existe una carga, respetar su método y bloquear cambios si hay avance
+        if ($this->id_carga_actual) {
+            $carga = Carga::find($this->id_carga_actual);
+
+            if ($carga) {
+                $metodoBD = strtolower((string)$carga->metodo_captura); // "manual" o "archivo"
+
+                // si intenta cambiar a otro método distinto al que ya tiene la carga
+                if ($metodoBD && $metodoBD !== $metodo) {
+
+                    // ¿hay detalles ya guardados para esta carga e indicador?
+                    $hayDetalles = DetalleCarga::where('id_carga', $carga->id_carga)
+                        ->where('id_ind', $this->id_ind)
+                        ->exists();
+
+                    if ($hayDetalles) {
+                        session()->flash(
+                            'error',
+                            "No puedes cambiar a {$metodo} porque esta carga ya tiene información capturada en {$metodoBD}. " .
+                                "Si deseas cambiar, debes eliminar el avance y reiniciar la captura."
+                        );
+                        return;
+                    }
+
+                    // ✅ si NO hay detalles, permitimos cambio, pero limpiamos estado del otro método
+                    if ($metodo === 'archivo') {
+                        $this->manualData = [];
+                        $this->editManualIndex = null;
+                    } else {
+                        $this->resetArchivoState();
+                    }
+
+                    // actualiza el método en BD para mantener consistencia
+                    $carga->metodo_captura = strtoupper($metodo); // MANUAL/ARCHIVO
+                    $carga->save();
+                }
+            }
+        }
+
         $this->metodo = $metodo;
+
         if ($metodo === 'archivo') {
             $this->prepararCargaBorradorArchivo();
             $this->refrescarEstadoPlantilla();
-        } else {
+            return;
+        }
+
+        if ($metodo === 'manual') {
+            $this->prepararCargaBorradorManual();
             $this->resetArchivoState();
+            return;
         }
     }
 
     private function prepararCargaBorradorArchivo()
     {
         if ($this->soloLectura) return;
+
+        // ✅ si ya hay una carga actual en el componente, no crear otra
         if ($this->id_carga_actual) return;
 
-        // crea carga BORRADOR para poder marcar plantilla_descargada_at y guardar detalles luego
+        // ✅ PASO 4B: reusar borrador existente (mismo formulario + método ARCHIVO)
+        $borrador = Carga::where('id_form', $this->id_form)
+            ->where('status_env', 'Borrador')   // ⚠️ si usas 'BORRADOR' cambia aquí
+            ->where('metodo_captura', 'ARCHIVO')
+            ->orderByDesc('id_carga')
+            ->first();
+
+        if ($borrador) {
+            $this->id_carga_actual = (int)$borrador->id_carga;
+
+            // sincroniza flags desde BD
+            $this->plantillaDescargada = !is_null($borrador->plantilla_descargada_at);
+
+            // archivo procesado = si ya hay detalles guardados del indicador
+            $this->archivoProcesado = DetalleCarga::where('id_carga', $borrador->id_carga)
+                ->where('id_ind', $this->id_ind)
+                ->exists();
+
+            $this->detallesInsertados = DetalleCarga::where('id_carga', $borrador->id_carga)
+                ->where('id_ind', $this->id_ind)
+                ->count();
+
+            // sincroniza ámbito guardado
+            if (!empty($borrador->ambito_geo_carga)) {
+                $this->ambito_geo = $borrador->ambito_geo_carga;
+            }
+
+            return;
+        }
+
+        // ✅ si no existe borrador, crear uno nuevo
         $carga = Carga::create([
-            // ✅ FIX: si tu BD NO lo genera sola, esto evita errores
             'folioUnico_carga' => 'CAR-' . now()->timestamp,
             'fecha_carga' => now(),
             'periodo' => now()->format('Y-m'),
@@ -292,7 +451,7 @@ class FormularioCaptura extends Component
             'fuente' => 'N/D',
             'status_env' => 'Borrador',
             'ambito_geo_carga' => $this->ambito_geo,
-            'metodo_captura' => 'ARCHIVO', // OJO enum
+            'metodo_captura' => 'ARCHIVO',
             'descripcion_env' => 'Borrador (archivo)',
             'observacion_env' => '',
             'id_form' => $this->id_form,
@@ -304,6 +463,61 @@ class FormularioCaptura extends Component
         $this->detallesInsertados = 0;
     }
 
+    private function prepararCargaBorradorManual()
+    {
+        if ($this->soloLectura) return;
+
+        // ✅ si ya hay carga actual en el componente, no crear otra
+        if ($this->id_carga_actual) return;
+
+        // ✅ PASO 4: reusar borrador existente (mismo formulario + método MANUAL)
+        $borrador = Carga::where('id_form', $this->id_form)
+            ->where('status_env', 'Borrador')   // ⚠️ si usas 'BORRADOR' cambia aquí
+            ->where('metodo_captura', 'MANUAL')
+            ->orderByDesc('id_carga')
+            ->first();
+
+        if ($borrador) {
+            $this->id_carga_actual = (int)$borrador->id_carga;
+
+            // (Opcional) si quieres, sincroniza el ámbito desde BD al cargar borrador
+            if (!empty($borrador->ambito_geo_carga)) {
+                $this->ambito_geo = $borrador->ambito_geo_carga;
+            }
+
+            // (Opcional) si quieres que al retomar se carguen datos ya guardados:
+            // En tu manual, guardas detalle hasta ENVIAR, así que normalmente no habrá detalles aún.
+            // Si más adelante guardas parciales, esto te servirá:
+            $hayDetalles = DetalleCarga::where('id_carga', $borrador->id_carga)
+                ->where('id_ind', $this->id_ind)
+                ->exists();
+
+            if ($hayDetalles) {
+                $this->metodo = 'manual';
+                $this->cargarDatosDeCarga($borrador);
+            }
+
+            return;
+        }
+
+        // ✅ si no existe borrador, crear uno nuevo
+        $carga = Carga::create([
+            'folioUnico_carga' => Str::upper(Str::random(6)),
+            'fecha_carga' => now(),
+            'periodo' => now()->format('Y-m'),
+            'ejercicio' => now()->year,
+            'fuente' => 'N/D',
+            'status_env' => 'Borrador',
+            'ambito_geo_carga' => $this->ambito_geo,
+            'metodo_captura' => 'MANUAL',
+            'descripcion_env' => 'Borrador (manual)',
+            'observacion_env' => '',
+            'id_form' => $this->id_form,
+        ]);
+
+        $this->id_carga_actual = (int)$carga->id_carga;
+    }
+
     public function refrescarEstadoPlantilla()
     {
         if (!$this->id_carga_actual) {
@@ -312,6 +526,79 @@ class FormularioCaptura extends Component
         }
         $carga = Carga::find($this->id_carga_actual);
         $this->plantillaDescargada = !is_null($carga?->plantilla_descargada_at);
+    }
+
+    public function reiniciarCaptura()
+    {
+        if ($this->soloLectura) {
+            session()->flash('error', 'Solo lectura. No puedes reiniciar.');
+            return;
+        }
+
+        if ($this->modoCorreccion) {
+            session()->flash('error', 'Esta carga está en corrección. No puedes reiniciar el método.');
+            return;
+        }
+
+        if (!$this->id_carga_actual) {
+            // nada que reiniciar
+            $this->metodo = null;
+            $this->metodoBloqueado = false;
+            return;
+        }
+
+        $carga = Carga::find($this->id_carga_actual);
+        if (!$carga) {
+            // si por algo no existe, resetea estado
+            $this->id_carga_actual = null;
+            $this->metodo = null;
+            $this->metodoBloqueado = false;
+            $this->resetArchivoState();
+            $this->manualData = [];
+            $this->editManualIndex = null;
+            session()->flash('success', 'Captura reiniciada.');
+            return;
+        }
+
+        // ✅ Solo permitir reiniciar si sigue siendo borrador
+        if (strtoupper((string)$carga->status_env) !== 'BORRADOR' && (string)$carga->status_env !== 'Borrador') {
+            session()->flash('error', 'Esta captura ya fue enviada. No se puede reiniciar.');
+            return;
+        }
+
+        // ✅ No debe haber detalles guardados
+        $hayDetalles = DetalleCarga::where('id_carga', $carga->id_carga)
+            ->where('id_ind', $this->id_ind)
+            ->exists();
+
+        // ✅ Consideramos "avance" también: plantilla descargada / archivo procesado / filas en memoria manual
+        $hayAvanceArchivo = !is_null($carga->plantilla_descargada_at) || $this->archivoProcesado || !empty($this->archivoNombre);
+        $hayAvanceManual  = !empty($this->manualData);
+
+        if ($hayDetalles || $hayAvanceArchivo || $hayAvanceManual) {
+            session()->flash('error', 'No puedes reiniciar porque ya hay avance en la captura. Si deseas cambiar de método, elimina el avance primero.');
+            return;
+        }
+
+        // ✅ Sin avance: se borra la carga borrador (no hay detalles, así que es seguro)
+        $carga->delete();
+
+        // reset estado del componente
+        $this->id_carga_actual = null;
+        $this->metodo = null;
+        $this->metodoBloqueado = false;
+
+        $this->resetArchivoState();
+        $this->plantillaDescargada = false;
+        $this->archivoProcesado = false;
+        $this->detallesInsertados = 0;
+        $this->ambito_plantilla_descargada = '';
+        $this->motivoResetPlantilla = '';
+
+        $this->manualData = [];
+        $this->editManualIndex = null;
+
+        session()->flash('success', 'Captura reiniciada. Ahora puedes elegir otro método.');
     }
 
     /* =========================
@@ -464,6 +751,8 @@ class FormularioCaptura extends Component
             $this->region = '';
             $this->municipio = '';
 
+            $this->syncManualDraftToDB();
+
             session()->flash('success', 'Fila agregada.');
         } catch (\Throwable $e) {
             session()->flash('error', $e->getMessage());
@@ -497,10 +786,20 @@ class FormularioCaptura extends Component
             session()->flash('error', 'Solo lectura.');
             return;
         }
+
         if (!isset($this->manualData[$index])) return;
+
         unset($this->manualData[$index]);
+
+        // ✅ reindexar
         $this->manualData = array_values($this->manualData);
+
+        // ✅ guardar snapshot en BD
+        $this->syncManualDraftToDB();
+
+        session()->flash('success', 'Fila eliminada.');
     }
+
 
     public function reenviarCorreccion()
     {
@@ -539,6 +838,7 @@ class FormularioCaptura extends Component
 
         session()->flash('success', 'Corrección reenviada correctamente.');
     }
+
     private function guardarManualEnDetalle($idCarga): void
     {
         // Para numeración de filas
@@ -577,6 +877,50 @@ class FormularioCaptura extends Component
             ]);
         }
     }
+
+    private function syncManualDraftToDB(): void
+    {
+        if ($this->soloLectura) return;
+
+        // ✅ si no hay borrador aún, créalo
+        if (!$this->id_carga_actual) {
+            $this->prepararCargaBorradorManual();
+        }
+
+        $carga = Carga::find($this->id_carga_actual);
+        if (!$carga) return;
+
+        // ✅ borra y reinsertar el snapshot actual del manual (simple y seguro)
+        DetalleCarga::where('id_carga', $carga->id_carga)
+            ->where('id_ind', $this->id_ind)
+            ->delete();
+
+        $periodo   = $carga->periodo ?? now()->format('Y-m');
+        $ejercicio = $carga->ejercicio ?? now()->year;
+
+        foreach (array_values((array)$this->manualData) as $idx => $item) {
+            $ambito = $item['ambito_geo'] ?? 'SIN_AMBITO';
+
+            DetalleCarga::create([
+                'id_carga' => $carga->id_carga,
+                'id_ind'   => $this->id_ind,
+                'ambito_geo' => $ambito,
+                'id_region' => $item['id_region'] ?? null,
+                'id_mun'    => $item['id_mun'] ?? null,
+                'fila_det'  => $idx + 1,
+                'periodo_det' => $periodo,
+                'ejercicio_det' => $ejercicio,
+                'fecha_registro_det' => now()->toDateString(),
+                'fuente_det' => 'Borrador manual',
+                'valor_det' => null,
+                'payload_det' => $item['payload_det'] ?? [],
+            ]);
+        }
+
+        // ✅ marca actividad (updated_at)
+        $carga->touch();
+    }
+
 
     /* =========================
        ARCHIVO (tu lógica + ajustes)
@@ -779,6 +1123,13 @@ class FormularioCaptura extends Component
         $filename = 'Plantilla_' . ($indicador->id_ind ?? 'ind') . '_' . $ambito . '_' . $carga->folioUnico_carga . '.xlsx';
 
         $spreadsheet->setActiveSheetIndex(0);
+
+        // 🔹 marcar actividad
+        if ($this->id_carga_actual) {
+            Carga::where('id_carga', $this->id_carga_actual)
+                ->update(['updated_at' => now()]);
+        }
+
         return response()->streamDownload(function () use ($spreadsheet) {
             $writer = new Xlsx($spreadsheet);
             $writer->save('php://output');
@@ -1053,6 +1404,12 @@ class FormularioCaptura extends Component
                 Log::warning('No se pudo guardar evidencia en anexos: ' . $e->getMessage());
             }
 
+            // 🔹 marcar actividad
+            if ($this->id_carga_actual) {
+                Carga::where('id_carga', $this->id_carga_actual)
+                    ->update(['updated_at' => now()]);
+            }
+
             session()->flash('success', "Archivo procesado correctamente. Filas insertadas: {$insertados}");
         } catch (\Throwable $e) {
             session()->flash('error', "No se pudo procesar el archivo: " . $e->getMessage());
@@ -1114,24 +1471,32 @@ class FormularioCaptura extends Component
                     throw new \Exception('Agrega al menos 1 fila manual.');
                 }
 
+                // ✅ debe existir una carga borrador manual (creada al seleccionar método)
+                if (!$this->id_carga_actual) {
+                    throw new \Exception('No existe carga borrador para manual. Vuelve a seleccionar "Captura Manual".');
+                }
+
                 $periodo = now()->format('Y-m');
                 $ejercicio = now()->year;
 
                 DB::transaction(function () use ($periodo, $ejercicio, $fuenteDato, $desc) {
 
-                    $carga = Carga::create([
-                        'fecha_carga' => now(),
-                        'periodo' => $periodo,
-                        'ejercicio' => $ejercicio,
-                        'fuente' => $fuenteDato,
-                        'status_env' => 'ENVIADO',
-                        'ambito_geo_carga' => $this->ambito_geo,
-                        'metodo_captura' => 'MANUAL',
-                        'descripcion_env' => $desc,
-                        'observacion_env' => '',
-                        'id_form' => $this->id_form,
-                    ]);
+                    $carga = Carga::findOrFail($this->id_carga_actual);
 
+                    // ✅ seguridad: debe ser del formulario y método MANUAL
+                    if ((int)$carga->id_form !== (int)$this->id_form) {
+                        throw new \Exception('La carga borrador no pertenece a este formulario.');
+                    }
+                    if (strtoupper((string)$carga->metodo_captura) !== 'MANUAL') {
+                        throw new \Exception('Esta carga no es de método MANUAL.');
+                    }
+
+                    // ✅ reemplaza detalles anteriores del indicador (por si reintenta)
+                    DetalleCarga::where('id_carga', $carga->id_carga)
+                        ->where('id_ind', $this->id_ind)
+                        ->delete();
+
+                    // ✅ inserta detalles desde lo capturado en pantalla
                     foreach (array_values($this->manualData) as $idx => $item) {
 
                         $ambito = $item['ambito_geo'] ?? 'SIN_AMBITO';
@@ -1151,6 +1516,18 @@ class FormularioCaptura extends Component
                             'payload_det' => $item['payload_det'] ?? [],
                         ]);
                     }
+
+                    // ✅ ahora sí finaliza la MISMA carga
+                    $carga->update([
+                        'fecha_carga' => now(),
+                        'periodo' => $periodo,
+                        'ejercicio' => $ejercicio,
+                        'fuente' => $fuenteDato,
+                        'descripcion_env' => $desc,
+                        'ambito_geo_carga' => $this->ambito_geo,
+                        'status_env' => 'ENVIADO',
+                        'observacion_env' => '',
+                    ]);
                 });
 
                 // limpiar manual
@@ -1160,7 +1537,15 @@ class FormularioCaptura extends Component
                 $this->region = '';
                 $this->municipio = '';
 
-                session()->flash('success', 'Enviado correctamente (manual).');
+                $cargaFinal = Carga::find($this->id_carga_actual);
+
+                $this->dispatch(
+                    'swal-enviado',
+                    indicador: (string)($this->indicador->nombre_ind ?? 'Indicador'),
+                    folio: (string)($cargaFinal->folioUnico_carga ?? ''),
+                    url: url('/usuario/dashboard')
+                );
+                $this->guardando = false;
                 return;
             }
 
@@ -1191,7 +1576,16 @@ class FormularioCaptura extends Component
                 'fecha_carga' => now(),
             ]);
 
-            session()->flash('success', 'Enviado correctamente (archivo).');
+            $cargaFinal = Carga::find($this->id_carga_actual);
+
+            $this->dispatch(
+                'swal-enviado',
+                indicador: (string)($this->indicador->nombre_ind ?? 'Indicador'),
+                folio: (string)($cargaFinal->folioUnico_carga ?? ''),
+                url: url('/usuario/dashboard')
+            );
+            $this->guardando = false;
+            return;
         } catch (\Throwable $e) {
             session()->flash('error', 'Error: ' . $e->getMessage());
         } finally {
@@ -1199,8 +1593,24 @@ class FormularioCaptura extends Component
         }
     }
 
+    public function badgeClass(string $status): string
+    {
+        $s = mb_strtoupper(trim($status));
+        $s = str_replace('REVISIÓN', 'REVISION', $s);
+
+        return match ($s) {
+            'BORRADOR' => 'secondary',
+            'ENVIADO', 'REENVIADO' => 'info',
+            'EN REVISION' => 'primary',
+            'OBSERVADO' => 'warning',
+            'APROBADO' => 'success',
+            default => 'light',
+        };
+    }
+
     public function render()
     {
+        $this->cargaActual = $this->id_carga_actual ? Carga::find($this->id_carga_actual) : null;
         return view('livewire.usuarios.formulario-captura', [
             'regiones' => $this->regiones,
             'municipiosFiltrados' => $this->municipiosFiltrados,
@@ -1222,6 +1632,7 @@ class FormularioCaptura extends Component
             'metodoBloqueado' => $this->metodoBloqueado,
             'mensajeObservacion' => $this->mensajeObservacion,
             'id_carga_actual' => $this->id_carga_actual,
+            'cargaActual' => $this->cargaActual,
         ])->extends('layouts.usuario')->section('content');
     }
 }

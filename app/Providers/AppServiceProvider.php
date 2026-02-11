@@ -25,5 +25,10 @@ class AppServiceProvider extends ServiceProvider
     {
         Carga::observe(CargaObserver::class);
         Livewire::component('usuario-formularios', UsuarioFormularios::class);
+
+        \Livewire\Livewire::component(
+            'usuarios.notificaciones-usuario',
+            \App\Livewire\Usuario\NotificacionesUsuario::class
+        );
     }
 }

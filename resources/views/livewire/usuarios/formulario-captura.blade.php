@@ -23,23 +23,77 @@
 
     <h2>Selecciona el método de captura</h2>
 
+    @if($cargaActual)
+    @php
+    $st = mb_strtoupper(trim((string)($cargaActual->status_env ?? '')));
+    $st = str_replace('REVISIÓN', 'REVISION', $st);
+    @endphp
+
+    <div class="alert alert-light border d-flex justify-content-between align-items-center">
+        <div>
+            <div class="font-weight-bold">
+                Folio: {{ $cargaActual->folioUnico_carga ?? $cargaActual->id_carga }}
+                <span class="badge badge-light ml-2">
+                    {{ $cargaActual->status_env ?? '—' }}
+                </span>
+            </div>
+            <div class="text-muted small">
+                Creado: {{ optional($cargaActual->created_at)->format('d/m/Y H:i') }}
+                · Última actualización: {{ optional($cargaActual->updated_at)->format('d/m/Y H:i') }}
+            </div>
+        </div>
+
+        @if(!$soloLectura && !$modoCorreccion && $st === 'BORRADOR')
+        <button type="button" class="btn btn-sm btn-outline-danger"
+            wire:click="reiniciarCaptura">
+            Reiniciar
+        </button>
+        @endif
+    </div>
+    @endif
+
     {{-- MÉTODOS DE CAPTURA --}}
     <div class="metodos">
+
+        {{-- MANUAL --}}
         <div id="manual"
-            class="card {{ $metodo === 'manual' ? 'selected' : '' }} {{ $soloLectura ? 'disabled-card' : '' }}"
-            @if(!$soloLectura) wire:click="seleccionar('manual')" @endif>
+            class="card
+            {{ $metodo === 'manual' ? 'selected' : '' }}
+            {{ ($soloLectura || ($metodo && $metodo !== 'manual')) ? 'disabled-card' : '' }}
+        "
+            @if(!$soloLectura && (!$metodo || $metodo==='manual' ))
+            wire:click="seleccionar('manual')"
+            @endif>
             <h3>Captura Manual</h3>
             <p>Ingresa los valores manualmente (dinámico según el indicador).</p>
         </div>
 
+        {{-- ARCHIVO --}}
         <div id="archivo"
-            class="card {{ $metodo === 'archivo' ? 'selected' : '' }} {{ $soloLectura ? 'disabled-card' : '' }}"
-            @if(!$soloLectura) wire:click="seleccionar('archivo')" @endif>
+            class="card
+            {{ $metodo === 'archivo' ? 'selected' : '' }}
+            {{ ($soloLectura || ($metodo && $metodo !== 'archivo')) ? 'disabled-card' : '' }}
+        "
+            @if(!$soloLectura && (!$metodo || $metodo==='archivo' ))
+            wire:click="seleccionar('archivo')"
+            @endif>
             <h3>Subir Archivo</h3>
             <p>Descarga la plantilla del indicador, llena y vuelve a subirla.</p>
         </div>
 
     </div>
+
+    @if(!$soloLectura && !$modoCorreccion && $metodo)
+    <div class="mt-2">
+        <button type="button" class="btn btn-sm btn-outline-danger"
+            wire:click="reiniciarCaptura">
+            Reiniciar captura
+        </button>
+        <small class="text-muted d-block mt-1">
+            Solo disponible si aún no has avanzado (sin plantilla descargada, sin archivo procesado, sin filas capturadas).
+        </small>
+    </div>
+    @endif
 
     {{-- INFORMACIÓN --}}
     <div class="info">
@@ -507,6 +561,26 @@
         }
         actualizarFechaHora();
         setInterval(actualizarFechaHora, 60000);
+    });
+
+    document.addEventListener('livewire:init', () => {
+        Livewire.on('swal-enviado', (data) => {
+            const payload = Array.isArray(data) ? (data[0] || {}) : (data || {});
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Envío realizado',
+                html: `
+        <div style="text-align:left">
+          <div><b>Indicador:</b> ${payload.indicador ?? '—'}</div>
+          <div><b>Folio:</b> ${payload.folio ?? '—'}</div>
+        </div>
+      `,
+                confirmButtonText: 'Ir a mi panel'
+            }).then(() => {
+                window.location.href = payload.url ?? '/usuario/dashboard';
+            });
+        });
     });
 </script>
 @endpush

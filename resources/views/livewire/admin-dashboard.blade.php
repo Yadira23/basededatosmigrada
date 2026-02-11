@@ -210,9 +210,29 @@
     <div class="card pro-card mb-3">
         <div class="card-header d-flex align-items-center justify-content-between">
             <span>Estado de cargas (Semáforo)</span>
-            <span class="text-muted small"><i class="fas fa-traffic-light mr-1"></i> Resumen</span>
+
+            <div class="d-flex align-items-center">
+                @if(($totalBorradores ?? 0) > 0)
+                <button type="button"
+                    class="btn btn-sm btn-outline-primary mr-2"
+                    wire:click="recordarBorradoresGlobal">
+                    <i class="fas fa-bell mr-1"></i> Recordar borradores ({{ (int)$totalBorradores }})
+                </button>
+                @endif
+
+                <span class="text-muted small">
+                    <i class="fas fa-traffic-light mr-1"></i> Resumen
+                </span>
+            </div>
         </div>
+
         <div class="card-body">
+            @if (session()->has('message'))
+            <div class="alert alert-info mb-3">
+                {{ session('message') }}
+            </div>
+            @endif
+
             <div class="table-responsive">
                 <table class="table table-hover table-pro mb-0">
                     <thead>
@@ -295,6 +315,24 @@
                                 <div class="dep-metric-label">Indicadores</div>
                                 <div class="dep-metric-value">{{ (int)$row->indicadores_asignados }}</div>
                             </div>
+                        </div>
+
+                        @php
+                        $borr = (int) (($borradoresPorDep[$row->id_depen] ?? 0));
+                        @endphp
+
+                        <div class="d-flex align-items-center justify-content-between mt-2">
+                            <div class="text-muted small">
+                                <i class="fas fa-pencil-alt mr-1"></i> Borradores: <strong>{{ $borr }}</strong>
+                            </div>
+
+                            @if($borr > 0)
+                            <button type="button"
+                                class="btn btn-sm btn-outline-primary"
+                                wire:click="recordarBorradoresDependencia({{ (int)$row->id_depen }})">
+                                <i class="fas fa-bell mr-1"></i> Recordar
+                            </button>
+                            @endif
                         </div>
 
                         <div class="dep-mini">
