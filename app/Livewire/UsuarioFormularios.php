@@ -12,7 +12,7 @@ class UsuarioFormularios extends Component
     public function mount()
     {
         // Trae solo los formularios "Ver" de la dependencia del usuario logueado
-        $this->formularios = Formulario::where('boton_accion_form', 'Ver')
+        $this->formularios = Formulario::whereIn('boton_accion_form', ['Publicado', 'Ver'])
             ->where('id_depen', Auth::user()->id_depen)
             ->with('indicador') // ✅ clave para usar $formulario->indicador
             ->orderByDesc('id_form')

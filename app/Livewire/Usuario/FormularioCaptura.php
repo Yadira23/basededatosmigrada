@@ -131,12 +131,13 @@ class FormularioCaptura extends Component
         $fechaCreacion = Carbon::parse($this->formulario->fecha_creacion_form);
         $hoy = Carbon::now();
 
-        $fechaFin = match ($this->formulario->periodo_form) {
+        $periodo = ucfirst(mb_strtolower(trim((string)$this->formulario->periodo_form)));
+        $fechaFin = match ($periodo) {
             'Mensual' => $fechaCreacion->copy()->addMonth(),
             'Trimestral' => $fechaCreacion->copy()->addMonths(3),
             'Semestral' => $fechaCreacion->copy()->addMonths(6),
             'Anual' => $fechaCreacion->copy()->addYear(),
-            default => $fechaCreacion,
+            default => $fechaCreacion->copy()->addDay(), // ✅ evita que se finalice el mismo día
         };
 
         if ($hoy->gte($fechaFin)) {

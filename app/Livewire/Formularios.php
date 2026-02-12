@@ -215,14 +215,14 @@ class Formularios extends Component
                 session()->flash('message', "Formulario publicado en {$formulario->dependencia->nombre_depen}");
                 break;
 
-            case 'Finalizar':
-                $formulario->boton_accion_form = 'Ver';
-                session()->flash('message', "Formulario finalizado");
-                break;
+            //case 'Finalizar':
+             //   $formulario->boton_accion_form = 'Ver';
+             //   session()->flash('message', "Formulario finalizado");
+             //   break;
 
-            case 'Ver':
-                session()->flash('message', "Formulario en modo solo lectura");
-                break;
+           // case 'Ver':
+             //   session()->flash('message', "Formulario en modo solo lectura");
+            //    break;
         }
         $formulario->save();
     }
@@ -232,12 +232,17 @@ class Formularios extends Component
         $formulario = Formulario::find($id);
 
         if ($formulario) {
-            $formulario->boton_accion_form = 'Ver'; // Al publicar, cambiar a "Ver"
+            $formulario->boton_accion_form = 'Publicado'; // ✅ ahora sí guarda Publicado
             $formulario->save();
 
-            // Mostrar mensaje con la dependencia
             $dependencia = Dependencia::find($formulario->id_depen);
-            session()->flash('message', "Formulario publicado correctamente en {$dependencia->nombre_depen}.");
+            $nombreDep = $dependencia->nombre_depen ?? 'la dependencia';
+
+            $this->dispatch('swal', [
+                'icon' => 'success',
+                'title' => 'Formulario publicado',
+                'text' => "Se publicó correctamente en {$nombreDep}.",
+            ]);
         }
     }
 
@@ -266,21 +271,21 @@ class Formularios extends Component
         return $hoy->gte($fechaFin); // Devuelve true si ya pasó el periodo
     }
 
-    public function ver($id)
-    {
+    //public function ver($id)
+    //{
         // Aquí puedes redirigir o abrir modal con detalles del formulario
-        $formulario = Formulario::find($id);
-        session()->flash('message', "Viendo formulario: {$formulario->titulo_form}");
-    }
+     //   $formulario = Formulario::find($id);
+     //   session()->flash('message', "Viendo formulario: {$formulario->titulo_form}");
+   // }
 
-    public function finalizar($id)
-    {
-        $formulario = Formulario::find($id);
-        $formulario->boton_accion_form = 'Finalizado';
-        $formulario->save();
+   // public function finalizar($id)
+   // {
+    //    $formulario = Formulario::find($id);
+    //    $formulario->boton_accion_form = 'Finalizado';
+    //    $formulario->save();
 
-        session()->flash('message', "Formulario {$formulario->titulo_form} finalizado.");
-    }
+    //    session()->flash('message', "Formulario {$formulario->titulo_form} finalizado.");
+    //}
 
     protected $listeners = ['openCreateModal'];
 

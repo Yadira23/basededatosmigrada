@@ -32,7 +32,7 @@ class DashboardUsuario extends Component
         $this->dependenciaNombre = $user->dependencia->nombre_depen ?? null;
 
         // Formularios disponibles
-        $this->formulariosDisponibles = Formulario::where('boton_accion_form', 'Ver')
+        $this->formulariosDisponibles = Formulario::whereIn('boton_accion_form', ['Publicado', 'Ver'])
             ->where('id_depen', $idDepen)
             ->count();
 
@@ -57,7 +57,8 @@ class DashboardUsuario extends Component
     ========================================================= */
 
         // 1) META
-        $this->metaIndicadores = Formulario::where('id_depen', $idDepen)
+        $this->metaIndicadores = Formulario::publicados()
+            ->where('id_depen', $idDepen)
             ->distinct('id_form')
             ->count('id_form');
 
