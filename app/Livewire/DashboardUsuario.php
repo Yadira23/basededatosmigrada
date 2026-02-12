@@ -19,13 +19,16 @@ class DashboardUsuario extends Component
     public int $pendientes = 0;
     public int $observaciones = 0;
     public $ultimasCargas = [];
+    public $metaIndicadores = 0;
+    public $indicadoresCompletados = 0;
+    public $porcentajeAvance = 0;
 
     public function mount()
     {
         $user = Auth::user();
         $idDepen = $user->id_depen;
 
-        // Nombre de dependencia (ya lo tienes en layout, aquí para el dashboard)
+        // Nombre de dependencia
         $this->dependenciaNombre = $user->dependencia->nombre_depen ?? null;
 
         // Formularios disponibles
@@ -33,14 +36,14 @@ class DashboardUsuario extends Component
             ->where('id_depen', $idDepen)
             ->count();
 
-        // Base: cargas de la dependencia (misma lógica que ya usabas)
+        // Base: cargas de la dependencia
         $base = Carga::whereHas('formulario', function ($q) use ($idDepen) {
             $q->where('id_depen', $idDepen);
         });
 
         $this->cargasRealizadas = (clone $base)->count();
 
-        // Últimas cargas (con id_ind)
+        // Últimas cargas
         $this->ultimasCargas = (clone $base)
             ->leftJoin('detallecargas as dc', 'dc.id_carga', '=', 'cargas.id_carga')
             ->select('cargas.*', DB::raw('MIN(dc.id_ind) as id_ind'))
@@ -49,13 +52,38 @@ class DashboardUsuario extends Component
             ->take(5)
             ->get();
 
-        /**
-         * Pendientes / Observaciones
-         * IMPORTANTE: ajusta estos status a los reales de tu BD.
-         * Si no existen, se quedarán en 0 (no truena).
-         */
-        $this->pendientes = (clone $base)->whereIn('status_env', ['Pendiente', 'Borrador'])->count();
-        $this->observaciones = (clone $base)->whereIn('status_env', ['Observado', 'Rechazado'])->count();
+        /* =========================================================
+       ✅ AVANCE vs META (por formularios)
+    ========================================================= */
+
+        // 1) META
+        $this->metaIndicadores = Formulario::where('id_depen', $idDepen)
+            ->distinct('id_form')
+            ->count('id_form');
+
+        // 2) COMPLETADOS (sin contar BORRADOR)
+        $estatusValidos = ['ENVIADO', 'EN REVISION', 'REENVIADO', 'APROBADO'];
+
+        $this->indicadoresCompletados = (clone $base)
+            ->whereIn('cargas.status_env', $estatusValidos)
+            ->whereNotNull('cargas.id_form') // por seguridad
+            ->distinct('cargas.id_form')
+            ->count('cargas.id_form');
+
+        // 3) %
+        $this->porcentajeAvance = $this->metaIndicadores > 0
+            ? (int) round(($this->indicadoresCompletados / $this->metaIndicadores) * 100)
+            : 0;
+
+        /* =========================================================
+       ✅ Pendientes / Observaciones (ya con meta/completados listos)
+    ========================================================= */
+
+        // ✅ Pendientes reales = meta - completados
+        $this->pendientes = max(0, (int)$this->metaIndicadores - (int)$this->indicadoresCompletados);
+
+        // ⚠️ Ajusta estos status a los reales (en tu UI usas OBSERVADO)
+        $this->observaciones = (clone $base)->whereIn('status_env', ['OBSERVADO', 'RECHAZADO'])->count();
     }
 
     public function render()

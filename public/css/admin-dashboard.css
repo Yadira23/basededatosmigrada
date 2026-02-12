@@ -329,6 +329,11 @@
     opacity: .7;
 }
 
+.dep-bar-fill.fill-success { background: #1cc88a; }
+.dep-bar-fill.fill-warning { background: #f6c23e; }
+.dep-bar-fill.fill-danger  { background: #e74a3b; }
+.dep-bar-fill.fill-secondary { background: #858796; }
+
 
 
 

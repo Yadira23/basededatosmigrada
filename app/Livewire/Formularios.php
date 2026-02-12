@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\Dependencia;
 use App\Models\Usuario;
 use App\Models\Indicador;
+use Illuminate\Support\Facades\DB;
 
 
 
@@ -98,7 +99,17 @@ class Formularios extends Component
             'formularios' => $this->filteredFormularios,
             'indicadores'  => $this->indicadores,   // ✅
             'dependencias' => $this->dependencias,  // ✅
-        ])->extends('layouts.admin')->section('content');
+        ])->extends('layouts.app')->section('content');
+    }
+
+    public function updatedIdInd($value)
+    {
+        if (!$value) {
+            $this->periodo_form = null;
+            return;
+        }
+
+        $this->periodo_form = Indicador::where('id_ind', $value)->value('periodo_ind');
     }
 
     public function cancel()
@@ -123,11 +134,18 @@ class Formularios extends Component
             'fecha_creacion_form' => 'required',
             'boton_accion_form' => 'required',
             'secciones_form' => 'required',
-            'periodo_form' => 'required',
             'id_depen' => 'required',
             'id_ind' => 'required|exists:indicadores,id_ind',
 
         ]);
+
+        // ✅ Forzar periodo_form desde el indicador (fuente de verdad)
+        $this->periodo_form = Indicador::where('id_ind', $this->id_ind)->value('periodo_ind');
+
+        if (!$this->periodo_form) {
+            $this->addError('id_ind', 'No se encontró el periodo del indicador seleccionado.');
+            return;
+        }
 
         if (!$this->fecha_creacion_form) {
             $this->fecha_creacion_form = now()->format('Y-m-d');
@@ -173,7 +191,7 @@ class Formularios extends Component
         $this->descripcion_form = $formulario->descripcion_form;
         $this->boton_accion_form = $formulario->boton_accion_form;
         $this->secciones_form = $formulario->secciones_form;
-        $this->periodo_form = $formulario->periodo_form;
+        $this->periodo_form = Indicador::where('id_ind', $formulario->id_ind)->value('periodo_ind');
         $this->id_depen = $formulario->id_depen;
         $this->id_ind = $formulario->id_ind;
     }

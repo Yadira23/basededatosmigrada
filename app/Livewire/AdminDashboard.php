@@ -19,6 +19,7 @@ class AdminDashboard extends Component
     public $cargasPorEstado = [];
     public $borradoresPorDep = [];   // [id_depen => total]
     public $totalBorradores = 0;
+    public $avancePorDep = []; // [id_depen => ['meta'=>, 'hechos'=>, 'pct'=>, 'color'=>]]
 
 
     public function mount()
@@ -124,6 +125,7 @@ class AdminDashboard extends Component
 
     public function render()
     {
+        // ✅ borradores por dependencia (ya lo tenías)
         $this->borradoresPorDep = DB::table('cargas as c')
             ->join('formularios as f', 'f.id_form', '=', 'c.id_form')
             ->where('c.status_env', 'BORRADOR')
@@ -132,6 +134,48 @@ class AdminDashboard extends Component
             ->toArray();
 
         $this->totalBorradores = array_sum($this->borradoresPorDep);
+
+        /* =========================================================
+       ✅ NUEVO: AVANCE vs META por dependencia
+       Meta = # formularios asignados a la dependencia
+       Hechos = # formularios con al menos 1 carga válida (sin BORRADOR)
+    ========================================================= */
+        $estatusValidos = ['ENVIADO', 'EN REVISION', 'REENVIADO', 'APROBADO'];
+
+        // Meta por dependencia
+        $metas = DB::table('formularios')
+            ->select('id_depen', DB::raw('COUNT(DISTINCT id_form) as meta'))
+            ->groupBy('id_depen')
+            ->pluck('meta', 'id_depen')
+            ->toArray();
+
+        // Completados por dependencia
+        $hechos = DB::table('cargas as c')
+            ->join('formularios as f', 'f.id_form', '=', 'c.id_form')
+            ->whereIn('c.status_env', $estatusValidos)
+            ->select('f.id_depen', DB::raw('COUNT(DISTINCT c.id_form) as hechos'))
+            ->groupBy('f.id_depen')
+            ->pluck('hechos', 'f.id_depen')
+            ->toArray();
+
+        // Armar arreglo final con pct + color
+        $this->avancePorDep = [];
+        foreach ($metas as $id_depen => $meta) {
+            $meta = (int)$meta;
+            $done = (int)($hechos[$id_depen] ?? 0);
+
+            $pct = $meta > 0 ? (int)round(($done / $meta) * 100) : 0;
+
+            // semáforo (si meta=0, gris)
+            $color = $meta === 0 ? 'secondary' : ($pct >= 80 ? 'success' : ($pct >= 40 ? 'warning' : 'danger'));
+
+            $this->avancePorDep[$id_depen] = [
+                'meta'  => $meta,
+                'hechos' => $done,
+                'pct'   => $pct,
+                'color' => $color,
+            ];
+        }
 
         return view('livewire.admin-dashboard');
     }

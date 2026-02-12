@@ -7,6 +7,7 @@ use Livewire\WithPagination;
 use Livewire\Attributes\Computed;
 use App\Models\Indicador;
 use App\Models\Formulario;
+use Illuminate\Support\Facades\DB;
 
 class Indicadores extends Component
 {
@@ -24,18 +25,18 @@ class Indicadores extends Component
     public $tiene_formula = false;
 
     public $nombre_ind,
-           $definicion_ind,
-           $formula_ind,
-           $tendencia_ind,
-           $restriccion_ind,
-           $formato_ind,
-           $unidadmedida_ind,
-           $meta_ind,
-           $requerido_ind,
-           $status_ind,
-           $periodo_ind,
-           $etiquetas_ind,
-           $fuenteverificacion_ind;
+        $definicion_ind,
+        $formula_ind,
+        $tendencia_ind,
+        $restriccion_ind,
+        $formato_ind,
+        $unidadmedida_ind,
+        $meta_ind,
+        $requerido_ind,
+        $status_ind,
+        $periodo_ind,
+        $etiquetas_ind,
+        $fuenteverificacion_ind;
 
     /* ===============================
        LISTADO + BÚSQUEDA
@@ -54,8 +55,8 @@ class Indicadores extends Component
                 ->orWhere('periodo_ind', 'LIKE', $keyWord)
                 ->orWhere('etiquetas_ind', 'LIKE', $keyWord);
         })
-        ->latest()
-        ->paginate(10);
+            ->latest()
+            ->paginate(10);
     }
 
     public function render()
@@ -70,7 +71,13 @@ class Indicadores extends Component
     ================================*/
     public function save()
     {
+
         $this->requerido_ind = $this->requerido_ind ? 1 : 0;
+
+        $periodoAntes = null;
+        if ($this->selected_id) {
+            $periodoAntes = Indicador::where('id_ind', $this->selected_id)->value('periodo_ind');
+        }
 
         // VALIDACIÓN BASE
         $rules = [
@@ -141,6 +148,13 @@ class Indicadores extends Component
                 'fuenteverificacion_ind' => $this->fuenteverificacion_ind,
             ]
         );
+
+        // ✅ Sincronizar periodo en formularios si el indicador ya existía y cambió el periodo
+        if ($this->selected_id && $periodoAntes !== null && $periodoAntes !== $this->periodo_ind) {
+            DB::table('formularios')
+                ->where('id_ind', $this->selected_id)
+                ->update(['periodo_form' => $this->periodo_ind]);
+        }
 
         session()->flash(
             'message',

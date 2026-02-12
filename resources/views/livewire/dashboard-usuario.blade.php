@@ -7,8 +7,8 @@
             <div class="text-muted small">
                 Bienvenido,
                 <strong>{{ auth()->user()->nombre_usr ?? auth()->user()->email }}</strong>
-                @if(!empty($dependenciaNombre))
-                · Dependencia: <strong>{{ $dependenciaNombre }}</strong>
+                @if (!empty($dependenciaNombre))
+                    · Dependencia: <strong>{{ $dependenciaNombre }}</strong>
                 @endif
             </div>
         </div>
@@ -122,6 +122,58 @@
 
     </div>
 
+    {{-- ✅ AVANCE DE INDICADORES (Meta vs completados) --}}
+    <div class="row">
+        <div class="col-12 mb-4">
+            <div class="card shadow">
+                <div class="card-body">
+
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <div>
+                            <div class="font-weight-bold text-gray-800">Mi avance de indicadores</div>
+                            <div class="small text-muted">
+                                {{ $indicadoresCompletados ?? 0 }} / {{ $metaIndicadores ?? 0 }} completados
+                            </div>
+                        </div>
+
+                        <div class="text-right">
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {{ $porcentajeAvance ?? 0 }}%
+                            </div>
+                            <div class="small text-muted">
+                                @php
+                                    $pct = (int) ($porcentajeAvance ?? 0);
+                                    $label = $pct >= 100 ? 'Meta cumplida' : ($pct >= 1 ? 'En progreso' : 'Sin avance');
+                                @endphp
+                                {{ $label }}
+                            </div>
+                        </div>
+                    </div>
+
+                    @php
+                        $pct = (int) ($porcentajeAvance ?? 0);
+                        $barClass = $pct >= 80 ? 'bg-success' : ($pct >= 40 ? 'bg-warning' : 'bg-danger');
+                    @endphp
+
+                    <div class="progress mt-2" style="height: 10px; border-radius: 999px;">
+                        <div class="progress-bar {{ $barClass }}" role="progressbar"
+                            style="width: {{ $pct }}%;" aria-valuenow="{{ $pct }}" aria-valuemin="0"
+                            aria-valuemax="100">
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between small text-muted mt-2">
+                        <span>0%</span>
+                        <span>40%</span>
+                        <span>80%</span>
+                        <span>100%</span>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
     {{-- NOTIFICACIONES (Recordatorios / avisos del admin) --}}
     <div class="row">
         <div class="col-12 mb-4">
@@ -161,93 +213,97 @@
                     </h6>
                 </div>
                 <div class="card-body">
-                    @if(!empty($ultimasCargas) && count($ultimasCargas))
-                    <div class="table-responsive">
-                        <table class="table table-sm table-hover">
-                            <thead class="thead-light">
-                                <tr>
-                                    <th>Folio</th>
-                                    <th>Periodo</th>
-                                    <th>Estatus</th>
-                                    <th>Observación</th>
-                                    <th>Fecha</th>
-                                    <th>Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($ultimasCargas as $c)
-                                <tr>
-                                    <td class="font-weight-bold">
-                                        {{ $c->folioUnico_carga ?? $c->id_carga }}
-                                    </td>
-                                    <td>
-                                        {{ $c->periodo ?? '—' }} / {{ $c->ejercicio ?? '—' }}
-                                    </td>
-                                    <td>
-                                        <span class="badge badge-{{ $this->badgeClass($c->status_env ?? '') }}">
-                                            {{ $c->status_env ?? '—' }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        @if(!empty($c->observacion_env))
-                                        <span class="text-warning">{{ $c->observacion_env }}</span>
-                                        @else
-                                        <span class="text-muted">—</span>
-                                        @endif
-                                    </td>
-                                    <td class="text-muted">
-                                        <div>{{ optional($c->created_at)->format('Y-m-d H:i') }}</div>
-                                        <small class="text-muted">
-                                            Última act.: {{ optional($c->updated_at)->format('Y-m-d H:i') }}
-                                        </small>
-                                    </td>
-                                    <td>
-                                        @php
-                                        $st = mb_strtoupper(trim((string)($c->status_env ?? '')));
-                                        $st = str_replace('REVISIÓN', 'REVISION', $st);
+                    @if (!empty($ultimasCargas) && count($ultimasCargas))
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th>Folio</th>
+                                        <th>Periodo</th>
+                                        <th>Estatus</th>
+                                        <th>Observación</th>
+                                        <th>Fecha</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($ultimasCargas as $c)
+                                        <tr>
+                                            <td class="font-weight-bold">
+                                                {{ $c->folioUnico_carga ?? $c->id_carga }}
+                                            </td>
+                                            <td>
+                                                {{ $c->periodo ?? '—' }} / {{ $c->ejercicio ?? '—' }}
+                                            </td>
+                                            <td>
+                                                <span
+                                                    class="badge badge-{{ $this->badgeClass($c->status_env ?? '') }}">
+                                                    {{ $c->status_env ?? '—' }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                @if (!empty($c->observacion_env))
+                                                    <span class="text-warning">{{ $c->observacion_env }}</span>
+                                                @else
+                                                    <span class="text-muted">—</span>
+                                                @endif
+                                            </td>
+                                            <td class="text-muted">
+                                                <div>{{ optional($c->created_at)->format('Y-m-d H:i') }}</div>
+                                                <small class="text-muted">
+                                                    Última act.: {{ optional($c->updated_at)->format('Y-m-d H:i') }}
+                                                </small>
+                                            </td>
+                                            <td>
+                                                @php
+                                                    $st = mb_strtoupper(trim((string) ($c->status_env ?? '')));
+                                                    $st = str_replace('REVISIÓN', 'REVISION', $st);
 
-                                        // id_ind del formulario (lo necesitamos para continuar / corregir)
-                                        $id_ind = \App\Models\Formulario::where('id_form', $c->id_form)->value('id_ind');
-                                        @endphp
+                                                    // id_ind del formulario (lo necesitamos para continuar / corregir)
+                                                    $id_ind = \App\Models\Formulario::where(
+                                                        'id_form',
+                                                        $c->id_form,
+                                                    )->value('id_ind');
+                                                @endphp
 
-                                        {{-- 👁 VER (siempre disponible) --}}
-                                        <a class="btn btn-sm btn-outline-primary"
-                                            href="{{ route('usuario.envio.ver.carga', $c->id_carga) }}">
-                                            <i class="fas fa-eye"></i> Ver
-                                        </a>
+                                                {{-- 👁 VER (siempre disponible) --}}
+                                                <a class="btn btn-sm btn-outline-primary"
+                                                    href="{{ route('usuario.envio.ver.carga', $c->id_carga) }}">
+                                                    <i class="fas fa-eye"></i> Ver
+                                                </a>
 
-                                        {{-- ▶️ CONTINUAR (solo BORRADOR) --}}
-                                        @if($st === 'BORRADOR')
-                                        <a class="btn btn-sm btn-success ml-1"
-                                            href="{{ route('usuario.formulario.captura', [
-                                                    'id_form' => $c->id_form,
-                                                    'id_ind'  => $id_ind
-                                                ]) }}?id_carga={{ $c->id_carga }}">
-                                            <i class="fas fa-play mr-1"></i> Continuar
-                                        </a>
-                                        @endif
+                                                {{-- ▶️ CONTINUAR (solo BORRADOR) --}}
+                                                @if ($st === 'BORRADOR')
+                                                    <a class="btn btn-sm btn-success ml-1"
+                                                        href="{{ route('usuario.formulario.captura', [
+                                                            'id_form' => $c->id_form,
+                                                            'id_ind' => $id_ind,
+                                                        ]) }}?id_carga={{ $c->id_carga }}">
+                                                        <i class="fas fa-play mr-1"></i> Continuar
+                                                    </a>
+                                                @endif
 
-                                        {{-- ✏️ CORREGIR (solo OBSERVADO) --}}
-                                        @if($st === 'OBSERVADO')
-                                        <a class="btn btn-sm btn-warning ml-1"
-                                            href="{{ route('usuario.formulario.captura', [
-                                                    'id_form' => $c->id_form,
-                                                    'id_ind'  => $id_ind
-                                                ]) }}?id_carga={{ $c->id_carga }}&modo=correccion">
-                                            <i class="fas fa-edit mr-1"></i> Corregir
-                                        </a>
-                                        @endif
-                                    </td>
-                                </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
+                                                {{-- ✏️ CORREGIR (solo OBSERVADO) --}}
+                                                @if ($st === 'OBSERVADO')
+                                                    <a class="btn btn-sm btn-warning ml-1"
+                                                        href="{{ route('usuario.formulario.captura', [
+                                                            'id_form' => $c->id_form,
+                                                            'id_ind' => $id_ind,
+                                                        ]) }}?id_carga={{ $c->id_carga }}&modo=correccion">
+                                                        <i class="fas fa-edit mr-1"></i> Corregir
+                                                    </a>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
                     @else
-                    <div class="text-center text-muted py-4">
-                        <i class="fas fa-inbox fa-2x mb-2 text-gray-300"></i>
-                        <div>Aún no tienes actividad registrada.</div>
-                    </div>
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-inbox fa-2x mb-2 text-gray-300"></i>
+                            <div>Aún no tienes actividad registrada.</div>
+                        </div>
                     @endif
                 </div>
             </div>
