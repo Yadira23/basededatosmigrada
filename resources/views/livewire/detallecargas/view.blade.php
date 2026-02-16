@@ -37,9 +37,9 @@
 						<div>
 							<input wire:model.live='keyWord' type="text" class="form-control" name="search" id="search" placeholder="Search Detalle Cargas">
 						</div>
-						<div class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#DataModal">
+						{{--<div class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#DataModal">
 							<i class="bi-plus-lg"></i> Add Detalle Cargas
-						</div>
+						</div> --}}
 					</div>
 				</div>
 

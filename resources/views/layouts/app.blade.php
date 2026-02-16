@@ -118,8 +118,8 @@
                 @endrole
 
                 <!-- =========================================================
-                 MENÚ USUARIO (solo lo que puede ver)
-            ========================================================== -->
+                             MENÚ USUARIO (solo lo que puede ver)
+                        ========================================================== -->
                 @role('usuario')
                     <hr class="sidebar-divider">
                     <div class="sidebar-heading">Captura</div>
@@ -140,119 +140,70 @@
                 @endrole
 
                 <!-- =========================================================
-                 MENÚ ADMIN (todo lo de administración)
-            ========================================================== -->
+                             MENÚ ADMIN (todo lo de administración)
+                        ========================================================== -->
                 @role('admin')
                     <hr class="sidebar-divider">
                     <div class="sidebar-heading">Formularios</div>
 
-                    <li class="nav-item">
-                        <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseFormularios"
-                            aria-expanded="true" aria-controls="collapseFormularios">
+                    <li class="nav-item {{ request()->is('formularios*') ? 'active' : '' }}">
+                        <a class="nav-link" href="{{ url('/formularios') }}">
                             <i class="fas fa-file-alt"></i>
                             <span>Formularios</span>
                         </a>
-                        <div id="collapseFormularios" class="collapse" aria-labelledby="headingFormularios"
-                            data-parent="#accordionSidebar">
-                            <div class="bg-white py-2 collapse-inner rounded">
-                                <h6 class="collapse-header">Opciones:</h6>
-                                <a class="collapse-item" href="{{ url('/formularios') }}">Administrar formularios</a>
-                            </div>
-                        </div>
                     </li>
 
                     <hr class="sidebar-divider">
                     <div class="sidebar-heading">Anexos</div>
 
-                    <li class="nav-item">
-                        <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseAnexos"
-                            aria-expanded="true" aria-controls="collapseAnexos">
+                    <li class="nav-item {{ request()->is('anexos*') ? 'active' : '' }}">
+                        <a class="nav-link" href="{{ url('/anexos') }}">
                             <i class="fas fa-paperclip"></i>
                             <span>Anexos</span>
                         </a>
-                        <div id="collapseAnexos" class="collapse" aria-labelledby="headingAnexos"
-                            data-parent="#accordionSidebar">
-                            <div class="bg-white py-2 collapse-inner rounded">
-                                <h6 class="collapse-header">Opciones:</h6>
-                                <a class="collapse-item" href="{{ url('/anexos') }}">Administrar anexos</a>
-                            </div>
-                        </div>
                     </li>
 
                     <hr class="sidebar-divider">
                     <div class="sidebar-heading">Indicadores</div>
 
-                    <li class="nav-item">
-                        <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseIndicadores"
-                            aria-expanded="true" aria-controls="collapseIndicadores">
+                    <li class="nav-item {{ request()->is('indicadores*') ? 'active' : '' }}">
+                        <a class="nav-link" href="{{ url('/indicadores') }}">
                             <i class="fas fa-chart-line"></i>
                             <span>Indicadores</span>
                         </a>
-                        <div id="collapseIndicadores" class="collapse" aria-labelledby="headingIndicadores"
-                            data-parent="#accordionSidebar">
-                            <div class="bg-white py-2 collapse-inner rounded">
-                                <h6 class="collapse-header">Opciones:</h6>
-                                <a class="collapse-item" href="{{ url('/indicadores') }}">Administrar indicadores</a>
-                            </div>
-                        </div>
                     </li>
 
                     <hr class="sidebar-divider">
                     <div class="sidebar-heading">Dependencias</div>
 
-                    <li class="nav-item">
-                        <a class="nav-link collapsed" href="#" data-toggle="collapse"
-                            data-target="#collapseDependencias" aria-expanded="true" aria-controls="collapseDependencias">
+                    <li class="nav-item {{ request()->is('dependencias*') ? 'active' : '' }}">
+                        <a class="nav-link" href="{{ url('/dependencias') }}">
                             <i class="fas fa-building"></i>
                             <span>Dependencias</span>
                         </a>
-                        <div id="collapseDependencias" class="collapse" aria-labelledby="headingDependencias"
-                            data-parent="#accordionSidebar">
-                            <div class="bg-white py-2 collapse-inner rounded">
-                                <h6 class="collapse-header">Opciones:</h6>
-                                <a class="collapse-item" href="{{ url('/dependencias') }}">Listar</a>
-                            </div>
-                        </div>
                     </li>
 
                     <hr class="sidebar-divider">
                     <div class="sidebar-heading">Usuarios</div>
 
-                    <li class="nav-item">
-                        <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseUsuarios"
-                            aria-expanded="true" aria-controls="collapseUsuarios">
+                    <li class="nav-item {{ request()->is('usuarios*') ? 'active' : '' }}">
+                        <a class="nav-link" href="{{ url('/usuarios') }}">
                             <i class="fas fa-users"></i>
                             <span>Usuarios</span>
                         </a>
-                        <div id="collapseUsuarios" class="collapse" aria-labelledby="headingUsuarios"
-                            data-parent="#accordionSidebar">
-                            <div class="bg-white py-2 collapse-inner rounded">
-                                <h6 class="collapse-header">Opciones:</h6>
-                                <a class="collapse-item" href="{{ url('/usuarios') }}">Listar</a>
-                            </div>
-                        </div>
                     </li>
 
                     <hr class="sidebar-divider">
                     <div class="sidebar-heading">Cargas</div>
 
-                    <li class="nav-item">
-                        <a class="nav-link collapsed" href="#" data-toggle="collapse" data-target="#collapseCargas"
-                            aria-expanded="true" aria-controls="collapseCargas">
+                    <li class="nav-item {{ request()->is('cargas*') ? 'active' : '' }}">
+                        <a class="nav-link" href="{{ url('/cargas') }}">
                             <i class="fas fa-boxes"></i>
                             <span>Cargas</span>
                         </a>
-                        <div id="collapseCargas" class="collapse" aria-labelledby="headingCargas"
-                            data-parent="#accordionSidebar">
-                            <div class="bg-white py-2 collapse-inner rounded">
-                                <h6 class="collapse-header">Opciones:</h6>
-                                <a class="collapse-item" href="{{ url('/cargas') }}">Listar</a>
-                                <a class="collapse-item" href="{{ url('/cargas/create') }}">Crear</a>
-                            </div>
-                        </div>
                     </li>
 
-                    <li class="nav-item">
+                    <li class="nav-item {{ request()->is('DetalleCargas*') ? 'active' : '' }}">
                         <a class="nav-link" href="{{ url('/DetalleCargas') }}">
                             <i class="fas fa-clipboard-list"></i>
                             <span>Detalle Cargas</span>

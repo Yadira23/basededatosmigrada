@@ -46,15 +46,16 @@ class Indicadores extends Component
     {
         $keyWord = '%' . $this->keyWord . '%';
 
-        return Indicador::where(function ($query) use ($keyWord) {
-            $query
-                ->orWhere('nombre_ind', 'LIKE', $keyWord)
-                ->orWhere('definicion_ind', 'LIKE', $keyWord)
-                ->orWhere('formula_ind', 'LIKE', $keyWord)
-                ->orWhere('tendencia_ind', 'LIKE', $keyWord)
-                ->orWhere('periodo_ind', 'LIKE', $keyWord)
-                ->orWhere('etiquetas_ind', 'LIKE', $keyWord);
-        })
+        return Indicador::withCount('metas')
+            ->where(function ($query) use ($keyWord) {
+                $query
+                    ->orWhere('nombre_ind', 'LIKE', $keyWord)
+                    ->orWhere('definicion_ind', 'LIKE', $keyWord)
+                    ->orWhere('formula_ind', 'LIKE', $keyWord)
+                    ->orWhere('tendencia_ind', 'LIKE', $keyWord)
+                    ->orWhere('periodo_ind', 'LIKE', $keyWord)
+                    ->orWhere('etiquetas_ind', 'LIKE', $keyWord);
+            })
             ->latest()
             ->paginate(10);
     }

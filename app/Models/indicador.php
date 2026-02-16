@@ -46,6 +46,15 @@ class Indicador extends Model
     }
 
     /**
+     * ✅ Indicador -> Metas (1:N)
+     */
+    public function metas()
+    {
+        return $this->hasMany(\App\Models\Meta::class, 'id_ind', 'id_ind');
+    }
+
+
+    /**
      * Indicador -> Detalles de carga (1:N)
      */
     public function detalles()

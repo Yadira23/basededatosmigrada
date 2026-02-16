@@ -15,6 +15,9 @@ use App\Http\Controllers\UsuarioEnvioController;
 use App\Http\Controllers\UsuarioAnexosController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\ResetPasswordController;
+use App\Models\Indicador;
+use Illuminate\Support\Facades\DB;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -97,6 +100,9 @@ Route::middleware(['auth', 'role:usuario'])->get('/formularios', function () {
     return redirect()->route('usuario.indicadores');
 });
 
+Route::get('/admin/indicadores/{id_ind}/metas', \App\Livewire\Admin\Metas\MetasIndicador::class)
+    ->name('admin.indicadores.metas');
+
 Route::middleware(['auth', 'role:usuario'])->group(function () {
     //Route::get('/usuario/anexos', function () {
     //    return view('usuario.anexos.index');
@@ -152,4 +158,53 @@ Route::middleware(['auth'])->group(function () {
     // Descargar LOG del procesamiento
     Route::get('/usuario/envios/{id_carga}/log', [UsuarioEnvioController::class, 'downloadLog'])
         ->name('usuario.envio.descargar.log');
+
+    Route::get('/usuario/indicadores/{id_ind}/metas', function ($id_ind) {
+
+        $indicador = Indicador::with('metas')->findOrFail($id_ind);
+
+        // ✅ Última carga por META (usando detallecargas.id_meta + cargas.status_env)
+        $ultimaCargaPorMeta = DB::table('detallecargas as d')
+            ->join('cargas as c', 'c.id_carga', '=', 'd.id_carga')
+            ->select('d.id_meta', 'c.status_env', 'c.created_at', 'c.id_carga', 'c.id_form')
+            ->where('d.id_ind', $id_ind)
+            ->whereNotNull('d.id_meta')
+            ->orderByDesc('c.created_at')
+            ->get()
+            ->groupBy('id_meta');
+
+        $metas = $indicador->metas->map(function ($meta) use ($ultimaCargaPorMeta, $id_ind) {
+
+            $ultima = optional($ultimaCargaPorMeta->get($meta->id))->first();
+
+            $estado = $ultima
+                ? strtoupper($ultima->status_env ?? 'ENVIADO')
+                : 'SIN_CAPTURA';
+
+            // ✅ Capturar: manda id_meta
+            $urlCapturar = $meta->id_form
+                ? route('usuario.formulario.captura', [
+                    'id_form' => $meta->id_form,
+                    'id_ind'  => $id_ind,
+                ]) . '?id_meta=' . $meta->id
+                : '#';
+
+            // ✅ Ver: si hay carga real, ver esa carga; si no, cae a "ver último envío" del formulario
+            $urlVer = $ultima
+                ? route('usuario.envio.ver.carga', ['id_carga' => $ultima->id_carga])
+                : ($meta->id_form ? route('usuario.envio.ver', ['id_form' => $meta->id_form]) : '#');
+
+            return [
+                'meta' => $meta,
+                'estado' => $estado,
+                'url_capturar' => $urlCapturar,
+                'url_ver' => $urlVer,
+            ];
+        });
+
+        return view('usuario.indicadores.metas', [
+            'indicador' => $indicador,
+            'metas' => $metas,
+        ]);
+    })->name('usuario.indicadores.metas');
 });
