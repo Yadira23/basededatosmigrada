@@ -26,7 +26,7 @@
 
             <div class="col-md-3">
                 <label class="form-label">Ejercicio (año)</label>
-                <input type="number" min="2000" max="2100" class="form-control" wire:model.defer="ejercicio"
+                <input type="number" min="2000" max="2100" class="form-control" wire:model="ejercicio"
                     placeholder="2026">
                 @error('ejercicio')
                     <small class="text-danger">{{ $message }}</small>
@@ -35,11 +35,14 @@
 
             <div class="col-md-3">
                 <label class="form-label">Corte</label>
-                <select class="form-select" wire:model.defer="corte">
-                    @foreach ($cortesDisponibles as $value => $label)
-                        <option value="{{ $value }}">{{ $label }}</option>
+                <select wire:model="corte" class="form-control">
+                    @foreach ($cortesDisponibles as $key => $label)
+                        <option value="{{ $key }}" @if (in_array((int)$key, $cortesUsados, true)) disabled @endif>
+                            {{ $label }}
+                        </option>
                     @endforeach
                 </select>
+
                 @error('corte')
                     <small class="text-danger">{{ $message }}</small>
                 @enderror

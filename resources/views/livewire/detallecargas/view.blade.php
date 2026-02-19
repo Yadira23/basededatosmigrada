@@ -79,7 +79,7 @@
 										@switch($row->ambito_geo)
 										@case('REGION') REGIÓN @break
 										@case('MUNICIPIO') MUNICIPIO @break
-										@default GLOBAL
+										@default ESTATAL
 										@endswitch
 									</td>
 									<td>
@@ -88,7 +88,7 @@
 										@elseif($row->ambito_geo === 'MUNICIPIO')
 										{{ $row->municipio->nombre_municipio ?? 'N/A' }}
 										@else
-										GLOBAL
+										ESTATAL
 										@endif
 									</td>
 									<td style="min-width:260px;">

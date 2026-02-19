@@ -1,0 +1,28 @@
+/* SOLO color al contenido, no a la tarjeta */
+.ind-card .card-body {
+    background-color: #f3f6fb;
+    /* color suave institucional */
+}
+
+/* colores suaves por estado */
+.ind-card.status-sin .card-body {
+    background-color: #f1f5f9;
+}
+
+.ind-card.status-borrador .card-body {
+    background-color: #fff8e6;
+}
+
+.ind-card.status-enviado .card-body {
+    background-color: #eef5ff;
+}
+
+.ind-card.status-aprobado .card-body {
+    background-color: #edfdf5;
+}
+
+/* Color suave para diferenciar las tarjetas del fondo blanco */
+.ind-card .card-body{
+  background-color: #f3f6fb !important;
+}
+

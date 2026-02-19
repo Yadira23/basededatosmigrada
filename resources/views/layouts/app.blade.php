@@ -118,8 +118,8 @@
                 @endrole
 
                 <!-- =========================================================
-                             MENÚ USUARIO (solo lo que puede ver)
-                        ========================================================== -->
+                                 MENÚ USUARIO (solo lo que puede ver)
+                            ========================================================== -->
                 @role('usuario')
                     <hr class="sidebar-divider">
                     <div class="sidebar-heading">Captura</div>
@@ -140,8 +140,8 @@
                 @endrole
 
                 <!-- =========================================================
-                             MENÚ ADMIN (todo lo de administración)
-                        ========================================================== -->
+                                 MENÚ ADMIN (todo lo de administración)
+                            ========================================================== -->
                 @role('admin')
                     <hr class="sidebar-divider">
                     <div class="sidebar-heading">Formularios</div>
@@ -288,8 +288,13 @@
 
                 <!-- ===== MAIN CONTENT ===== -->
                 <div class="container-fluid">
+
+                    {{-- ✅ MIGAS DE PAN (GLOBAL) --}}
+                    <x-breadcrumbs />
+
                     @yield('content')
                 </div>
+
             </div>
 
             <!-- ===== FOOTER ===== -->

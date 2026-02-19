@@ -53,6 +53,13 @@ class Indicador extends Model
         return $this->hasMany(\App\Models\Meta::class, 'id_ind', 'id_ind');
     }
 
+    /**
+     * ✅ Indicador -> Metas por periodo (Kardex) (1:N)
+     */
+    public function metasPeriodo()
+    {
+        return $this->hasMany(\App\Models\MetaPeriodo::class, 'id_ind', 'id_ind');
+    }
 
     /**
      * Indicador -> Detalles de carga (1:N)

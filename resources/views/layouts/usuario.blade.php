@@ -142,6 +142,10 @@
 
                 <!-- ================= CONTENIDO ================= -->
                 <div class="container-fluid">
+
+                    {{-- ✅ MIGAS DE PAN (GLOBAL) --}}
+                    <x-breadcrumbs />
+
                     @yield('content')
                 </div>
 

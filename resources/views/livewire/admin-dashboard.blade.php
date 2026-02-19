@@ -1,4 +1,4 @@
-<div class="admin-dash-wrap">
+<div class="admin-dash-wrap" wire:poll.60s>
 
     {{-- DATOS PARA GRÁFICAS --}}
     <div id="chart-data" data-formularios='@json($formulariosPorMes)' data-roles='@json($usuariosPorRol)'
@@ -179,7 +179,7 @@
                     <div class="card pro-card">
                         <div class="card-header d-flex justify-content-between">
                             <span>Usuarios</span>
-                            <span class="text-muted small" id="pctAdmin">{{ $totalUsuarios }} total</span>
+                            <span class="text-muted small" id="pctUsuario">{{ $totalUsuarios }} total</span>
                         </div>
                         <div class="card-body">
                             <div class="chart-box" style="height:190px;">
@@ -393,11 +393,115 @@
                                     Meta: {{ $meta }} · Hechos: {{ $hechos }}
                                 </div>
                             </div>
-
                         </div>
                     </div>
                 @endforeach
             </div>
+        </div>
+    </div>
+
+    {{-- =========================================================
+   ✅ NUEVO: Metas por periodo (kardex) - Sección independiente
+========================================================= --}}
+    <div class="card pro-card mb-3">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <span>Metas por periodo (kardex)</span>
+            <span class="text-muted small">Indicadores con meta</span>
+        </div>
+
+        <div class="card-body">
+            <div class="row align-items-end">
+                <div class="col-md-5 mb-2">
+                    <label class="small text-muted mb-1">Dependencia</label>
+                    <select class="form-control form-control-sm" wire:model.live="depSeleccionadaMetas">
+                        @foreach ($depOptions as $id => $nombre)
+                            <option value="{{ $id }}">{{ $nombre }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+
+            @php
+                $depId = (int) ($depSeleccionadaMetas ?? 0);
+
+                $k = $kardexPorDep[$depId] ?? ['meta' => 0, 'hechas' => 0, 'pct' => 0, 'color' => 'secondary'];
+                $kMeta = (int) $k['meta'];
+                $kHechas = (int) $k['hechas'];
+                $kPct = (int) $k['pct'];
+
+                // ✅ AHORA viene por periodicidad: [depId][Mensual|Trimestral|Semestral|Anual] => cards[]
+                $cardsByPeri = $kardexPeriodosPorDep[$depId] ?? [];
+
+                $fill =
+                    ($k['color'] ?? 'secondary') === 'success'
+                        ? 'fill-success'
+                        : (($k['color'] ?? 'secondary') === 'warning'
+                            ? 'fill-warning'
+                            : (($k['color'] ?? 'secondary') === 'danger'
+                                ? 'fill-danger'
+                                : 'fill-secondary'));
+
+                $orden = ['APROBADO', 'EN REVISION', 'REENVIADO', 'ENVIADO', 'OBSERVADO', 'RECHAZADO', 'BORRADOR'];
+            @endphp
+
+            @if ($kMeta === 0)
+                <div class="alert alert-light border mb-0">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    Aún no hay metas por periodo configuradas para esta dependencia.
+                </div>
+            @else
+                @foreach ($cardsByPeri as $peri => $cards)
+                    <div class="mb-2 font-weight-bold text-gray-800">
+                        {{ $peri }}
+                    </div>
+
+                    <div class="d-flex flex-wrap mb-3" style="gap:10px;">
+                        @foreach ($cards as $c)
+                            @php
+                                $badge = $c['estado'] ?? 'secondary';
+
+                                // ✅ el segmento ya viene listo (1..12, 1..4, 1..2, 1)
+                                $segNum = (int) ($c['seg'] ?? 1);
+
+                                // ✅ stats ahora: [dep][periodicidad][seg][estatus]
+                                $stats = $estatusPorDepSeg[$depId][$peri][$segNum] ?? [];
+                            @endphp
+
+                            <div class="card shadow-sm" style="min-width: 160px; cursor:pointer;"
+                                wire:click="verDetalleKardex({{ $depId }}, '{{ $peri }}', {{ $segNum }})">
+                                <div class="card-body p-2">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div class="font-weight-bold">{{ $c['label'] }}</div>
+                                        <span class="badge badge-{{ $badge }}">
+                                            {{ $badge === 'success' ? 'Cumplido' : ($badge === 'warning' ? 'En progreso' : ($badge === 'danger' ? 'Atrasado' : 'Sin meta')) }}
+                                        </span>
+                                    </div>
+
+                                    <div class="text-muted small mt-1">
+                                        {{ $c['hechas'] }} / {{ $c['meta'] }}
+                                    </div>
+
+                                    @if (!empty($stats))
+                                        <div class="text-muted small mt-2" style="line-height:1.15;">
+                                            @foreach ($orden as $stName)
+                                                @php $val = (int) ($stats[$stName] ?? 0); @endphp
+                                                @if ($val > 0)
+                                                    <div><strong>{{ $stName }}:</strong> {{ $val }}
+                                                    </div>
+                                                @endif
+                                            @endforeach
+                                        </div>
+                                    @else
+                                        <div class="text-muted small mt-2">Sin cargas</div>
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @endforeach
+
+            @endif
+
         </div>
     </div>
 
@@ -431,6 +535,75 @@
             </div>
         </div>
     </div>
+
+    {{-- ✅ MODAL DENTRO DEL ROOT --}}
+    @if ($modalOpen)
+        <div wire:ignore.self class="modal fade show d-block" tabindex="-1"
+            style="background:rgba(0,0,0,.45); position:fixed; inset:0; z-index:99999;">
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">{{ $modalTitulo }}</h5>
+                        <button type="button" class="btn-close" aria-label="Close"
+                            wire:click="cerrarModal"></button>
+                    </div>
+
+                    <div class="modal-body">
+                        @if (empty($modalCargas))
+                            <div class="text-muted">Sin cargas para este periodo.</div>
+                        @else
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover">
+                                    <thead class="thead-light">
+                                        <tr>
+                                            <th>Folio</th>
+                                            <th>Periodo</th>
+                                            <th>Estatus</th>
+                                            <th>Formulario</th>
+                                            <th>Fecha</th>
+                                            <th>Actualización</th>
+                                            <th>Acciones</th> {{-- ✅ nuevo --}}
+                                        </tr>
+                                    </thead>
+
+                                    <tbody>
+                                        @foreach ($modalCargas as $c)
+                                            <tr>
+                                                <td class="font-weight-bold">{{ $c['folio'] }}</td>
+                                                <td>{{ $c['periodo'] }} / {{ $c['ejercicio'] }}</td>
+                                                <td>{{ $c['estatus'] }}</td>
+                                                <td class="text-truncate" style="max-width:260px;">
+                                                    {{ $c['formulario'] }}</td>
+                                                <td class="text-muted">{{ $c['fecha'] }}</td>
+                                                <td class="text-muted">{{ $c['actualizado'] }}</td>
+                                                <td>
+                                                    <a class="btn btn-sm btn-primary"
+                                                        href="{{ route('admin.cargas.revision', $c['id_carga']) }}">
+                                                        Ver
+                                                    </a>
+                                                </td>
+
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        @endif
+                    </div>
+
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" wire:click="cerrarModal">Cerrar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <style>
+            body {
+                overflow: hidden;
+            }
+        </style>
+    @endif
 
 </div>
 

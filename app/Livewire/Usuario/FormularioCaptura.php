@@ -65,7 +65,7 @@ class FormularioCaptura extends Component
     public $archivoData = [];
     public ?int $id_meta = null;
     public $metasDisponibles = [];
-
+    public ?string $metaTitulo = null;
 
     // metadata
     public $fuente_dato = '';
@@ -87,6 +87,9 @@ class FormularioCaptura extends Component
     public $regiones;
     public string $ambito_plantilla_descargada = ''; // para saber con qué ámbito se descargó
     public string $motivoResetPlantilla = '';        // mensaje para UI
+    public bool $requiereMeta = false;
+    public bool $metaBloqueada = false;
+    public bool $ambitoElegido = false;
 
     public function mount($id_form, $id_ind)
     {
@@ -134,8 +137,37 @@ class FormularioCaptura extends Component
             ->get()
             ->toArray();
 
+        // ✅ Si hay metas disponibles, entonces SÍ se requiere meta
+        $this->requiereMeta = !empty($this->metasDisponibles);
+
+        // ✅ Si NO requiere meta, forzar null (para que no estorbe)
+        if (!$this->requiereMeta) {
+            $this->id_meta = null;
+        }
+
         // id_meta desde URL (si viene)  ✅ (recuerda: es metas.id)
-        $this->id_meta = request('id_meta') ? (int) request('id_meta') : null;
+        $this->id_meta = ($this->requiereMeta && request('id_meta')) ? (int) request('id_meta') : null;
+        $this->metaTitulo = null;
+
+        if (!empty($this->metasDisponibles) && !empty($this->id_meta)) {
+            $ids = collect($this->metasDisponibles)->pluck('id')->map(fn($v) => (int)$v)->all();
+
+            if (!in_array((int)$this->id_meta, $ids, true)) {
+                $this->id_meta = null;
+                session()->flash('error', 'La meta seleccionada no pertenece a este formulario. Selecciona una meta válida.');
+            }
+        }
+
+        if ($this->requiereMeta && $this->id_meta) {
+            $meta = Meta::where('id', $this->id_meta)
+                ->where('id_ind', $this->id_ind)
+                ->first();
+
+            $this->metaTitulo = $meta ? ("Meta " . ($meta->orden ?? '') . " – " . ($meta->titulo ?? '')) : null;
+        }
+        // ✅ Si viene id_meta en la URL, no permitir cambiarla en esta pantalla
+        $this->metaBloqueada = $this->requiereMeta && !empty($this->id_meta);
+
 
         /* =========================================================
        ✅ 2) SCHEMA (por meta si existe, si no por indicador)
@@ -361,7 +393,7 @@ class FormularioCaptura extends Component
                 if (!is_array($payload)) $payload = [];
 
                 // Nombre visible (para tu tabla manual: $row['nombre'])
-                $nombre = 'Global';
+                $nombre = 'ESTATAL';
                 if ($d->ambito_geo === 'REGION') {
                     $nombre = optional(\App\Models\Region::find($d->id_region))->nombre_region ?? '—';
                 } elseif ($d->ambito_geo === 'MUNICIPIO') {
@@ -413,6 +445,7 @@ class FormularioCaptura extends Component
 
     public function updatedIdMeta($value)
     {
+        if ($this->metaBloqueada) return;
         $this->id_meta = $value ? (int)$value : null;
 
         // reset UI / datos
@@ -539,153 +572,102 @@ class FormularioCaptura extends Component
         }
     }
 
+    private function obtenerOCrearBorradorUnico(string $metodo): Carga
+    {
+        $periodoPermitido = Formulario::periodoYMActualPermitido($this->formulario->periodo_form);
+        $ejercicio = (int) substr($periodoPermitido, 0, 4);
+
+        $q = Carga::where('id_form', $this->id_form)
+            ->where('status_env', 'BORRADOR')
+            ->where('periodo', $periodoPermitido)
+            ->where('ejercicio', $ejercicio);
+
+        // ✅ meta (si aplica) — importante manejar NULL correctamente
+        if (!empty($this->id_meta)) {
+            $q->where('id_meta', $this->id_meta);
+        } else {
+            $q->whereNull('id_meta');
+        }
+
+        $borrador = $q->orderByDesc('id_carga')->first();
+
+        if ($borrador) {
+            // ✅ reusar: solo actualizar método/ámbito, NO crear otro folio
+            $borrador->update([
+                'metodo_captura'   => strtoupper($metodo), // MANUAL/ARCHIVO
+                'ambito_geo_carga' => $this->ambito_geo,
+                'updated_at'       => now(),
+            ]);
+
+            return $borrador;
+        }
+
+        // ✅ crear uno nuevo (único por form+periodo+ejercicio+meta)
+        return Carga::create([
+            'folioUnico_carga' => Str::upper(Str::random(6)),
+            'fecha_carga'      => now(),
+            'periodo'          => $periodoPermitido,
+            'ejercicio'        => $ejercicio,
+            'fuente'           => 'N/D',
+            'status_env'       => 'BORRADOR',
+            'ambito_geo_carga' => $this->ambito_geo,
+            'metodo_captura'   => strtoupper($metodo),
+            'descripcion_env'  => $metodo === 'archivo' ? 'Borrador (archivo)' : 'Borrador (manual)',
+            'observacion_env'  => '',
+            'id_form'          => $this->id_form,
+            'id_meta'          => $this->id_meta,
+        ]);
+    }
+
     private function prepararCargaBorradorArchivo()
     {
         if ($this->soloLectura) return;
 
-        // ✅ si ya hay una carga actual en el componente, no crear otra
-        if ($this->id_carga_actual) return;
-
-        // ✅ requiere meta si hay metas
         if (!empty($this->metasDisponibles) && empty($this->id_meta)) {
             session()->flash('error', 'Primero selecciona una meta.');
             return;
         }
 
-        // ✅ reusar borrador existente (mismo formulario + método ARCHIVO + misma meta)
-        $borrador = Carga::where('id_form', $this->id_form)
-            ->where('status_env', 'BORRADOR')
-            ->where('metodo_captura', 'ARCHIVO')
-            ->where('id_meta', $this->id_meta)
-            ->orderByDesc('id_carga')
-            ->first();
-
-        if ($borrador) {
-            $this->id_carga_actual = (int) $borrador->id_carga;
-
-            // ✅ amarra meta SIEMPRE (por si en BD quedó mal o venía de antes)
-            if (!empty($this->id_meta) && (int)$borrador->id_meta !== (int)$this->id_meta) {
-                $borrador->update([
-                    'id_meta' => $this->id_meta,
-                    // 'meta_id' => $this->id_meta, // SOLO si existe y la usarás
-                ]);
-            }
-
-            // ✅ flags desde BD
-            $this->plantillaDescargada = !is_null($borrador->plantilla_descargada_at);
-
-            $this->archivoProcesado = DetalleCarga::where('id_carga', $borrador->id_carga)
-                ->where('id_ind', $this->id_ind)
-                ->exists();
-
-            $this->detallesInsertados = DetalleCarga::where('id_carga', $borrador->id_carga)
-                ->where('id_ind', $this->id_ind)
-                ->count();
-
-            if (!empty($borrador->ambito_geo_carga)) {
-                $this->ambito_geo = $borrador->ambito_geo_carga;
-            }
-
-            return;
-        }
-
-        // ✅ si no existe borrador, crear uno nuevo
-        $carga = Carga::create([
-            'folioUnico_carga' => 'CAR-' . now()->timestamp,
-            'fecha_carga'      => now(),
-            'periodo'          => now()->format('Y-m'),
-            'ejercicio'        => now()->year,
-            'fuente'           => 'N/D',
-            'status_env'       => 'BORRADOR',
-            'ambito_geo_carga' => $this->ambito_geo,
-            'metodo_captura'   => 'ARCHIVO',
-            'descripcion_env'  => 'Borrador (archivo)',
-            'observacion_env'  => '',
-            'id_form'          => $this->id_form,
-            'id_meta'          => $this->id_meta,
-            // 'meta_id'       => $this->id_meta, // SOLO si existe y la usarás
-        ]);
-
+        $carga = $this->obtenerOCrearBorradorUnico('archivo');
         $this->id_carga_actual = (int) $carga->id_carga;
 
-        $this->plantillaDescargada = false;
-        $this->archivoProcesado = false;
-        $this->detallesInsertados = 0;
+        // flags desde BD
+        $this->plantillaDescargada = !is_null($carga->plantilla_descargada_at);
+
+        $this->archivoProcesado = DetalleCarga::where('id_carga', $carga->id_carga)
+            ->where('id_ind', $this->id_ind)
+            ->exists();
+
+        $this->detallesInsertados = DetalleCarga::where('id_carga', $carga->id_carga)
+            ->where('id_ind', $this->id_ind)
+            ->count();
+
+        if (!empty($carga->ambito_geo_carga)) {
+            $this->ambito_geo = $carga->ambito_geo_carga;
+        }
     }
 
     private function prepararCargaBorradorManual()
     {
         if ($this->soloLectura) return;
 
-        // ✅ si ya hay carga actual en el componente, no crear otra
-        if ($this->id_carga_actual) return;
-
-        // ✅ requiere meta si hay metas
         if (!empty($this->metasDisponibles) && empty($this->id_meta)) {
             session()->flash('error', 'Primero selecciona una meta.');
             return;
         }
 
-        // ✅ reusar borrador existente (mismo formulario + método MANUAL + misma meta)
-        $borrador = Carga::where('id_form', $this->id_form)
-            ->where('status_env', 'BORRADOR')
-            ->where('metodo_captura', 'MANUAL')
-            ->where('id_meta', $this->id_meta)
-            ->orderByDesc('id_carga')
-            ->first();
-
-        if ($borrador) {
-            $this->id_carga_actual = (int) $borrador->id_carga;
-
-            // ✅ amarra meta SIEMPRE
-            if (!empty($this->id_meta) && (int)$borrador->id_meta !== (int)$this->id_meta) {
-                $borrador->update([
-                    'id_meta' => $this->id_meta,
-                    // 'meta_id' => $this->id_meta, // SOLO si existe y la usarás
-                ]);
-            }
-
-            if (!empty($borrador->ambito_geo_carga)) {
-                $this->ambito_geo = $borrador->ambito_geo_carga;
-            }
-
-            // si hay detalles, cargar para seguir editando
-            $hayDetalles = DetalleCarga::where('id_carga', $borrador->id_carga)
-                ->where('id_ind', $this->id_ind)
-                ->exists();
-
-            if ($hayDetalles) {
-                $this->metodo = 'manual';
-                $this->cargarDatosDeCarga($borrador);
-            }
-
-            return;
-        }
-
-        Log::info('prepararCargaBorradorManual()', [
-            'id_meta' => $this->id_meta,
-            'metodo'  => $this->metodo,
-            'id_form' => $this->id_form,
-        ]);
-
-        // ✅ si no existe borrador, crear uno nuevo
-        $carga = Carga::create([
-            'folioUnico_carga' => Str::upper(Str::random(6)),
-            'fecha_carga'      => now(),
-            'periodo'          => now()->format('Y-m'),
-            'ejercicio'        => now()->year,
-            'fuente'           => 'N/D',
-            'status_env'       => 'BORRADOR',
-            'ambito_geo_carga' => $this->ambito_geo,
-            'metodo_captura'   => 'MANUAL',
-            'descripcion_env'  => 'Borrador (manual)',
-            'observacion_env'  => '',
-            'id_form'          => $this->id_form,
-            'id_meta'          => $this->id_meta,
-            // 'meta_id'       => $this->id_meta, // SOLO si existe y la usarás
-        ]);
-
+        $carga = $this->obtenerOCrearBorradorUnico('manual');
         $this->id_carga_actual = (int) $carga->id_carga;
+
+        // si hay detalles, cargar para seguir editando
+        $hayDetalles = DetalleCarga::where('id_carga', $carga->id_carga)
+            ->where('id_ind', $this->id_ind)
+            ->exists();
+
+        if ($hayDetalles) {
+            $this->metodo = 'manual';
+            $this->cargarDatosDeCarga($carga);
+        }
     }
 
     public function refrescarEstadoPlantilla()
@@ -780,6 +762,7 @@ class FormularioCaptura extends Component
         $this->municipio = '';
         $this->regionFiltro = '';
         $this->municipiosFiltrados = collect();
+        $this->ambitoElegido = true;
 
         // si no quieres mezclar ámbitos: limpia filas manuales
         $this->manualData = [];
@@ -851,13 +834,8 @@ class FormularioCaptura extends Component
 
     public function agregarManual()
     {
-        if (empty($this->id_meta)) {
+        if ($this->requiereMeta && empty($this->id_meta)) {
             session()->flash('error', 'Selecciona una meta antes de capturar.');
-            return;
-        }
-
-        if (!empty($this->metasDisponibles) && empty($this->id_meta)) {
-            session()->flash('error', 'Primero selecciona una meta antes de agregar filas.');
             return;
         }
 
@@ -874,7 +852,7 @@ class FormularioCaptura extends Component
             $this->validarFilaManual();
 
             // nombre (para tabla)
-            $nombre = 'GLOBAL';
+            $nombre = 'ESTATAL';
             $idRegion = null;
             $idMun = null;
 
@@ -991,7 +969,7 @@ class FormularioCaptura extends Component
         $carga = \App\Models\Carga::findOrFail($this->id_carga_actual);
 
         DB::transaction(function () use ($carga) {
-
+            $this->asegurarPeriodoPermitidoEnCarga($carga);
             $metodo = strtoupper((string)$carga->metodo_captura);
 
             if ($metodo === 'MANUAL') {
@@ -1021,35 +999,35 @@ class FormularioCaptura extends Component
 
     private function guardarManualEnDetalle($idCarga): void
     {
-        // Para numeración de filas
+        $permitido = Formulario::periodoYMActualPermitido($this->formulario->periodo_form);
+        $ejercicioPermitido = (int) substr($permitido, 0, 4);
+
         $fila = 1;
 
         foreach ((array)$this->manualData as $row) {
-            $ambito = $row['ambito_geo'] ?? $this->ambito_geo ?? 'SIN_AMBITO';
+            $ambito   = $row['ambito_geo'] ?? $this->ambito_geo ?? 'SIN_AMBITO';
             $idRegion = $row['id_region'] ?? null;
-            $idMun = $row['id_mun'] ?? null;
+            $idMun    = $row['id_mun'] ?? null;
 
             $campos = $row['payload_det']['campos'] ?? [];
 
             \App\Models\DetalleCarga::create([
                 'id_carga' => $idCarga,
                 'id_ind'   => $this->id_ind,
-                'id_meta' => $this->id_meta,
+                'id_meta'  => $this->id_meta,
+
                 'ambito_geo' => $ambito,
-                'id_region'  => $ambito === 'REGION' || $ambito === 'MUNICIPIO' ? $idRegion : null,
-                'id_mun'     => $ambito === 'MUNICIPIO' ? $idMun : null,
+                'id_region'  => ($ambito === 'REGION' || $ambito === 'MUNICIPIO') ? $idRegion : null,
+                'id_mun'     => ($ambito === 'MUNICIPIO') ? $idMun : null,
 
                 'fila_det' => $fila++,
 
-                'periodo_det' => $this->periodo_det ?? (string)($this->formularioPeriodo ?? '') ?: now()->format('Y-m'),
-                'ejercicio_det' => (int)($this->ejercicio_det ?? now()->format('Y')),
+                'periodo_det'        => $permitido,
+                'ejercicio_det'      => $ejercicioPermitido,
                 'fecha_registro_det' => now()->toDateString(),
-                'fuente_det' => 'Registro manual',
+                'fuente_det'         => 'Registro manual',
+                'valor_det'          => null,
 
-                // En manual tu valor_det no aplica (porque es dinámico)
-                'valor_det' => null,
-
-                // ✅ JSON compatible con tu vista
                 'payload_det' => [
                     'origen' => 'manual',
                     'campos' => $campos,
@@ -1135,7 +1113,7 @@ class FormularioCaptura extends Component
     public function descargarPlantilla()
     {
         // ✅ si hay metas, obligar selección
-        if (!empty($this->metasDisponibles) && empty($this->id_meta)) {
+        if ($this->requiereMeta && empty($this->id_meta)) {
             session()->flash('error', 'Primero selecciona una meta antes de descargar/procesar.');
             return;
         }
@@ -1338,13 +1316,8 @@ class FormularioCaptura extends Component
 
     public function procesarArchivo()
     {
-        if (empty($this->id_meta)) {
+        if ($this->requiereMeta && empty($this->id_meta)) {
             session()->flash('error', 'Selecciona una meta antes de procesar el archivo.');
-            return;
-        }
-
-        if (!empty($this->metasDisponibles) && empty($this->id_meta)) {
-            session()->flash('error', 'Primero selecciona una meta antes de descargar/procesar.');
             return;
         }
 
@@ -1648,6 +1621,20 @@ class FormularioCaptura extends Component
         // NO borramos id_carga_actual a propósito: si vuelves al método archivo no quieres perder el borrador
     }
 
+    private function asegurarPeriodoPermitidoEnCarga(\App\Models\Carga $carga): string
+    {
+        $permitido = \App\Models\Formulario::periodoYMActualPermitido($this->formulario->periodo_form);
+
+        if ((string)$carga->periodo !== (string)$permitido) {
+            throw new \Exception(
+                "Periodo no habilitado. Este formulario es {$this->formulario->periodo_form} y el periodo permitido hoy es {$permitido}. " .
+                    "Tu carga tiene periodo {$carga->periodo}."
+            );
+        }
+
+        return $permitido;
+    }
+
     /* =========================
        GUARDAR TODO (manual o archivo)
     ========================== */
@@ -1664,17 +1651,19 @@ class FormularioCaptura extends Component
         try {
             $this->validate([
                 'metodo' => 'required|in:manual,archivo',
-                'id_meta' => 'required|integer',
+                'id_meta' => $this->requiereMeta ? 'required|integer' : 'nullable',
                 'fuente_dato' => 'nullable|string|max:255',
                 'descripcion_env' => 'nullable|string|max:255',
             ]);
 
-            $metaOk = Meta::where('id', $this->id_meta)
-                ->where('id_ind', $this->id_ind)
-                ->exists();
+            if ($this->requiereMeta) {
+                $metaOk = Meta::where('id', $this->id_meta)
+                    ->where('id_ind', $this->id_ind)
+                    ->exists();
 
-            if (!$metaOk) {
-                throw new \Exception('Meta inválida para este indicador.');
+                if (!$metaOk) {
+                    throw new \Exception('Meta inválida para este indicador.');
+                }
             }
 
             $fuenteDato = trim((string)$this->fuente_dato);
@@ -1695,12 +1684,12 @@ class FormularioCaptura extends Component
                     throw new \Exception('No existe carga borrador para manual. Vuelve a seleccionar "Captura Manual".');
                 }
 
-                $periodo = now()->format('Y-m');
-                $ejercicio = now()->year;
-
-                DB::transaction(function () use ($periodo, $ejercicio, $fuenteDato, $desc) {
+                DB::transaction(function () use ($fuenteDato, $desc) {
 
                     $carga = Carga::findOrFail($this->id_carga_actual);
+
+                    $permitido = $this->asegurarPeriodoPermitidoEnCarga($carga);
+                    $ejercicioPermitido = (int) substr($permitido, 0, 4);
 
                     // ✅ seguridad: debe ser del formulario y método MANUAL
                     if ((int)$carga->id_form !== (int)$this->id_form) {
@@ -1727,8 +1716,8 @@ class FormularioCaptura extends Component
                             'ambito_geo' => $ambito,
                             'id_region' => $item['id_region'] ?? null,
                             'id_mun' => $item['id_mun'] ?? null,
-                            'periodo_det' => $periodo,
-                            'ejercicio_det' => $ejercicio,
+                            'periodo_det' => $permitido,
+                            'ejercicio_det' => $ejercicioPermitido,
                             'fila_det' => $idx + 1,
                             'fecha_registro_det' => now()->toDateString(),
                             'fuente_det' => $fuenteDato,
@@ -1740,8 +1729,8 @@ class FormularioCaptura extends Component
                     // ✅ ahora sí finaliza la MISMA carga
                     $carga->update([
                         'fecha_carga' => now(),
-                        'periodo' => $periodo,
-                        'ejercicio' => $ejercicio,
+                        'periodo' => $permitido,
+                        'ejercicio' => $ejercicioPermitido,
                         'fuente' => $fuenteDato,
                         'descripcion_env' => $desc,
                         'ambito_geo_carga' => $this->ambito_geo,
@@ -1789,6 +1778,10 @@ class FormularioCaptura extends Component
                 throw new \Exception('No hay detalles insertados. Vuelve a procesar el archivo.');
             }
 
+            $carga = Carga::findOrFail($this->id_carga_actual);
+            $permitido = $this->asegurarPeriodoPermitidoEnCarga($carga);
+            $ejercicioPermitido = (int) substr($permitido, 0, 4);
+
             Carga::where('id_carga', $this->id_carga_actual)->update([
                 'fuente' => $fuenteDato,
                 'descripcion_env' => $desc,
@@ -1797,6 +1790,9 @@ class FormularioCaptura extends Component
                 'metodo_captura' => 'ARCHIVO',
                 'fecha_carga' => now(),
                 'id_meta' => $this->id_meta,
+                'periodo' => $permitido,
+                'ejercicio' => $ejercicioPermitido,
+
             ]);
 
             $cargaFinal = Carga::find($this->id_carga_actual);
@@ -1856,6 +1852,7 @@ class FormularioCaptura extends Component
             'mensajeObservacion' => $this->mensajeObservacion,
             'id_carga_actual' => $this->id_carga_actual,
             'cargaActual' => $this->cargaActual,
+            'ambitoElegido' => $this->ambitoElegido,
         ])->extends('layouts.usuario')->section('content');
     }
 }

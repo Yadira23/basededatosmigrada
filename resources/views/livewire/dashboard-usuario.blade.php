@@ -1,4 +1,4 @@
-<div>
+<div wire:poll.60s>
 
     {{-- HEADER --}}
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
@@ -174,6 +174,129 @@
         </div>
     </div>
 
+    {{-- ✅ INDICADORES CON METAS (Kardex por periodos) --}}
+    <div class="row">
+        <div class="col-12 mb-4">
+            <div class="card shadow">
+                <div class="card-body">
+
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <div>
+                            <div class="font-weight-bold text-gray-800">Indicadores con metas</div>
+                            <div class="small text-muted">
+                                Cumplimiento por periodo (kardex)
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- ✅ LISTA: un bloque por indicador --}}
+                    @if (!empty($kardexMetasPorIndicador) && count($kardexMetasPorIndicador))
+                        <div style="display:flex; flex-direction:column; gap:14px;">
+
+                            @foreach ($kardexMetasPorIndicador as $bloque)
+                                @php
+                                    $pm = (int) ($bloque['pct'] ?? 0);
+                                    $barClassMeta = $pm >= 80 ? 'bg-success' : ($pm >= 40 ? 'bg-warning' : 'bg-danger');
+                                    $periodicidadTxt = $bloque['periodicidad'] ?? '—';
+                                    $nombreInd = $bloque['nombre'] ?? 'Indicador';
+                                    $metaTotal = (int) ($bloque['meta_total'] ?? 0);
+                                    $hechasTotal = (int) ($bloque['hechas_total'] ?? 0);
+                                    $kardex = $bloque['kardex'] ?? [];
+                                @endphp
+
+                                <div class="card border-left-primary shadow-sm">
+                                    <div class="card-body">
+
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <div class="font-weight-bold text-gray-800">
+                                                    {{ $nombreInd }}
+                                                </div>
+                                                <div class="small text-muted">
+                                                    Periodicidad: <strong>{{ $periodicidadTxt }}</strong>
+                                                </div>
+                                            </div>
+
+                                            <div class="text-right">
+                                                <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                                    {{ $pm }}%
+                                                </div>
+                                                <div class="small text-muted">Avance de la meta</div>
+                                            </div>
+                                        </div>
+
+                                        <div class="progress mt-2" style="height: 10px; border-radius: 999px;">
+                                            <div class="progress-bar {{ $barClassMeta }}" role="progressbar"
+                                                style="width: {{ $pm }}%;"
+                                                aria-valuenow="{{ $pm }}" aria-valuemin="0"
+                                                aria-valuemax="100">
+                                            </div>
+                                        </div>
+
+                                        <div class="d-flex justify-content-between small text-muted mt-2">
+                                            <span>Meta total: <strong>{{ $metaTotal }}</strong></span>
+                                            <span>Hechas: <strong>{{ $hechasTotal }}</strong></span>
+                                        </div>
+
+                                        {{-- Kardex por periodo (del indicador) --}}
+                                        <div class="mt-3">
+                                            <div class="small text-muted mb-2">Kardex por periodo</div>
+
+                                            @if (!empty($kardex) && count($kardex))
+                                                <div class="d-flex flex-wrap" style="gap:10px;">
+                                                    @foreach ($kardex as $k)
+                                                        @php
+                                                            $badge = $k['estado'] ?? 'secondary';
+                                                            $borderClass =
+                                                                $badge === 'success'
+                                                                    ? 'border-left-success'
+                                                                    : ($badge === 'warning'
+                                                                        ? 'border-left-warning'
+                                                                        : ($badge === 'danger'
+                                                                            ? 'border-left-danger'
+                                                                            : 'border-left-secondary'));
+                                                        @endphp
+
+                                                        <div class="card shadow-sm {{ $borderClass }}"
+                                                            style="min-width: 110px;">
+                                                            <div class="card-body p-2 text-center">
+                                                                <div class="font-weight-bold">{{ $k['label'] ?? '—' }}
+                                                                </div>
+                                                                <div class="text-muted small">
+                                                                    {{ $k['hechas'] ?? 0 }} / {{ $k['meta'] ?? 0 }}
+                                                                </div>
+                                                                <span class="badge badge-{{ $badge }} mt-1">
+                                                                    {{ $badge === 'success' ? 'Cumplido' : ($badge === 'warning' ? 'En progreso' : 'Atrasado') }}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    @endforeach
+                                                </div>
+                                            @else
+                                                <div class="alert alert-light border mb-0">
+                                                    <i class="fas fa-info-circle mr-1"></i>
+                                                    Este indicador aún no tiene metas por periodo.
+                                                </div>
+                                            @endif
+                                        </div>
+
+                                    </div>
+                                </div>
+                            @endforeach
+
+                        </div>
+                    @else
+                        <div class="alert alert-light border mb-0">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Aún no hay indicadores con metas por periodo configuradas para tu dependencia.
+                        </div>
+                    @endif
+
+                </div>
+            </div>
+        </div>
+    </div>
+
     {{-- NOTIFICACIONES (Recordatorios / avisos del admin) --}}
     <div class="row">
         <div class="col-12 mb-4">
@@ -219,6 +342,7 @@
                                 <thead class="thead-light">
                                     <tr>
                                         <th>Folio</th>
+                                        <th>Indicador</th>
                                         <th>Periodo</th>
                                         <th>Estatus</th>
                                         <th>Observación</th>
@@ -232,15 +356,22 @@
                                             <td class="font-weight-bold">
                                                 {{ $c->folioUnico_carga ?? $c->id_carga }}
                                             </td>
+
+                                            <td>
+                                                {{ optional($c->formulario->indicador)->nombre_ind ?? '—' }}
+                                            </td>
+
                                             <td>
                                                 {{ $c->periodo ?? '—' }} / {{ $c->ejercicio ?? '—' }}
                                             </td>
+
                                             <td>
                                                 <span
                                                     class="badge badge-{{ $this->badgeClass($c->status_env ?? '') }}">
                                                     {{ $c->status_env ?? '—' }}
                                                 </span>
                                             </td>
+
                                             <td>
                                                 @if (!empty($c->observacion_env))
                                                     <span class="text-warning">{{ $c->observacion_env }}</span>
@@ -248,22 +379,21 @@
                                                     <span class="text-muted">—</span>
                                                 @endif
                                             </td>
+
                                             <td class="text-muted">
                                                 <div>{{ optional($c->created_at)->format('Y-m-d H:i') }}</div>
                                                 <small class="text-muted">
                                                     Última act.: {{ optional($c->updated_at)->format('Y-m-d H:i') }}
                                                 </small>
                                             </td>
+
                                             <td>
                                                 @php
                                                     $st = mb_strtoupper(trim((string) ($c->status_env ?? '')));
                                                     $st = str_replace('REVISIÓN', 'REVISION', $st);
 
                                                     // id_ind del formulario (lo necesitamos para continuar / corregir)
-                                                    $id_ind = \App\Models\Formulario::where(
-                                                        'id_form',
-                                                        $c->id_form,
-                                                    )->value('id_ind');
+                                                    $id_ind = optional($c->formulario)->id_ind;
                                                 @endphp
 
                                                 {{-- 👁 VER (siempre disponible) --}}

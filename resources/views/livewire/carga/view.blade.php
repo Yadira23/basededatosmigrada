@@ -78,7 +78,7 @@
                                             @elseif($amb === 'MUNICIPIO')
                                                 <span class="badge bg-warning text-dark">MUNICIPIO</span>
                                             @elseif($amb === 'SIN_AMBITO')
-                                                <span class="badge bg-secondary">GLOBAL</span>
+                                                <span class="badge bg-secondary">ESTATAL</span>
                                             @else
                                                 <span class="badge bg-light text-dark">N/A</span>
                                             @endif

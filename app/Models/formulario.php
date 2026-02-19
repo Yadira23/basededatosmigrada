@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class Formulario extends Model
 {
@@ -67,5 +69,90 @@ class Formulario extends Model
     public function scopePorDependencia($query, $id_depen)
     {
         return $query->where('id_depen', $id_depen);
+    }
+
+    public function scopeHabilitadosHoy($q, $fecha = null)
+    {
+        $hoy = $fecha ? Carbon::parse($fecha) : Carbon::now();
+
+        // Ventanas "actuales"
+        $iniMes = $hoy->copy()->startOfMonth();
+        $finMes = $hoy->copy()->endOfMonth();
+
+        $mes = (int)$hoy->month;
+
+        // Trimestre actual
+        $qNum = (int) ceil($mes / 3);                 // 1..4
+        $iniTri = Carbon::create($hoy->year, (($qNum - 1) * 3) + 1, 1)->startOfDay();
+        $finTri = $iniTri->copy()->addMonths(3)->subDay()->endOfDay();
+
+        // Semestre actual
+        $iniSem = Carbon::create($hoy->year, ($mes <= 6 ? 1 : 7), 1)->startOfDay();
+        $finSem = $iniSem->copy()->addMonths(6)->subDay()->endOfDay();
+
+        // Año actual
+        $iniAnio = $hoy->copy()->startOfYear();
+        $finAnio = $hoy->copy()->endOfYear();
+
+        return $q->where(function ($w) use ($iniMes, $finMes, $iniTri, $finTri, $iniSem, $finSem, $iniAnio, $finAnio) {
+
+            // ✅ Mensual: formularios creados dentro del mes actual
+            $w->where(function ($m) use ($iniMes, $finMes) {
+                $m->where('periodo_form', 'Mensual')
+                    ->whereBetween('fecha_creacion_form', [$iniMes->toDateString(), $finMes->toDateString()]);
+            })
+
+                // ✅ Trimestral: formularios creados dentro del trimestre actual
+                ->orWhere(function ($t) use ($iniTri, $finTri) {
+                    $t->where('periodo_form', 'Trimestral')
+                        ->whereBetween('fecha_creacion_form', [$iniTri->toDateString(), $finTri->toDateString()]);
+                })
+
+                // ✅ Semestral: formularios creados dentro del semestre actual
+                ->orWhere(function ($s) use ($iniSem, $finSem) {
+                    $s->where('periodo_form', 'Semestral')
+                        ->whereBetween('fecha_creacion_form', [$iniSem->toDateString(), $finSem->toDateString()]);
+                })
+
+                // ✅ Anual: formularios creados dentro del año actual
+                ->orWhere(function ($a) use ($iniAnio, $finAnio) {
+                    $a->where('periodo_form', 'Anual')
+                        ->whereBetween('fecha_creacion_form', [$iniAnio->toDateString(), $finAnio->toDateString()]);
+                });
+        });
+    }
+
+    public static function periodoActualPermitido(string $periodicidad, $fecha = null): string
+    {
+        $hoy = $fecha ? Carbon::parse($fecha) : Carbon::now();
+
+        $year = $hoy->year;
+        $mes  = $hoy->month;
+
+        return match (mb_strtolower($periodicidad)) {
+            'mensual'    => $hoy->format('Y-m'),                 // 2026-02
+            'trimestral' => $year . '-T' . (int) ceil($mes / 3), // 2026-T1
+            'semestral'  => $year . '-S' . ($mes <= 6 ? 1 : 2),  // 2026-S1
+            'anual'      => (string) $year,                      // 2026
+            default      => $hoy->format('Y-m'),
+        };
+    }
+
+    public static function periodoYMActualPermitido(string $periodicidad, $fecha = null): string
+    {
+        $hoy = $fecha ? Carbon::parse($fecha) : Carbon::now();
+
+        $y = (int)$hoy->year;
+        $m = (int)$hoy->month;
+
+        $mesInicio = match (mb_strtolower(trim($periodicidad))) {
+            'mensual'    => $m,
+            'trimestral' => (int)(floor(($m - 1) / 3) * 3 + 1), // 1,4,7,10
+            'semestral'  => $m <= 6 ? 1 : 7,                   // 1 o 7
+            'anual'      => 1,
+            default      => $m,
+        };
+
+        return sprintf('%04d-%02d', $y, $mesInicio);
     }
 }

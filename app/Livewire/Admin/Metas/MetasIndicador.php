@@ -27,6 +27,7 @@ class MetasIndicador extends Component
 
     // para llenar el select de corte según el periodo del indicador
     public array $cortesDisponibles = [];
+    public array $cortesUsados = [];
 
     // modal campos
     public bool $camposModalOpen = false;
@@ -44,6 +45,7 @@ class MetasIndicador extends Component
         // Defaults
         $this->ejercicio = (int) date('Y');
         $this->buildCortesDisponibles();
+        $this->loadCortesUsados();
 
         if ($this->corte === null) {
             // primer corte por defecto
@@ -91,6 +93,15 @@ class MetasIndicador extends Component
         }
     }
 
+    private function loadCortesUsados(): void
+    {
+        $this->cortesUsados = Meta::where('id_ind', $this->id_ind)
+            ->where('ejercicio', $this->ejercicio)
+            ->pluck('corte')
+            ->map(fn($v) => (int) $v)
+            ->toArray();
+    }
+
     private function resetInput()
     {
         $this->selectedId = null;
@@ -100,6 +111,21 @@ class MetasIndicador extends Component
         $this->buildCortesDisponibles();
         $firstKey = array_key_first($this->cortesDisponibles);
         $this->corte = $firstKey !== null ? (int) $firstKey : 1;
+    }
+
+    public function updatedEjercicio()
+    {
+        $this->loadCortesUsados();
+
+        // si el corte actual está ocupado, selecciona el primero libre
+        if (in_array((int)$this->corte, $this->cortesUsados, true)) {
+            foreach ($this->cortesDisponibles as $key => $label) {
+                if (!in_array((int)$key, $this->cortesUsados, true)) {
+                    $this->corte = (int) $key;
+                    break;
+                }
+            }
+        }
     }
 
     // ===== CRUD Meta =====
@@ -122,6 +148,17 @@ class MetasIndicador extends Component
         // validar que el corte exista en el mapa actual
         if (!array_key_exists((int)$this->corte, $this->cortesDisponibles)) {
             $this->addError('corte', 'El corte no es válido para el periodo del indicador.');
+            return;
+        }
+
+        // 🚫 NO permitir repetir corte por indicador + ejercicio
+        $yaExiste = Meta::where('id_ind', $this->id_ind)
+            ->where('ejercicio', $this->ejercicio)
+            ->where('corte', $this->corte)
+            ->exists();
+
+        if ($yaExiste) {
+            $this->addError('corte', 'Ese periodo ya tiene una meta registrada para este ejercicio.');
             return;
         }
 
@@ -166,6 +203,17 @@ class MetasIndicador extends Component
 
         if (!array_key_exists((int)$this->corte, $this->cortesDisponibles)) {
             $this->addError('corte', 'El corte no es válido para el periodo del indicador.');
+            return;
+        }
+
+        $yaExiste = Meta::where('id_ind', $this->id_ind)
+            ->where('ejercicio', $this->ejercicio)
+            ->where('corte', $this->corte)
+            ->where('id', '!=', $this->selectedId)
+            ->exists();
+
+        if ($yaExiste) {
+            $this->addError('corte', 'Ese periodo ya tiene una meta registrada para este ejercicio.');
             return;
         }
 
@@ -279,9 +327,15 @@ class MetasIndicador extends Component
             ->orderBy('orden')
             ->paginate(10);
 
+        $cortesUsados = Meta::where('id_ind', $this->id_ind)
+            ->where('ejercicio', $this->ejercicio)
+            ->pluck('corte')
+            ->toArray();
+
         return view('livewire.metas.view', [
             'metas' => $metas,
             'indicador' => $this->indicador,
+            'cortesUsados' => $cortesUsados,
         ])->extends('layouts.app')->section('content');
     }
 }

@@ -4,6 +4,8 @@ namespace App\Livewire\Admin\Cargas;
 
 use Livewire\Component;
 use App\Models\Carga;
+use App\Events\DashboardUpdated;
+
 
 class CargaRevision extends Component
 {
@@ -126,6 +128,8 @@ class CargaRevision extends Component
         $this->carga->observacion_env = null;
         $this->carga->save();
 
+        event(new DashboardUpdated($this->carga->formulario->id_depen));
+
         session()->flash('message', 'Carga aprobada.');
         return redirect()->to($this->returnUrl ?: url('/cargas')); // 👈 vuelve al listado
     }
@@ -143,6 +147,8 @@ class CargaRevision extends Component
         $this->carga->status_env = 'OBSERVADO'; // o "CON OBSERVACIONES" si tú lo usas así
         $this->carga->observacion_env = $obs;
         $this->carga->save();
+
+        event(new DashboardUpdated($this->carga->formulario->id_depen));
 
         session()->flash('message', 'Observación guardada y enviada.');
         return redirect()->to($this->returnUrl ?: url('/cargas')); // 👈 vuelve al listado

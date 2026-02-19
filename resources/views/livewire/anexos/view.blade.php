@@ -16,9 +16,9 @@
 						<div>
 							<input wire:model.live='keyWord' type="text" class="form-control" name="search" id="search" placeholder="Search Anexos">
 						</div>
-						<div class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#DataModal">
+						{{--<div class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#DataModal">
 							<i class="bi-plus-lg"></i> Add Anexos
-						</div>
+						</div>--}}
 					</div>
 				</div>
 

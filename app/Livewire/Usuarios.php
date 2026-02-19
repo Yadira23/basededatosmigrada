@@ -52,7 +52,7 @@ class Usuarios extends Component
                     ->orWhere('email_usr', 'LIKE', $keyWord)
                     ->orWhere('estado_usr', 'LIKE', $keyWord)
                     ->orWhere('telefono_usr', 'LIKE', $keyWord);
-                    // Quitamos id_rol porque Spatie maneja roles en otra tabla
+                // Quitamos id_rol porque Spatie maneja roles en otra tabla
             })
             ->paginate(10);
     }
@@ -99,24 +99,34 @@ class Usuarios extends Component
             return;
         }
 
+        // Admin no tiene dependencia
         if ($this->id_rol == 1) {
-            $this->id_depen = null; // Admin no tiene dependencia
+            $this->id_depen = null;
+        }
+
+        // ✅ Armar datos a guardar (sin password todavía)
+        $data = [
+            'usuario_usr' => $this->usuario_usr,
+            'nombre_usr' => $this->nombre_usr,
+            'apellido_paterno' => $this->apellido_paterno,
+            'apellido_materno' => $this->apellido_materno,
+            'email_usr' => $this->email_usr,
+            'id_depen' => $this->id_depen,
+            'estado_usr' => $this->estado_usr,
+            'telefono_usr' => $this->telefono_usr,
+        ];
+
+        // ✅ Contraseña:
+        // - Si es NUEVO: siempre se guarda
+        // - Si es EDICIÓN: solo si escribieron algo
+        if (!$this->selected_id || !empty($this->password)) {
+            $data['password'] = Hash::make($this->password);
         }
 
         // Guardar o actualizar usuario
         $usuario = Usuario::updateOrCreate(
             ['id_usuario' => $this->selected_id],
-            [
-                'usuario_usr' => $this->usuario_usr,
-                'nombre_usr' => $this->nombre_usr,
-                'apellido_paterno' => $this->apellido_paterno,
-                'apellido_materno' => $this->apellido_materno,
-                'email_usr' => $this->email_usr,
-                'password' => $this->password ? bcrypt($this->password) : ($this->selected_id ? Usuario::find($this->selected_id)->password : null),
-                'id_depen' => $this->id_depen,
-                'estado_usr' => $this->estado_usr,
-                'telefono_usr' => $this->telefono_usr,
-            ]
+            $data
         );
 
         // Asignar rol con Spatie
@@ -127,9 +137,7 @@ class Usuarios extends Component
 
         session()->flash(
             'message',
-            $this->selected_id
-                ? 'Usuario actualizado correctamente'
-                : 'Usuario creado correctamente'
+            $this->selected_id ? 'Usuario actualizado correctamente' : 'Usuario creado correctamente'
         );
     }
 
@@ -147,6 +155,10 @@ class Usuarios extends Component
         $this->id_rol = $usuario->roles->first() ? $usuario->roles->first()->id : null;
         $this->estado_usr = $usuario->estado_usr;
         $this->telefono_usr = $usuario->telefono_usr;
+
+        // 🔐 MUY IMPORTANTE
+        // Nunca cargar contraseña al editar
+        $this->password = null;
     }
 
     public function destroy($id)

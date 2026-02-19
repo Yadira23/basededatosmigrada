@@ -73,14 +73,22 @@
                                             <td>
                                                 {{ $row->nombre_ind }}
 
-                                                @if (empty($row->config_campos))
-                                                    <span class="badge bg-warning text-dark ms-1">
-                                                        sin campos
+                                                @php $n = $row->metas_count ?? 0; @endphp
+
+                                                @if ($n > 0)
+                                                    <span class="badge bg-info text-dark ms-1">
+                                                        Gestionado por metas
                                                     </span>
                                                 @else
-                                                    <span class="badge bg-success ms-1">
-                                                        campos OK
-                                                    </span>
+                                                    @if (empty($row->config_campos))
+                                                        <span class="badge bg-warning text-dark ms-1">
+                                                            sin campos
+                                                        </span>
+                                                    @else
+                                                        <span class="badge bg-success ms-1">
+                                                            campos OK
+                                                        </span>
+                                                    @endif
                                                 @endif
                                             </td>
 
@@ -151,13 +159,25 @@
                                                             <hr class="dropdown-divider">
                                                         </li>
 
-                                                        <li>
-                                                            <a class="dropdown-item"
-                                                                href="{{ route('indicadores.campos', ['id_ind' => $row->id_ind]) }}">
-                                                                <i class="bi-ui-checks-grid"></i>
-                                                                Configurar campos
-                                                            </a>
-                                                        </li>
+                                                        @php $n = $row->metas_count ?? 0; @endphp
+
+                                                        @if ($n == 0)
+                                                            <li>
+                                                                <a class="dropdown-item"
+                                                                    href="{{ route('indicadores.campos', ['id_ind' => $row->id_ind]) }}">
+                                                                    <i class="bi-ui-checks-grid"></i>
+                                                                    Configurar campos
+                                                                </a>
+                                                            </li>
+                                                        @else
+                                                            <li>
+                                                                <span class="dropdown-item text-muted"
+                                                                    style="cursor:not-allowed;">
+                                                                    <i class="bi-ui-checks-grid"></i>
+                                                                    Configurar campos (solo si no tiene metas)
+                                                                </span>
+                                                            </li>
+                                                        @endif
 
                                                         <li>
                                                             <a class="dropdown-item" data-bs-toggle="modal"

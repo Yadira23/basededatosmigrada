@@ -26,25 +26,28 @@
     @if (!empty($metasDisponibles) && count($metasDisponibles) > 0)
 
         @php
-            $metaSel = collect($metasDisponibles)->firstWhere('id', (int) $id_meta);
+            $metaSel = collect($metasDisponibles)->first(function ($m) use ($id_meta) {
+                $mid = $m['id'] ?? ($m['id_meta'] ?? null);
+                return (int) $mid === (int) $id_meta;
+            });
         @endphp
 
         <div class="mb-3">
-            <div class="text-muted small mb-1">Meta (parcial)</div>
 
             {{-- ✅ Si ya viene seleccionada (por URL o por selección previa), NO mostrar select --}}
             @if ($id_meta && $metaSel)
-                <div class="alert alert-light border py-2 mb-0">
-                    <div class="fw-semibold">
+                <div class="p-2 rounded" style="background:#eef3ff;">
+                    <div class="text-muted small">Meta (parcial)</div>
+                    <div class="fw-semibold" style="font-size:1.05rem;">
                         {{ $metaSel['orden'] ?? '' }}. {{ $metaSel['titulo'] ?? 'Meta' }}
                     </div>
                     <div class="small text-muted">
-                        Estás capturando esta meta. (Cada meta es un parcial distinto)
+                        Cada meta es un parcial distinto.
                     </div>
                 </div>
             @else
                 {{-- ✅ Si NO hay meta seleccionada, ahí sí mostrar select --}}
-                <select class="form-select" wire:model="id_meta">
+                <select class="form-select" wire:model="id_meta" @disabled($metaBloqueada)>
                     <option value="">— Selecciona una meta —</option>
                     @foreach ($metasDisponibles as $m)
                         <option value="{{ $m['id'] }}">
@@ -172,7 +175,7 @@
             <div style="margin-bottom:10px;">
                 <label>Capturar por:</label>
                 <select wire:model.live="ambito_geo">
-                    <option value="SIN_AMBITO">Global (sin región/municipio)</option>
+                    <option value="SIN_AMBITO">Estatal (sin región/municipio)</option>
                     <option value="REGION">Región</option>
                     <option value="MUNICIPIO">Municipio</option>
                 </select>
@@ -244,29 +247,29 @@
                     @if (empty($schema))
                         <div class="alert alert-warning">
                             Este indicador aún no tiene campos a capturar.
-                    @else
-                        @foreach ($schema as $campo)
-                            @php
-                                $slug = $campo['slug'] ?? '';
-                                $label = $campo['label'] ?? $slug;
-                                $required = !empty($campo['required']);
-                                $step = ($campo['type'] ?? '') === 'porcentaje' ? 0.01 : 1;
-                            @endphp
+                        @else
+                            @foreach ($schema as $campo)
+                                @php
+                                    $slug = $campo['slug'] ?? '';
+                                    $label = $campo['label'] ?? $slug;
+                                    $required = !empty($campo['required']);
+                                    $step = ($campo['type'] ?? '') === 'porcentaje' ? 0.01 : 1;
+                                @endphp
 
-                            <div style="margin-bottom:10px;">
-                                <label>
-                                    {{ $label }}
-                                    @if ($required)
-                                        <span style="color:red;">*</span>
-                                    @endif
-                                </label>
+                                <div style="margin-bottom:10px;">
+                                    <label>
+                                        {{ $label }}
+                                        @if ($required)
+                                            <span style="color:red;">*</span>
+                                        @endif
+                                    </label>
 
-                                <input type="number" wire:model.live="manualCampos.{{ $slug }}"
-                                    step="{{ $step }}"
-                                    @if (isset($campo['min'])) min="{{ $campo['min'] }}" @endif
-                                    @if (isset($campo['max'])) max="{{ $campo['max'] }}" @endif>
-                            </div>
-                        @endforeach
+                                    <input type="number" wire:model.live="manualCampos.{{ $slug }}"
+                                        step="{{ $step }}"
+                                        @if (isset($campo['min'])) min="{{ $campo['min'] }}" @endif
+                                        @if (isset($campo['max'])) max="{{ $campo['max'] }}" @endif>
+                                </div>
+                            @endforeach
                     @endif
                 </div>
 
@@ -287,7 +290,7 @@
                             @elseif($ambito_geo === 'REGION')
                                 Región
                             @else
-                                Global
+                                Estatal
                             @endif
                         </th>
 
@@ -338,19 +341,30 @@
     <div id="tablaArchivoContainer" @class(['archivo-form', 'd-none' => $metodo !== 'archivo'])>
         @if ($metodo === 'archivo')
 
-            <div class="alert alert-info mb-2">
-                <strong>Ámbito:</strong> {{ $ambito_geo }}
-            </div>
+            @if (!$this->ambitoElegido)
+                <div class="alert alert-warning mb-2">
+                    <strong>Selecciona el ámbito a capturar.</strong>
+                </div>
+            @endif
 
             {{-- Selector de ámbito (si decides que el usuario pueda elegirlo) --}}
             <div class="mb-2">
                 <label class="form-label"><strong>Ámbito</strong></label><br>
-                <label><input type="radio" wire:model="ambito_geo" value="SIN_AMBITO" @disabled($soloLectura)>
-                    SIN_AMBITO</label>
-                <label class="ms-3"><input type="radio" wire:model="ambito_geo" value="REGION"
-                        @disabled($soloLectura)> REGION</label>
-                <label class="ms-3"><input type="radio" wire:model="ambito_geo" value="MUNICIPIO"
-                        @disabled($soloLectura)> MUNICIPIO</label>
+
+                <label>
+                    <input type="radio" wire:model.live="ambito_geo" value="SIN_AMBITO" @disabled($soloLectura)>
+                    ESTATAL
+                </label>
+
+                <label class="ms-3">
+                    <input type="radio" wire:model.live="ambito_geo" value="REGION" @disabled($soloLectura)>
+                    REGION
+                </label>
+
+                <label class="ms-3">
+                    <input type="radio" wire:model.live="ambito_geo" value="MUNICIPIO" @disabled($soloLectura)>
+                    MUNICIPIO
+                </label>
             </div>
 
             @if (!empty($motivoResetPlantilla))

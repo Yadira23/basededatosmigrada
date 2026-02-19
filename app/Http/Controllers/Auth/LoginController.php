@@ -14,27 +14,28 @@ class LoginController extends Controller
     }
 
     public function login(Request $request)
-{
-    $credentials = $request->validate([
-        'email' => 'required|email',
-        'password' => 'required',
-    ]);
+    {
+        $credentials = $request->validate([
+            'email' => 'required|email',
+            'password' => 'required',
+        ]);
 
-    if (Auth::guard('web')->attempt([
-        'email_usr' => $credentials['email'],
-        'password'  => $credentials['password'],
-    ])) {
+        $remember = $request->boolean('remember'); // ✅ toma el checkbox
 
-        $request->session()->regenerate();
+        if (Auth::guard('web')->attempt([
+            'email_usr' => $credentials['email'],
+            'password'  => $credentials['password'],
+        ], $remember)) { // ✅ aquí se aplica
 
-        return redirect()->intended('/redirect-por-rol');
+            $request->session()->regenerate();
+
+            return redirect()->intended('/redirect-por-rol');
+        }
+
+        return back()->withErrors([
+            'email' => 'Credenciales incorrectas',
+        ])->onlyInput('email');
     }
-
-    return back()->withErrors([
-        'email' => 'Credenciales incorrectas',
-    ]);
-}
-
 
     public function logout(Request $request)
     {
@@ -45,7 +46,4 @@ class LoginController extends Controller
 
         return redirect('/login');
     }
-
-    
-
 }
