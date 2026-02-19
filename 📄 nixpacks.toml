@@ -1,10 +1,19 @@
 [phases.setup]
-nixPkgs = ["php83", "php83Packages.composer"]
+nixPkgs = [
+  "php83",
+  "php83Packages.composer",
+  "php83Extensions.gd",
+  "php83Extensions.pdo_mysql",
+  "php83Extensions.mbstring",
+  "php83Extensions.openssl",
+  "php83Extensions.xml",
+  "php83Extensions.curl"
+]
 
 [phases.build]
 cmds = [
-  "composer install --no-dev --optimize-autoloader"
+  "composer install --no-dev --optimize-autoloader --no-interaction"
 ]
 
-[php]
-extensions = ["gd", "pdo_mysql", "mbstring", "openssl", "tokenizer", "xml", "ctype", "curl", "fileinfo"]
+[start]
+cmd = "php artisan serve --host=0.0.0.0 --port=$PORT"
