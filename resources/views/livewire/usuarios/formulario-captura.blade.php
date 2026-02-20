@@ -120,22 +120,24 @@
 
         {{-- MANUAL --}}
         <div id="manual"
-            class="card
-            {{ $metodo === 'manual' ? 'selected' : '' }}
-            {{ $soloLectura || ($metodo && $metodo !== 'manual') ? 'disabled-card' : '' }}
-        "
+            class="metodo-card metodo-manual
+        {{ $metodo === 'manual' ? 'selected' : '' }}
+        {{ $soloLectura || ($metodo && $metodo !== 'manual') ? 'disabled-card' : '' }}"
             @if (!$soloLectura && (!$metodo || $metodo === 'manual')) wire:click="seleccionar('manual')" @endif>
+
+            <div class="metodo-badge">Manual</div>
             <h3>Captura Manual</h3>
             <p>Ingresa los valores manualmente (dinámico según el indicador).</p>
         </div>
 
         {{-- ARCHIVO --}}
         <div id="archivo"
-            class="card
-            {{ $metodo === 'archivo' ? 'selected' : '' }}
-            {{ $soloLectura || ($metodo && $metodo !== 'archivo') ? 'disabled-card' : '' }}
-        "
+            class="metodo-card metodo-archivo
+        {{ $metodo === 'archivo' ? 'selected' : '' }}
+        {{ $soloLectura || ($metodo && $metodo !== 'archivo') ? 'disabled-card' : '' }}"
             @if (!$soloLectura && (!$metodo || $metodo === 'archivo')) wire:click="seleccionar('archivo')" @endif>
+
+            <div class="metodo-badge">Archivo</div>
             <h3>Subir Archivo</h3>
             <p>Descarga la plantilla del indicador, llena y vuelve a subirla.</p>
         </div>
@@ -510,26 +512,72 @@
             gap: 20px;
             justify-content: center;
             margin-bottom: 20px;
+            flex-wrap: wrap;
         }
 
-        .card {
-            border: 2px solid #ccc;
-            border-radius: 8px;
-            padding: 15px 20px;
-            width: 250px;
+        /* Tarjeta base */
+        .metodo-card {
+            position: relative;
+            border: 2px solid #cbd5e1;
+            border-radius: 10px;
+            padding: 16px 18px;
+            width: 280px;
             cursor: pointer;
-            transition: all 0.3s ease;
-            background-color: #f9f9f9;
+            transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+            background: #ffffff;
         }
 
-        .card:hover {
-            border-color: #777;
-            background-color: #f0f0f0;
+        /* Badge */
+        .metodo-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(0, 0, 0, .08);
         }
 
-        .card.selected {
-            border-color: #3c763d;
-            background-color: #d0f0d0;
+        /* Diferenciación por color */
+        .metodo-manual {
+            border-left: 8px solid #2563eb;
+            background: #eef5ff;
+        }
+
+        .metodo-manual .metodo-badge {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .metodo-archivo {
+            border-left: 8px solid #16a34a;
+            background: #edfdf5;
+        }
+
+        .metodo-archivo .metodo-badge {
+            background: #dcfce7;
+            color: #15803d;
+        }
+
+        /* Hover */
+        .metodo-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 18px rgba(0, 0, 0, .08);
+            border-color: #94a3b8;
+        }
+
+        /* Seleccionado */
+        .metodo-card.selected {
+            outline: 3px solid rgba(0, 0, 0, .08);
+            border-color: rgba(0, 0, 0, .12);
+        }
+
+        /* Deshabilitado (ya lo tienes, lo dejamos) */
+        .disabled-card {
+            opacity: 0.6;
+            cursor: not-allowed;
+            pointer-events: none;
         }
 
         .info {
@@ -612,6 +660,62 @@
             border-radius: 8px;
             background-color: #f9f9f9;
             margin-bottom: 20px;
+        }
+
+        /* ✅ Resaltado fuerte del seleccionado por tipo */
+        .metodo-manual.selected {
+            border-color: #2563eb;
+            box-shadow: 0 12px 22px rgba(37, 99, 235, .20);
+        }
+
+        .metodo-archivo.selected {
+            border-color: #16a34a;
+            box-shadow: 0 12px 22px rgba(22, 163, 74, .20);
+        }
+
+        /* ✅ “check” visual en la esquina cuando está seleccionado */
+        .metodo-card.selected::after {
+            content: "✓";
+            position: absolute;
+            left: 12px;
+            top: 10px;
+            width: 26px;
+            height: 26px;
+            display: grid;
+            place-items: center;
+            border-radius: 999px;
+            font-weight: 900;
+            background: rgba(0, 0, 0, .08);
+        }
+
+        .metodo-manual.selected::after {
+            background: #2563eb;
+            color: #fff;
+        }
+
+        .metodo-archivo.selected::after {
+            background: #16a34a;
+            color: #fff;
+        }
+
+        /* ✅ Deshabilitado más claro (no solo opacidad) */
+        .metodo-card.disabled-card {
+            opacity: 0.55;
+            filter: grayscale(25%);
+        }
+
+        /* ✅ Mensaje visual de bloqueo */
+        .metodo-card.disabled-card::before {
+            content: "Bloqueado";
+            position: absolute;
+            bottom: 12px;
+            right: 12px;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: rgba(0, 0, 0, .06);
+            color: rgba(0, 0, 0, .55);
         }
     </style>
 @endpush

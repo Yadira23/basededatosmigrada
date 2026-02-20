@@ -45,6 +45,16 @@ class Formulario extends Model
         return $this->hasMany(Carga::class, 'id_form', 'id_form');
     }
 
+    // ✅ Laravel: última carga por formulario (la más reciente)
+    public function ultimaCarga()
+    {
+        // si tu "orden" real es por created_at, déjalo así:
+        return $this->hasOne(\App\Models\Carga::class, 'id_form', 'id_form')->latestOfMany('created_at');
+
+        // si tu sistema garantiza que el id incrementa en el tiempo, también podría ser:
+        // return $this->hasOne(\App\Models\Carga::class, 'id_form', 'id_form')->latestOfMany('id_carga');
+    }
+
     /**
      * Formulario -> Dependencia (N:1)
      */

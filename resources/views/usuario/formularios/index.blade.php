@@ -19,11 +19,12 @@
         @php
             $q = trim(request('q', ''));
             $sort = request('sort', 'recientes'); // recientes | nombre
-            $filtro = request('f', 'todos'); // todos | con | sin
+            $filtro = request('f', 'todos');
+            // todos | sin_metas | con_metas | aprobados | observados | enviados | borradores
 
             $query = \App\Models\Formulario::publicados()
                 ->porDependencia(auth()->user()->id_depen)
-                ->with('indicador');
+                ->with(['indicador', 'indicador.metas', 'ultimaCarga']);
 
             // Buscar por nombre del indicador
             if ($q !== '') {
@@ -32,12 +33,56 @@
                 });
             }
 
-            // Filtro por indicador
-            if ($filtro === 'con') {
-                $query->whereNotNull('id_ind');
-            } elseif ($filtro === 'sin') {
-                $query->whereNull('id_ind');
+            $base = clone $query; // base SIN filtros para contar
+
+            // ✅ Filtros nuevos
+            switch ($filtro) {
+                case 'sin_metas':
+                    $query->whereDoesntHave('indicador.metas');
+                    break;
+
+                case 'con_metas':
+                    $query->whereHas('indicador.metas');
+                    break;
+
+                case 'aprobados':
+                    $query->whereHas('ultimaCarga', fn($c) => $c->where('status_env', 'APROBADO'));
+                    break;
+
+                case 'observados':
+                    $query->whereHas('ultimaCarga', fn($c) => $c->where('status_env', 'OBSERVADO'));
+                    break;
+
+                case 'enviados':
+                    $query->whereHas('ultimaCarga', fn($c) => $c->where('status_env', 'ENVIADO'));
+                    break;
+
+                case 'borradores':
+                    $query->whereHas('ultimaCarga', fn($c) => $c->where('status_env', 'BORRADOR'));
+                    break;
+
+                default:
+                    // todos
+                    break;
             }
+
+            $counts = [
+                'todos' => (clone $base)->count(),
+                'sin_metas' => (clone $base)->whereDoesntHave('indicador.metas')->count(),
+                'con_metas' => (clone $base)->whereHas('indicador.metas')->count(),
+                'aprobados' => (clone $base)
+                    ->whereHas('ultimaCarga', fn($c) => $c->where('status_env', 'APROBADO'))
+                    ->count(),
+                'observados' => (clone $base)
+                    ->whereHas('ultimaCarga', fn($c) => $c->where('status_env', 'OBSERVADO'))
+                    ->count(),
+                'enviados' => (clone $base)
+                    ->whereHas('ultimaCarga', fn($c) => $c->where('status_env', 'ENVIADO'))
+                    ->count(),
+                'borradores' => (clone $base)
+                    ->whereHas('ultimaCarga', fn($c) => $c->where('status_env', 'BORRADOR'))
+                    ->count(),
+            ];
 
             // Ordenar
             if ($sort === 'nombre') {
@@ -75,16 +120,6 @@
                 ->get()
                 ->keyBy(fn($c) => $c->id_form . '-' . $c->id_meta);
 
-            // ===========================
-            // 3) ÚLTIMA CARGA GENERAL por FORMULARIO (para la tarjeta principal)
-            // ===========================
-            $ultimasCargasForm = Carga::selectRaw('id_form, MAX(id_carga) as ultima_id')
-                ->whereIn('id_form', $formularios->pluck('id_form')->unique())
-                ->groupBy('id_form')
-                ->get()
-                ->pluck('ultima_id', 'id_form');
-
-            $cargasUltimas = Carga::whereIn('id_carga', $ultimasCargasForm->values())->get()->keyBy('id_form');
         @endphp
 
         {{-- BARRA DE ACCIONES --}}
@@ -119,6 +154,7 @@
 
                     <form method="GET" action="{{ url()->current() }}">
                         <input type="hidden" name="q" value="{{ request('q') }}">
+                        <input type="hidden" name="f" value="{{ request('f', 'todos') }}">
 
                         <select class="form-select form-select-sm" name="sort" style="min-width:190px;"
                             onchange="this.form.submit()">
@@ -135,34 +171,58 @@
             </div>
         </div>
 
-        {{-- CHIPS --}}
-        @php
-            $total = $formularios->count();
-            $disponibles = $formularios->filter(fn($f) => !is_null($f->indicador))->count();
-            $sinIndicador = $formularios->filter(fn($f) => is_null($f->indicador))->count();
-        @endphp
-
         <div class="d-flex flex-wrap gap-2 mb-3">
             <a href="{{ url()->current() }}?f=todos&q={{ request('q') }}&sort={{ request('sort', 'recientes') }}"
                 class="btn btn-sm {{ $filtro === 'todos' ? 'btn-primary' : 'btn-outline-primary' }} shadow-sm">
-                Todos <span class="badge bg-white text-primary ms-1">{{ $total }}</span>
+                Todos <span class="badge bg-white text-primary ms-1">{{ $counts['todos'] }}</span>
             </a>
 
-            <a href="{{ url()->current() }}?f=con&q={{ request('q') }}&sort={{ request('sort', 'recientes') }}"
-                class="btn btn-sm {{ $filtro === 'con' ? 'btn-success' : 'btn-outline-success' }}">
-                Con indicador <span class="badge bg-success ms-1">{{ $disponibles }}</span>
+            <a href="{{ url()->current() }}?f=sin_metas&q={{ request('q') }}&sort={{ request('sort', 'recientes') }}"
+                class="btn btn-sm {{ $filtro === 'sin_metas' ? 'btn-secondary' : 'btn-outline-secondary' }}">
+                Sin metas <span class="badge bg-white text-primary ms-1">{{ $counts['sin_metas'] }}</span>
             </a>
 
-            <a href="{{ url()->current() }}?f=sin&q={{ request('q') }}&sort={{ request('sort', 'recientes') }}"
-                class="btn btn-sm {{ $filtro === 'sin' ? 'btn-secondary' : 'btn-outline-secondary' }}">
-                Sin indicador <span class="badge bg-secondary ms-1">{{ $sinIndicador }}</span>
+            <a href="{{ url()->current() }}?f=con_metas&q={{ request('q') }}&sort={{ request('sort', 'recientes') }}"
+                class="btn btn-sm {{ $filtro === 'con_metas' ? 'btn-success' : 'btn-outline-success' }}">
+                Con metas <span class="badge bg-white text-primary ms-1">{{ $counts['con_metas'] }}</span>
+            </a>
+
+            <a href="{{ url()->current() }}?f=aprobados&q={{ request('q') }}&sort={{ request('sort', 'recientes') }}"
+                class="btn btn-sm {{ $filtro === 'aprobados' ? 'btn-success' : 'btn-outline-success' }}">
+                Aprobados <span class="badge bg-white text-primary ms-1">{{ $counts['aprobados'] }}</span>
+            </a>
+
+            <a href="{{ url()->current() }}?f=observados&q={{ request('q') }}&sort={{ request('sort', 'recientes') }}"
+                class="btn btn-sm {{ $filtro === 'observados' ? 'btn-warning text-dark' : 'btn-outline-warning' }}">
+                Observados <span class="badge bg-white text-primary ms-1">{{ $counts['observados'] }}</span>
+            </a>
+
+            <a href="{{ url()->current() }}?f=enviados&q={{ request('q') }}&sort={{ request('sort', 'recientes') }}"
+                class="btn btn-sm {{ $filtro === 'enviados' ? 'btn-info' : 'btn-outline-info' }}">
+                Enviados <span class="badge bg-white text-primary ms-1">{{ $counts['enviados'] }}</span>
+            </a>
+
+            <a href="{{ url()->current() }}?f=borradores&q={{ request('q') }}&sort={{ request('sort', 'recientes') }}"
+                class="btn btn-sm {{ $filtro === 'borradores' ? 'btn-dark' : 'btn-outline-dark' }}">
+                Borradores <span class="badge bg-white text-primary ms-1">{{ $counts['borradores'] }}</span>
             </a>
         </div>
 
         @if ($filtro !== 'todos')
+            @php
+                $labelFiltro = match ($filtro) {
+                    'sin_metas' => 'Indicadores sin metas',
+                    'con_metas' => 'Indicadores con metas',
+                    'aprobados' => 'Aprobados',
+                    'observados' => 'Observados',
+                    'enviados' => 'Enviados',
+                    'borradores' => 'Borradores',
+                    default => 'Todos',
+                };
+            @endphp
+
             <div class="text-muted small mb-2">
-                Mostrando:
-                <strong>{{ $filtro === 'con' ? 'Formularios con indicador' : 'Formularios sin indicador' }}</strong>
+                Mostrando: <strong>{{ $labelFiltro }}</strong>
             </div>
         @endif
 
@@ -207,8 +267,7 @@
                         <div class="card-body" style="background:#dde7f8 !important;">
 
                             @php
-                                // ✅ ÚLTIMA CARGA GENERAL DEL FORMULARIO
-                                $ultima = $cargasUltimas[$form->id_form] ?? null;
+                                $ultima = $form->ultimaCarga ?? null;
                                 $estado = $ultima->status_env ?? 'SIN CAPTURA';
 
                                 $badge = match ($estado) {
@@ -245,21 +304,13 @@
 
                             @if ($form->indicador)
                                 @php
-                                    $metas = \App\Models\Meta::where('id_ind', $form->id_ind)
-                                        ->where(function ($q) use ($form) {
-                                            $q->whereNull('id_form')->orWhere('id_form', $form->id_form);
-                                        })
-                                        ->orderBy('orden')
-                                        ->get();
-
-                                    $totalMetas = $metas->count();
-                                    $aprobadas = 0;
-
+                                    $totalMetas = $form->indicador?->metas?->count() ?? 0;
                                 @endphp
 
                                 <div class="d-flex flex-wrap gap-2 mt-2">
                                     <span class="badge bg-light text-dark border">
-                                        Periodo: <b>{{ strtolower($form->periodo_form) }}</b>
+                                        Periodo:
+                                        <b>{{ strtolower($form->indicador->periodo_ind ?? $form->periodo_form) }}</b>
                                     </span>
 
                                     <span class="badge bg-light text-dark border">
@@ -283,10 +334,33 @@
                     </div>
                 </div>
             @empty
+                @php
+                    $msgVacio = match ($filtro) {
+                        'aprobados' => 'Aún no tienes indicadores aprobados.',
+                        'observados' => 'Aún no tienes indicadores con observaciones.',
+                        'enviados' => 'Aún no tienes indicadores enviados.',
+                        'borradores' => 'Aún no tienes indicadores en borrador.',
+                        'con_metas' => 'Aún no tienes indicadores con metas.',
+                        'sin_metas' => 'Aún no tienes indicadores sin metas.',
+                        default => 'No hay indicadores disponibles para tu dependencia.',
+                    };
+
+                    $tipo = $filtro === 'todos' ? 'warning' : 'info';
+                @endphp
+
                 <div class="col-12">
-                    <div class="alert alert-warning mb-0">
-                        No hay indicadores disponibles para tu dependencia.
+                    <div class="alert alert-{{ $tipo }} mb-0">
+                        {{ $msgVacio }}
                     </div>
+
+                    @if ($filtro !== 'todos')
+                        <div class="mt-2">
+                            <a class="btn btn-sm btn-outline-primary"
+                                href="{{ url()->current() }}?f=todos&q={{ request('q') }}&sort={{ request('sort', 'recientes') }}">
+                                Ver todos los indicadores
+                            </a>
+                        </div>
+                    @endif
                 </div>
             @endforelse
         </div>
