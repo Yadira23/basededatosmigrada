@@ -4,9 +4,15 @@
         <div class="modal-content">
 
             <div class="modal-header">
-                <h5 class="modal-title">
-                    {{ $selectedId ? 'Editar Meta' : 'Nueva Meta' }}
-                </h5>
+                <div>
+                    <h5 class="modal-title mb-0">
+                        {{ $selectedId ? 'Actualizar meta' : 'Crear meta' }}
+                    </h5>
+                    <small class="text-muted">
+                        Define el título y el periodo a reportar. El orden se asigna automáticamente según el indicador.
+                    </small>
+                </div>
+
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
 
@@ -15,43 +21,44 @@
 
                     <div class="col-md-6">
                         <label class="form-label">Título</label>
-                        <input type="text" class="form-control" wire:model.defer="titulo">
+                        <input type="text" class="form-control" wire:model.defer="titulo"
+                            placeholder="Ej: Avance del trimestre / Meta anual / etc.">
                         @error('titulo')
                             <small class="text-danger">{{ $message }}</small>
                         @enderror
                     </div>
 
+                    <div class="col-md-3">
+                        <label class="form-label">Ejercicio (año)</label>
+                        <input type="number" min="2000" max="2100" class="form-control" wire:model="ejercicio"
+                            placeholder="2026">
+                        @error('ejercicio')
+                            <small class="text-danger">{{ $message }}</small>
+                        @enderror
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">Corte</label>
+                        <select wire:model="corte" class="form-control">
+                            @foreach ($cortesDisponibles as $key => $label)
+                                <option value="{{ $key }}" @if (in_array((int) $key, $cortesUsados, true)) disabled @endif>
+                                    {{ $label }}
+                                </option>
+                            @endforeach
+                        </select>
+
+                        @error('corte')
+                            <small class="text-danger">{{ $message }}</small>
+                        @enderror
+                    </div>
+
+                    <div class="col-md-12">
+                        <small class="text-muted">
+                            El corte se genera según el periodo del indicador. El orden se asigna automáticamente.
+                        </small>
+                    </div>
+
                 </div>
-            </div>
-
-            <div class="col-md-3">
-                <label class="form-label">Ejercicio (año)</label>
-                <input type="number" min="2000" max="2100" class="form-control" wire:model="ejercicio"
-                    placeholder="2026">
-                @error('ejercicio')
-                    <small class="text-danger">{{ $message }}</small>
-                @enderror
-            </div>
-
-            <div class="col-md-3">
-                <label class="form-label">Corte</label>
-                <select wire:model="corte" class="form-control">
-                    @foreach ($cortesDisponibles as $key => $label)
-                        <option value="{{ $key }}" @if (in_array((int)$key, $cortesUsados, true)) disabled @endif>
-                            {{ $label }}
-                        </option>
-                    @endforeach
-                </select>
-
-                @error('corte')
-                    <small class="text-danger">{{ $message }}</small>
-                @enderror
-            </div>
-
-            <div class="col-md-12">
-                <small class="text-muted">
-                    El corte se genera según el periodo del indicador. El orden se asigna automáticamente.
-                </small>
             </div>
 
             <div class="modal-footer">
@@ -68,16 +75,25 @@
     </div>
 </div>
 
-
 {{-- Modal Configurar Campos --}}
 <div wire:ignore.self class="modal fade" id="CamposModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
 
             <div class="modal-header">
-                <h5 class="modal-title">
-                    Configurar campos de la meta
-                </h5>
+                <div>
+                    <h5 class="modal-title d-flex align-items-center gap-2 mb-0">
+                        <i class="bi bi-ui-checks"></i>
+                        Configurar campos de la meta
+                    </h5>
+                    <small class="text-muted">
+                        Define los campos que se capturarán en esta meta (slug, etiqueta, tipo y validaciones).
+                        <br> <strong>Min</strong> y <strong>Max</strong> son <strong>opcionales</strong>: déjalos vacíos si
+                        el dato puede ser negativo o no tiene un rango fijo.</br>
+                        El <strong>slug</strong> es la clave que se guarda en el JSON.
+                    </small>
+                </div>
+
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
 
@@ -85,7 +101,7 @@
 
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <div class="text-muted">
-                        Define los campos (slug/label/tipo) que se capturarán para esta meta.
+                        Agrega los campos que formarán parte de la captura. Estos se guardan en el JSON de la meta.
                     </div>
                     <button class="btn btn-sm btn-outline-primary" type="button" wire:click="addCampo">
                         + Agregar campo
@@ -136,12 +152,12 @@
 
                                     <td>
                                         <input class="form-control form-control-sm"
-                                            wire:model.defer="campos.{{ $i }}.min" placeholder="0">
+                                            wire:model.defer="campos.{{ $i }}.min" placeholder="Opcional (ej: -10)">
                                     </td>
 
                                     <td>
                                         <input class="form-control form-control-sm"
-                                            wire:model.defer="campos.{{ $i }}.max" placeholder="">
+                                            wire:model.defer="campos.{{ $i }}.max" placeholder="Opcional (ej: 100)">
                                     </td>
 
                                     <td class="text-center">
@@ -157,7 +173,8 @@
                 </div>
 
                 <small class="text-muted">
-                    * slug debe ser único por meta. Esto es lo que usará el JSON (payload_det.campos).
+                    * El <strong>slug</strong> debe ser único por meta y es la clave usada en el JSON
+                    (<code>payload_det.campos</code>).
                 </small>
 
             </div>

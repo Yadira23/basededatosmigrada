@@ -74,15 +74,9 @@ class IndicadorCampos extends Component
 
             // ✅ regla: si es number/cantidad, NO permitir min negativo
             // number y porcentaje NO pueden tener min negativo (según tu regla)
-            if (in_array($type, ['number', 'porcentaje'], true) && $min !== null && $min < 0) {
-                session()->flash('error', "Min no puede ser negativo en '{$label}' (fila " . ($i + 1) . ").");
-                return;
-            }
-
-            // ✅ regla opcional: si es porcentaje normal, min>=0
-            // (si tú usas porcentaje para 0..1 o 0..100 igual es >=0)
+            // ✅ Regla: solo porcentaje no permite min negativo
             if ($type === 'porcentaje' && $min !== null && $min < 0) {
-                session()->flash('error', "Min no puede ser negativo en '{$c['label']}' (fila " . ($i + 1) . ").");
+                session()->flash('error', "Min no puede ser negativo en '{$label}' (fila " . ($i + 1) . ").");
                 return;
             }
 

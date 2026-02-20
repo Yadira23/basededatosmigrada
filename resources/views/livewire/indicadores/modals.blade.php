@@ -72,9 +72,9 @@
                         <label class="form-label fw-semibold">Tendencia (interpretación)</label>
                         <select wire:model.defer="tendencia_ind" class="form-control">
                             <option value="">Seleccione</option>
-                            <option value="ascendente">Ascendente (más es mejor)</option>
-                            <option value="descendente">Descendente (menos es mejor)</option>
-                            <option value="estable">Estable (mantener)</option>
+                            <option value="ascendente">Ascendente</option>
+                            <option value="descendente">Descendente</option>
+                            <option value="estable">Estable</option>
                         </select>
                         <small class="text-muted">
                             Indica si el indicador mejora al subir, al bajar o si se busca mantener un valor.

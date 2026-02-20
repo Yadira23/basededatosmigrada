@@ -19,7 +19,7 @@
 
             <div class="row g-2 mb-3">
                 <div class="col-md-4">
-                    <label class="form-label">Días de gracia</label>
+                    <label class="form-label">Días de plazo adicional</label>
                     <input type="number" class="form-control" wire:model="dias_gracia" min="0">
                     @error('dias_gracia') <small class="text-danger">{{ $message }}</small> @enderror
                 </div>
