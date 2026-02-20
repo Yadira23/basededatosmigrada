@@ -307,7 +307,7 @@
     {{-- Acciones + Actividad --}}
     <div class="row">
 
-        <div class="col-lg-4 mb-4">
+      {{--  <div class="col-lg-4 mb-4">
             <div class="card shadow">
                 <div class="card-header py-3">
                     <h6 class="m-0 font-weight-bold text-primary">Acciones rápidas</h6>
@@ -325,10 +325,10 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </div> --}}
 
         {{-- Actividad reciente (SIN "Ver todo") --}}
-        <div class="col-lg-8 mb-4">
+        <div class="col-lg-12 mb-4">
             <div class="card shadow">
                 <div class="card-header py-3">
                     <h6 class="m-0 font-weight-bold text-primary">

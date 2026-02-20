@@ -7,6 +7,7 @@
 
         {{-- HEADER USUARIO --}}
         <div class="d-flex justify-content-between align-items-start mb-3">
+
             <div>
                 <h4 class="mb-0">Indicadores disponibles</h4>
                 <small class="text-muted">
@@ -173,15 +174,29 @@
 
         <div class="row">
             @forelse($formularios as $form)
-
                 @php
                     $hoy = now()->toDateString();
                     $periodoPermitido = \App\Models\Formulario::periodoYMActualPermitido($form->periodo_form, $hoy);
 
                     // "Enero 2026"
-                    $periodoReportarTexto = \Carbon\Carbon::createFromFormat('Y-m', $periodoPermitido)
-                        ->locale('es')
-                        ->translatedFormat('F Y');
+                    // Texto bonito para "Periodo a reportar" según periodicidad del INDICADOR
+                    $periodoBase = \Carbon\Carbon::createFromFormat('Y-m', $periodoPermitido)->startOfMonth();
+                    $perInd = mb_strtoupper(
+                        trim((string) ($form->indicador->periodo_ind ?? ($form->periodo_form ?? 'MENSUAL'))),
+                    );
+
+                    if ($perInd === 'MENSUAL') {
+                        $periodoReportarTexto = $periodoBase->locale('es')->translatedFormat('F Y'); // "Enero 2026"
+                    } elseif ($perInd === 'TRIMESTRAL') {
+                        $t = (int) ceil($periodoBase->month / 3);
+                        $periodoReportarTexto = "T{$t} " . $periodoBase->format('Y'); // "T1 2026"
+                    } elseif ($perInd === 'SEMESTRAL') {
+                        $s = $periodoBase->month <= 6 ? 1 : 2;
+                        $periodoReportarTexto = "S{$s} " . $periodoBase->format('Y'); // "S1 2026"
+                    } else {
+                        // ANUAL
+                        $periodoReportarTexto = 'Ejercicio ' . $periodoBase->format('Y'); // "Ejercicio 2026"
+                    }
 
                     $ymHoy = now()->format('Y-m');
                     $habilitadoHoy = !empty($periodoPermitido);
@@ -207,13 +222,12 @@
                                 };
                             @endphp
 
-                            <div class="d-flex justify-content-between align-items-start mb-3">
-                                <div>
-                                    <h5 class="mb-0">
-                                        {{ $form->indicador->nombre_ind ?? 'Indicador (sin asignar) - Form #' . $form->id_form }}
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div class="pe-2">
+                                    <h5 class="mb-1">
+                                        {{ $form->indicador->nombre_ind ?? 'Indicador sin asignar' }}
                                     </h5>
-                                    <small class="text-muted">Información del indicador</small>
-                                    <div class="text-muted small mt-1">
+                                    <div class="text-muted small">
                                         Formulario #{{ $form->id_form }}
                                     </div>
                                 </div>
@@ -243,219 +257,22 @@
 
                                 @endphp
 
-                                <div class="d-flex flex-wrap gap-4">
-                                    <div>
-                                        <div class="text-muted small">Periodo</div>
-                                        <div class="fw-semibold">{{ $form->periodo_form }}</div>
-                                    </div>
+                                <div class="d-flex flex-wrap gap-2 mt-2">
+                                    <span class="badge bg-light text-dark border">
+                                        Periodo: <b>{{ strtolower($form->periodo_form) }}</b>
+                                    </span>
 
-                                    <div>
-                                        <div class="text-muted small">Periodo a reportar</div>
-                                        <div class="fw-semibold">{{ ucfirst($periodoReportarTexto) }}</div>
-                                    </div>
-
-                                    <div>
-                                        <div class="text-muted small">Unidad</div>
-                                        <div class="fw-semibold">{{ $form->indicador->unidadmedida_ind }}</div>
-                                    </div>
-
-                                    {{-- ✅ SI NO HAY METAS: BOTÓN DIRECTO --}}
-                                    @if ($totalMetas <= 0)
-                                        <div class="ms-auto text-end">
-                                            <div class="text-muted small">Acción</div>
-
-                                            @php
-                                                // ✅ AQUI SE DEFINE SIEMPRE $href (ANTES NO EXISTÍA)
-                                                $href = route('usuario.formulario.captura', [
-                                                    'id_form' => $form->id_form,
-                                                    'id_ind' => $form->id_ind,
-                                                ]);
-
-                                                $btnClass = 'btn-primary';
-                                                $btnText = 'Capturar indicador';
-                                                $icon = 'bi-pencil-square';
-
-                                                $estadoNorm = mb_strtoupper(trim((string) ($estado ?? '')));
-                                                $estadoNorm = str_replace('REVISIÓN', 'REVISION', $estadoNorm);
-
-                                                if ($estadoNorm === 'OBSERVADO' && $ultima) {
-                                                    $href .= '?id_carga=' . $ultima->id_carga . '&modo=correccion';
-                                                    $btnClass = 'btn-warning text-dark';
-                                                    $btnText = 'Corregir';
-                                                    $icon = 'bi-pencil-square';
-                                                } elseif ($estadoNorm === 'BORRADOR' && $ultima) {
-                                                    $href .= '?id_carga=' . $ultima->id_carga;
-                                                    $btnClass = 'btn-warning text-dark';
-                                                    $btnText = 'Continuar';
-                                                    $icon = 'bi-play-circle';
-                                                } elseif (
-                                                    in_array(
-                                                        $estadoNorm,
-                                                        ['ENVIADO', 'EN REVISION', 'APROBADO', 'REENVIADO'],
-                                                        true,
-                                                    ) &&
-                                                    $ultima
-                                                ) {
-                                                    $href .= '?id_carga=' . $ultima->id_carga;
-                                                    $btnClass = 'btn-outline-secondary';
-                                                    $btnText = 'Ver';
-                                                    $icon = 'bi-eye';
-                                                }
-                                            @endphp
-
-                                            @if ($habilitadoHoy)
-                                                <a class="btn btn-sm {{ $btnClass }} mt-1 shadow-sm"
-                                                    href="{{ $href }}">
-                                                    <i class="bi {{ $icon }} me-1"></i> {{ $btnText }}
-                                                </a>
-                                            @else
-                                                <button class="btn btn-sm btn-outline-secondary mt-1 shadow-sm" disabled>
-                                                    <i class="bi bi-lock-fill me-1"></i> No disponible
-                                                </button>
-
-                                                <div class="small text-danger mt-1">
-                                                    Fuera de periodo ({{ ucfirst($periodoReportarTexto) }})
-                                                </div>
-                                            @endif
-                                        </div>
-                                    @endif
+                                    <span class="badge bg-light text-dark border">
+                                        Reporte: <b>{{ $periodoReportarTexto }}</b>
+                                    </span>
                                 </div>
 
-                                {{-- ✅ SI HAY METAS: LISTADO + BOTÓN POR META --}}
-                                @if ($totalMetas > 0)
-                                    <hr class="my-3">
-
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div class="fw-semibold">Metas del indicador ({{ $totalMetas }})</div>
-                                        <button class="btn btn-sm btn-outline-primary" type="button"
-                                            data-bs-toggle="collapse" data-bs-target="#metas_{{ $form->id_form }}">
-                                            Ver metas ▼
-                                        </button>
-                                    </div>
-
-                                    <div class="collapse mt-2" id="metas_{{ $form->id_form }}">
-                                        <div class="border rounded p-2" style="background:#fafafa;">
-
-                                            @foreach ($metas as $m)
-                                                @php
-                                                    $key = $form->id_form . '-' . $m->id;
-                                                    $cargaMeta = $cargasUltimasPorMeta[$key] ?? null;
-
-                                                    $st = $cargaMeta?->status_env
-                                                        ? mb_strtoupper(trim($cargaMeta->status_env))
-                                                        : 'SIN CAPTURA';
-                                                    $st = str_replace('REVISIÓN', 'REVISION', $st);
-
-                                                    if ($st === 'APROBADO') {
-                                                        $aprobadas++;
-                                                    }
-
-                                                    $badgeMeta = match ($st) {
-                                                        'APROBADO' => 'bg-success',
-                                                        'EN REVISION' => 'bg-info',
-                                                        'OBSERVADO' => 'bg-warning text-dark',
-                                                        'REENVIADO' => 'bg-primary',
-                                                        'ENVIADO' => 'bg-secondary',
-                                                        'BORRADOR' => 'bg-dark',
-                                                        default => 'bg-light text-dark',
-                                                    };
-
-                                                    // URL base a captura por meta
-                                                    $href =
-                                                        route('usuario.formulario.captura', [
-                                                            'id_form' => $form->id_form,
-                                                            'id_ind' => $form->id_ind,
-                                                        ]) .
-                                                        '?id_meta=' .
-                                                        $m->id;
-
-                                                    $btnClassMeta = 'btn-success';
-                                                    $btnTextMeta = 'Capturar';
-                                                    $iconMeta = 'bi-pencil-square';
-
-                                                    if ($st === 'BORRADOR' && $cargaMeta) {
-                                                        $href .= '&id_carga=' . $cargaMeta->id_carga;
-                                                        $btnClassMeta = 'btn-warning text-dark';
-                                                        $btnTextMeta = 'Continuar';
-                                                        $iconMeta = 'bi-play-circle';
-                                                    }
-
-                                                    if (
-                                                        in_array(
-                                                            $st,
-                                                            ['ENVIADO', 'EN REVISION', 'APROBADO', 'REENVIADO'],
-                                                            true,
-                                                        ) &&
-                                                        $cargaMeta
-                                                    ) {
-                                                        $href .= '&id_carga=' . $cargaMeta->id_carga;
-                                                        $btnClassMeta = 'btn-outline-secondary';
-                                                        $btnTextMeta = 'Ver';
-                                                        $iconMeta = 'bi-eye';
-                                                    }
-
-                                                    if ($st === 'OBSERVADO' && $cargaMeta) {
-                                                        $href .=
-                                                            '&id_carga=' . $cargaMeta->id_carga . '&modo=correccion';
-                                                        $btnClassMeta = 'btn-warning text-dark';
-                                                        $btnTextMeta = 'Corregir';
-                                                        $iconMeta = 'bi-pencil-square';
-                                                    }
-                                                @endphp
-
-                                                <div
-                                                    class="d-flex justify-content-between align-items-start py-2 border-bottom">
-                                                    <div class="me-2">
-                                                        <div class="fw-semibold">
-                                                            Meta {{ $m->orden ?? '' }} – {{ $m->titulo ?? 'Meta' }}
-                                                        </div>
-
-                                                        <div class="small text-muted">
-                                                            @if ($cargaMeta)
-                                                                Folio: <b>{{ $cargaMeta->folioUnico_carga }}</b>
-                                                                · Última:
-                                                                <b>{{ \Carbon\Carbon::parse($cargaMeta->updated_at)->format('d M Y') }}</b>
-                                                            @else
-                                                                Sin registros aún
-                                                            @endif
-                                                        </div>
-
-                                                        <span
-                                                            class="badge {{ $badgeMeta }} mt-1">{{ $st }}</span>
-                                                    </div>
-
-                                                    <div class="text-end">
-
-                                                        @if ($habilitadoHoy)
-                                                            <a class="btn btn-sm {{ $btnClassMeta }} mt-1 shadow-sm"
-                                                                href="{{ $href }}">
-                                                                <i class="bi {{ $iconMeta }} me-1"></i>
-                                                                {{ $btnTextMeta }}
-                                                            </a>
-                                                        @else
-                                                            <button class="btn btn-sm btn-outline-secondary mt-1 shadow-sm"
-                                                                disabled>
-                                                                <i class="bi bi-lock-fill me-1"></i>
-                                                                No disponible
-                                                            </button>
-
-                                                            <div class="small text-danger mt-1">
-                                                                Fuera de periodo ({{ ucfirst($periodoReportarTexto) }})
-                                                            </div>
-                                                        @endif
-
-                                                    </div>
-                                                </div>
-                                            @endforeach
-
-                                            <div class="small text-muted mt-2">
-                                                Estado del indicador: <b>{{ $aprobadas }}/{{ $totalMetas }}</b>
-                                                (se acredita cuando todas están aprobadas)
-                                            </div>
-
-                                        </div>
-                                    </div>
-                                @endif
+                                <div class="d-flex justify-content-end mb-2">
+                                    <a class="btn btn-sm btn-primary shadow-sm"
+                                        href="{{ route('usuario.indicadores.show', $form->id_form) }}">
+                                        Ver indicador
+                                    </a>
+                                </div>
                             @else
                                 <div class="text-muted">
                                     Este registro no tiene indicador asignado.

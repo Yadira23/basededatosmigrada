@@ -15,6 +15,8 @@ class Formulario extends Model
 
     protected $table = 'formularios';
     protected $primaryKey = 'id_form';
+    public $incrementing = true;
+    protected $keyType = 'int';
 
     protected $fillable = [
         'titulo_form',
@@ -154,5 +156,10 @@ class Formulario extends Model
         };
 
         return sprintf('%04d-%02d', $y, $mesInicio);
+    }
+
+    public function getRouteKeyName()
+    {
+        return 'id_form';
     }
 }

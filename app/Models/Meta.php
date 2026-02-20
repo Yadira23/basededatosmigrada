@@ -32,6 +32,11 @@ class Meta extends Model
         return $this->belongsTo(Indicador::class, 'id_ind', 'id_ind');
     }
 
+    public function detalleCargas()
+    {
+        return $this->hasMany(DetalleCarga::class, 'id_meta', 'id');
+    }
+
     /**
      * Etiqueta del periodo para mostrar en tablas (ej: "2026 T1", "2026 S2", "2026 M03", "2026").
      * Depende del periodo del indicador.

@@ -26,6 +26,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
 use App\Models\Meta;
+use App\Support\CapturaPolicy;
 
 
 class FormularioCaptura extends Component
@@ -42,6 +43,13 @@ class FormularioCaptura extends Component
     public bool $hayPlantilla = false;
 
     public bool $soloLectura = false;
+    public ?string $mensajeBloqueo = null;
+
+    public ?string $periodoLabel = null;     // ej. "S1 2026", "T2 2026", "Enero 2026"
+    public ?string $capturaOpenAt = null;    // fecha apertura dd/mm/yyyy
+    public ?string $capturaCloseAt = null;   // fecha cierre dd/mm/yyyy
+    public ?int $diasRestantes = null;       // si está abierto
+
 
     // SIN_AMBITO | REGION | MUNICIPIO
     public string $ambito_geo = 'SIN_AMBITO';
@@ -91,7 +99,7 @@ class FormularioCaptura extends Component
     public bool $metaBloqueada = false;
     public bool $ambitoElegido = false;
 
-    public function mount($id_form, $id_ind)
+    public function mount($id_form, $id_ind, $id_meta = null)
     {
         $this->id_carga = request('id_carga');
         $this->modoCorreccion = request('modo') === 'correccion';
@@ -109,22 +117,22 @@ class FormularioCaptura extends Component
         $this->indicador = $this->formulario->indicador;
 
         /* =========================================================
-       ✅ 0) NORMALIZAR ESTADO PUBLICACIÓN
-       ========================================================= */
-        $estadoRaw = trim((string)$this->formulario->boton_accion_form);
+        ✅ 0) NORMALIZAR ESTADO PUBLICACIÓN
+        ========================================================= */
+        $estadoRaw = trim((string) $this->formulario->boton_accion_form);
         $estado = mb_strtoupper($estadoRaw);
 
-        // Publicado debe comportarse como "Ver" (permitido)
-        $estado = match ($estado) {
-            'PUBLICADO' => 'VER',
-            'VER'       => 'VER',
-            'FINALIZADO' => 'FINALIZADO',
-            default     => $estado,
-        };
+        // Permitidos para entrar a la pantalla
+        $permitidos = ['PUBLICADO', 'VER']; // VER solo por compatibilidad
 
-        if (!in_array($estado, ['VER', 'FINALIZADO'], true)) {
+        if (!in_array($estado, $permitidos, true)) {
             abort(403, 'Este formulario aún no ha sido publicado.');
         }
+
+        // Reglas de edición
+        // PUBLICADO => puede editar (si policy lo permite)
+        // VER => solo lectura siempre
+        $this->soloLectura = ($estado === 'VER');
 
         /* =========================================================
        ✅ 1) METAS DISPONIBLES (POR INDICADOR Y FORM)
@@ -146,7 +154,9 @@ class FormularioCaptura extends Component
         }
 
         // id_meta desde URL (si viene)  ✅ (recuerda: es metas.id)
-        $this->id_meta = ($this->requiereMeta && request('id_meta')) ? (int) request('id_meta') : null;
+        $this->id_meta = ($this->requiereMeta && ($id_meta ?? request('id_meta')))
+            ? (int) ($id_meta ?? request('id_meta'))
+            : null;
         $this->metaTitulo = null;
 
         if (!empty($this->metasDisponibles) && !empty($this->id_meta)) {
@@ -206,31 +216,14 @@ class FormularioCaptura extends Component
         }
 
         /* =========================================================
-       ✅ 4) VENCIMIENTO POR PERIODO
-       ========================================================= */
-        $fechaCreacion = Carbon::parse($this->formulario->fecha_creacion_form);
-        $hoy = Carbon::now();
+        ✅ 4) VENTANA DE CAPTURA (inicio / cierre por periodicidad)
+        ========================================================= */
 
-        $periodo = ucfirst(mb_strtolower(trim((string)$this->formulario->periodo_form)));
-        $fechaFin = match ($periodo) {
-            'Mensual'    => $fechaCreacion->copy()->addMonth(),
-            'Trimestral' => $fechaCreacion->copy()->addMonths(3),
-            'Semestral'  => $fechaCreacion->copy()->addMonths(6),
-            'Anual'      => $fechaCreacion->copy()->addYear(),
-            default      => $fechaCreacion->copy()->addDay(),
-        };
+        // Primero respeta VER / FINALIZADO
+        //$this->soloLectura = ($estado !== 'EDITABLE');
 
-        if ($hoy->gte($fechaFin)) {
-            $this->soloLectura = true;
-
-            if (mb_strtoupper(trim((string)$this->formulario->boton_accion_form)) !== 'FINALIZADO') {
-                $this->formulario->boton_accion_form = 'Finalizado';
-                $this->formulario->save();
-            }
-        } else {
-            // ✅ clave: VER = editable, FINALIZADO = no editable
-            $this->soloLectura = ($estado !== 'VER');
-        }
+        // Luego aplica política de ventana (puede forzar soloLectura=true)
+        $this->aplicarVentanaCaptura();
 
         /* =========================================================
        ✅ 5) CATALOGOS / FLAGS
@@ -371,7 +364,6 @@ class FormularioCaptura extends Component
             }
         }
     }
-
 
     public function cargarDatosDeCarga(\App\Models\Carga $carga): void
     {
@@ -1623,16 +1615,31 @@ class FormularioCaptura extends Component
 
     private function asegurarPeriodoPermitidoEnCarga(\App\Models\Carga $carga): string
     {
-        $permitido = \App\Models\Formulario::periodoYMActualPermitido($this->formulario->periodo_form);
+        $ym = $carga->periodo; // ej: 2026-02
+        $periodicidad = $this->indicador->periodo_ind ?? $this->formulario->periodo_form ?? 'MENSUAL';
+        $p = mb_strtolower(trim($periodicidad));
 
-        if ((string)$carga->periodo !== (string)$permitido) {
-            throw new \Exception(
-                "Periodo no habilitado. Este formulario es {$this->formulario->periodo_form} y el periodo permitido hoy es {$permitido}. " .
-                    "Tu carga tiene periodo {$carga->periodo}."
-            );
+        if ($p === 'mensual') {
+            $periodoValor = $ym;
+        } elseif ($p === 'trimestral') {
+            $q = (int) ceil(((int)substr($ym, 5, 2)) / 3);
+            $periodoValor = substr($ym, 0, 4) . "-T{$q}";
+        } elseif ($p === 'semestral') {
+            $m = (int) substr($ym, 5, 2);
+            $s = ($m <= 6) ? 1 : 2;
+            $periodoValor = substr($ym, 0, 4) . "-S{$s}";
+        } else {
+            $periodoValor = substr($ym, 0, 4);
+            $p = 'anual';
         }
 
-        return $permitido;
+        [$permitido, $msg] = \App\Support\CapturaPolicy::permite($p, $periodoValor);
+
+        if (!$permitido) {
+            throw new \Exception($msg);
+        }
+
+        return $ym;
     }
 
     /* =========================
@@ -1827,6 +1834,116 @@ class FormularioCaptura extends Component
         };
     }
 
+    private function rangoPeriodoDesdeYM(string $ym, string $periodicidad): array
+    {
+        // $ym viene tipo "2026-02"
+        [$y, $m] = array_map('intval', explode('-', $ym));
+        $ref = Carbon::create($y, $m, 1)->startOfDay();
+
+        $p = mb_strtoupper(trim($periodicidad));
+
+        if ($p === 'MENSUAL') {
+            $start = $ref->copy()->startOfMonth();
+            $end   = $ref->copy()->endOfMonth();
+            $label = $start->translatedFormat('F Y'); // "febrero 2026"
+            return compact('start', 'end', 'label');
+        }
+
+        if ($p === 'TRIMESTRAL') {
+            $q = (int) ceil($ref->month / 3);                // 1..4
+            $startMonth = (($q - 1) * 3) + 1;
+            $start = $ref->copy()->setMonth($startMonth)->startOfMonth();
+            $end   = $start->copy()->addMonths(2)->endOfMonth();
+            $label = "T{$q} " . $start->format('Y');
+            return compact('start', 'end', 'label');
+        }
+
+        if ($p === 'SEMESTRAL') {
+            $s = ($ref->month <= 6) ? 1 : 2;
+            $startMonth = ($s === 1) ? 1 : 7;
+            $start = $ref->copy()->setMonth($startMonth)->startOfMonth();
+            $end   = $start->copy()->addMonths(5)->endOfMonth();
+            $label = "S{$s} " . $start->format('Y');
+            return compact('start', 'end', 'label');
+        }
+
+        // ANUAL (default)
+        $start = $ref->copy()->startOfYear();
+        $end   = $ref->copy()->endOfYear();
+        $label = $start->format('Y');
+        return compact('start', 'end', 'label');
+    }
+
+    private function aplicarVentanaCaptura(): void
+    {
+        // 1) Periodo "permitido hoy" (tu lógica actual)
+        $ym = Formulario::periodoYMActualPermitido($this->formulario->periodo_form);
+
+        // 2) Periodicidad (del indicador si existe, si no del formulario)
+        $periodicidad = $this->indicador->periodo_ind ?? $this->formulario->periodo_form ?? 'MENSUAL';
+        $p = mb_strtolower(trim($periodicidad)); // mensual|trimestral|semestral|anual
+
+        // 3) Etiqueta visible (la de tu UI: "Febrero 2026", "T1 2026", "S1 2026", "2026")
+        $r = $this->rangoPeriodoDesdeYM($ym, $periodicidad);
+        $this->periodoLabel = $r['label'];
+
+        // 4) Convertir a "periodoValor" compatible con CapturaPolicy
+        // mensual: 2026-02
+        // trimestral: 2026-T1
+        // semestral: 2026-S1
+        // anual: 2026
+        $periodoValor = null;
+
+        if ($p === 'mensual') {
+            $periodoValor = $ym; // ya viene YYYY-MM
+        } elseif ($p === 'trimestral') {
+            $q = (int) ceil(((int)substr($ym, 5, 2)) / 3);
+            $periodoValor = substr($ym, 0, 4) . "-T{$q}";
+        } elseif ($p === 'semestral') {
+            $m = (int) substr($ym, 5, 2);
+            $s = ($m <= 6) ? 1 : 2;
+            $periodoValor = substr($ym, 0, 4) . "-S{$s}";
+        } else { // anual
+            $periodoValor = substr($ym, 0, 4);
+            $p = 'anual';
+        }
+
+        // 5) Aplicar policy (usa BD: modo pruebas + días de apertura + gracia)
+        [$permitido, $msg] = CapturaPolicy::permite($p, $periodoValor);
+
+        // 6) Para UI: calculamos fechas aproximadas de ventana según policy
+        // (Solo para mostrar; la decisión real es $permitido)
+        $inicioPeriodo = $r['start']->copy()->startOfDay();
+
+        $diasApertura = match ($p) {
+            'mensual'    => config_int('CAPTURA_DIAS_APERTURA_MENSUAL', 60),
+            'trimestral' => config_int('CAPTURA_DIAS_APERTURA_TRIMESTRAL', 120),
+            'semestral'  => config_int('CAPTURA_DIAS_APERTURA_SEMESTRAL', 180),
+            default      => config_int('CAPTURA_DIAS_APERTURA_ANUAL', 365),
+        };
+        $diasGracia = config_int('CAPTURA_DIAS_GRACIA', 0);
+
+        $open  = $inicioPeriodo->copy();
+        $close = $inicioPeriodo->copy()->addDays($diasApertura + $diasGracia)->endOfDay();
+
+        $this->capturaOpenAt  = $open->format('d/m/Y');
+        $this->capturaCloseAt = $close->format('d/m/Y');
+
+        // 7) Setear bloqueo / mensaje
+        // OJO: NO forzamos soloLectura=false si está permitido, porque otros factores pueden bloquear (corrección, no publicado, etc.)
+        if (!$permitido) {
+            $this->soloLectura = true;
+            $this->mensajeBloqueo = $msg;
+            $this->diasRestantes = null;
+            return;
+        }
+
+        // si está permitido, calculamos días restantes (solo visual)
+        $now = now('America/Mexico_City');
+        $this->diasRestantes = $now->diffInDays($close, false);
+        $this->mensajeBloqueo = null;
+    }
+
     public function render()
     {
         $this->cargaActual = $this->id_carga_actual ? Carga::find($this->id_carga_actual) : null;
@@ -1853,6 +1970,11 @@ class FormularioCaptura extends Component
             'id_carga_actual' => $this->id_carga_actual,
             'cargaActual' => $this->cargaActual,
             'ambitoElegido' => $this->ambitoElegido,
+            'mensajeBloqueo' => $this->mensajeBloqueo,
+            'periodoLabel' => $this->periodoLabel,
+            'capturaOpenAt' => $this->capturaOpenAt,
+            'capturaCloseAt' => $this->capturaCloseAt,
+            'diasRestantes' => $this->diasRestantes,
         ])->extends('layouts.usuario')->section('content');
     }
 }

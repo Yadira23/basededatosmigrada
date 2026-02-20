@@ -118,8 +118,8 @@
                 @endrole
 
                 <!-- =========================================================
-                                 MENÚ USUARIO (solo lo que puede ver)
-                            ========================================================== -->
+                                         MENÚ USUARIO (solo lo que puede ver)
+                                    ========================================================== -->
                 @role('usuario')
                     <hr class="sidebar-divider">
                     <div class="sidebar-heading">Captura</div>
@@ -140,8 +140,8 @@
                 @endrole
 
                 <!-- =========================================================
-                                 MENÚ ADMIN (todo lo de administración)
-                            ========================================================== -->
+                                         MENÚ ADMIN (todo lo de administración)
+                                    ========================================================== -->
                 @role('admin')
                     <hr class="sidebar-divider">
                     <div class="sidebar-heading">Formularios</div>
@@ -207,6 +207,16 @@
                         <a class="nav-link" href="{{ url('/DetalleCargas') }}">
                             <i class="fas fa-clipboard-list"></i>
                             <span>Detalle Cargas</span>
+                        </a>
+                    </li>
+
+                    <hr class="sidebar-divider">
+                    <div class="sidebar-heading">Configuración</div>
+
+                    <li class="nav-item {{ request()->routeIs('admin.configuracion.captura') ? 'active' : '' }}">
+                        <a class="nav-link" href="{{ route('admin.configuracion.captura') }}">
+                            <i class="fas fa-cog"></i>
+                            <span>Configuración de Captura</span>
                         </a>
                     </li>
                 @endrole

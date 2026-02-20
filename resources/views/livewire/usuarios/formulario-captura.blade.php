@@ -17,9 +17,30 @@
 
     @if ($soloLectura)
         <div class="alert alert-warning" style="margin-bottom:15px;">
-            <strong>Formulario finalizado:</strong> ya no puedes capturar ni enviar información. Solo puedes consultar
-            lo que ya existe.
+            <strong>Captura bloqueada:</strong>
+            {{ $mensajeBloqueo ?? 'No puedes capturar en este momento.' }}
+
+            @if (!empty($periodoLabel) || !empty($capturaOpenAt) || !empty($capturaCloseAt))
+                <div class="small text-muted mt-2">
+                    @if (!empty($periodoLabel))
+                        <div><b>Periodo:</b> {{ $periodoLabel }}</div>
+                    @endif
+                    @if (!empty($capturaOpenAt))
+                        <div><b>Abre:</b> {{ $capturaOpenAt }}</div>
+                    @endif
+                    @if (!empty($capturaCloseAt))
+                        <div><b>Cierra:</b> {{ $capturaCloseAt }}</div>
+                    @endif
+                </div>
+            @endif
         </div>
+    @else
+        @if (!is_null($diasRestantes))
+            <div class="alert alert-info" style="margin-bottom:15px;">
+                Tienes <b>{{ $diasRestantes }}</b> día(s) para capturar.
+                <span class="small text-muted">Cierra el {{ $capturaCloseAt ?? '—' }}.</span>
+            </div>
+        @endif
     @endif
 
     {{-- ✅ META (solo si hay metas) --}}
@@ -362,7 +383,8 @@
                 </label>
 
                 <label class="ms-3">
-                    <input type="radio" wire:model.live="ambito_geo" value="MUNICIPIO" @disabled($soloLectura)>
+                    <input type="radio" wire:model.live="ambito_geo" value="MUNICIPIO"
+                        @disabled($soloLectura)>
                     MUNICIPIO
                 </label>
             </div>

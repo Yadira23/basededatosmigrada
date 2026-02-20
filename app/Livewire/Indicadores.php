@@ -75,10 +75,18 @@ class Indicadores extends Component
 
         $this->requerido_ind = $this->requerido_ind ? 1 : 0;
 
-        $periodoAntes = null;
+        $antes = null;
         if ($this->selected_id) {
-            $periodoAntes = Indicador::where('id_ind', $this->selected_id)->value('periodo_ind');
+            $antes = Indicador::where('id_ind', $this->selected_id)->first([
+                'periodo_ind',
+                'formato_ind',
+                'unidadmedida_ind',
+                'requerido_ind',
+                'meta_ind',
+            ]);
         }
+
+        $periodoAntes = $antes?->periodo_ind;
 
         // VALIDACIÓN BASE
         $rules = [
@@ -113,6 +121,62 @@ class Indicadores extends Component
 
         // VALIDAR
         $this->validate($rules);
+
+        // ✅ BLOQUEO: no permitir cambio de periodo si ya hay capturas relacionadas
+        if ($this->selected_id && $periodoAntes !== null && $periodoAntes !== $this->periodo_ind) {
+
+            // Detectar si existe al menos una carga para cualquier formulario de este indicador
+            $tieneCapturas = DB::table('cargas')
+                ->join('formularios', 'formularios.id_form', '=', 'cargas.id_form')
+                ->where('formularios.id_ind', $this->selected_id)
+                ->exists();
+
+            if ($tieneCapturas) {
+                $this->addError('periodo_ind', 'No puedes cambiar el periodo: este indicador ya tiene capturas registradas. Para cambiar la periodicidad, crea un nuevo indicador (o versiona).');
+                return;
+            }
+        }
+
+        // ✅ BLOQUEO: no permitir cambios críticos si ya hay capturas
+        if ($this->selected_id) {
+
+            $tieneCapturas = DB::table('cargas')
+                ->join('formularios', 'formularios.id_form', '=', 'cargas.id_form')
+                ->where('formularios.id_ind', $this->selected_id)
+                ->exists();
+
+            if ($tieneCapturas && $antes) {
+
+                $cambioFormato   = $antes->formato_ind !== $this->formato_ind;
+                $cambioUnidad    = (string)$antes->unidadmedida_ind !== (string)$this->unidadmedida_ind;
+                $cambioRequerido = (int)$antes->requerido_ind !== (int)$this->requerido_ind;
+
+                // meta puede ser null; comparamos como string para evitar líos
+                $metaAntes = $antes->meta_ind === null ? null : (string)$antes->meta_ind;
+                $metaNueva = $this->meta_ind === null ? null : (string)$this->meta_ind;
+                $cambioMeta = $metaAntes !== $metaNueva;
+
+                if ($cambioFormato) {
+                    $this->addError('formato_ind', 'No puedes cambiar el formato porque este indicador ya tiene capturas registradas.');
+                    return;
+                }
+
+                if ($cambioUnidad) {
+                    $this->addError('unidadmedida_ind', 'No puedes cambiar la unidad de medida porque este indicador ya tiene capturas registradas.');
+                    return;
+                }
+
+                if ($cambioRequerido) {
+                    $this->addError('requerido_ind', 'No puedes cambiar si es requerido/opcional porque este indicador ya tiene capturas registradas.');
+                    return;
+                }
+
+                if ($cambioMeta) {
+                    $this->addError('meta_ind', 'No puedes cambiar la meta porque este indicador ya tiene capturas registradas.');
+                    return;
+                }
+            }
+        }
 
         // NORMALIZAR BOOLEANOS
         $this->requerido_ind = $this->requerido_ind ? 1 : 0;
@@ -222,6 +286,19 @@ class Indicadores extends Component
     ================================*/
     public function destroy($id)
     {
+        // ✅ Bloquear eliminación si ya hay capturas relacionadas
+        $tieneCapturas = DB::table('cargas')
+            ->join('formularios', 'formularios.id_form', '=', 'cargas.id_form')
+            ->where('formularios.id_ind', $id)
+            ->exists();
+
+        if ($tieneCapturas) {
+            session()->flash('message', 'No puedes eliminar este indicador porque ya tiene capturas registradas.');
+            return;
+        }
+
         Indicador::where('id_ind', $id)->delete();
+
+        session()->flash('message', 'Indicador eliminado correctamente.');
     }
 }

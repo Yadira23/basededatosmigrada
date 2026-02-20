@@ -17,6 +17,8 @@ use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Models\Indicador;
 use Illuminate\Support\Facades\DB;
+use App\Livewire\Admin\ConfiguracionCaptura;
+use App\Http\Controllers\Usuario\IndicadorController;
 
 
 /*
@@ -86,6 +88,9 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 
     Route::get('/admin/cargas/{id_carga}/revision', \App\Livewire\Admin\Cargas\CargaRevision::class)
         ->name('admin.cargas.revision');
+
+    Route::get('/admin/configuracion-captura', ConfiguracionCaptura::class)
+            ->name('admin.configuracion.captura');
 });
 
 
@@ -122,8 +127,8 @@ Route::middleware(['auth'])->group(function () {
         return redirect()->route('usuario.indicadores');
     });
 
-    Route::get('/usuario/formulario/{id_form}/{id_ind}', FormularioCaptura::class)
-        ->name('usuario.formulario.captura');
+    Route::get('usuario/formulario/{id_form}/{id_ind}/{id_meta?}', App\Livewire\Usuario\FormularioCaptura::class)
+    ->name('usuario.formulario.captura');
 
     Route::get('/detallecargas/{id_carga}', DetalleCargas::class)
         ->name('detallecargas.index');
@@ -207,4 +212,7 @@ Route::middleware(['auth'])->group(function () {
             'metas' => $metas,
         ]);
     })->name('usuario.indicadores.metas');
+
+    Route::get('/usuario/indicadores/{formulario}', [IndicadorController::class, 'show'])
+        ->name('usuario.indicadores.show');
 });
