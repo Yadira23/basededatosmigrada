@@ -284,7 +284,6 @@
                 'd.id_depen',
                 'd.nombre_depen',
                 DB::raw('COUNT(DISTINCT f.id_ind) as indicadores_asignados'),
-                DB::raw('COUNT(DISTINCT f.id_form) as formularios_asociados'),
             )
             ->groupBy('d.id_depen', 'd.nombre_depen')
             ->get();
@@ -318,10 +317,6 @@
 
                             <div class="dep-metrics">
                                 <div class="dep-metric">
-                                    <div class="dep-metric-label">Formularios</div>
-                                    <div class="dep-metric-value">{{ (int) $row->formularios_asociados }}</div>
-                                </div>
-                                <div class="dep-metric">
                                     <div class="dep-metric-label">Indicadores</div>
                                     <div class="dep-metric-value">{{ (int) $row->indicadores_asignados }}</div>
                                 </div>
@@ -346,7 +341,7 @@
                             </div>
 
                             <div class="dep-mini">
-                                <div class="dep-mini-label">Avance de meta</div>
+                                <div class="dep-mini-label">Avance de indicadores sin metas</div>
 
                                 @php
                                     $adv = $avancePorDep[$row->id_depen] ?? [
