@@ -14,6 +14,8 @@ return new class extends Migration
         Schema::create('cargas', function (Blueprint $table) {
             $table->id('id_carga');
             $table->string('folioUnico_carga')->unique();
+            $table->timestamp('plantilla_descargada_at')->nullable();
+            $table->string('plantilla_ambito')->nullable();
             $table->date('fecha_carga');
             $table->string('periodo'); // mensual, trimestral, anual
             $table->year('ejercicio');          // año, ej. 2025
@@ -28,7 +30,7 @@ return new class extends Migration
                 ->references('id_form')
                 ->on('formularios')
                 ->onDelete('cascade');
-                
+
             $table->unsignedBigInteger('meta_id')->nullable();
 
             $table->foreign('meta_id')
