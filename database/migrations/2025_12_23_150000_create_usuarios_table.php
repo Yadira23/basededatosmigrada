@@ -19,6 +19,7 @@ return new class extends Migration
             $table->string('apellido_materno', 100)->nullable();
             $table->string('email_usr', 150)->unique();
             $table->string('password');
+            $table->rememberToken(); // remember_token
             $table->foreignId('id_depen')
                 ->nullable()
                 ->unique()
