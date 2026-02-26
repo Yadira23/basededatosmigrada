@@ -9,6 +9,7 @@ use App\Models\Formulario;
 use App\Models\Indicador;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
+use App\Models\Dependencia;
 
 class Cargas extends Component
 {
@@ -17,6 +18,7 @@ class Cargas extends Component
     protected $paginationTheme = 'bootstrap';
 
     public $selected_id, $keyWord;
+    public $filtroDependencia = '';
     public $id_carga, $folioUnico_carga, $fecha_carga, $periodo, $periodo_det, $ejercicio, $ejercicio_det, $fuente, $status_env, $descripcion_env, $observacion_env, $id_form;
     public $indicadores = [];
     public $selectedIndicador;
@@ -58,7 +60,7 @@ class Cargas extends Component
     {
         $keyWord = '%' . $this->keyWord . '%';
 
-        return Carga::query()
+        $query = Carga::query()
             ->with([
                 'formulario',
                 'primerDetalle',
@@ -73,8 +75,16 @@ class Cargas extends Component
                     ->orWhere('status_env', 'LIKE', $keyWord)
                     ->orWhere('descripcion_env', 'LIKE', $keyWord)
                     ->orWhere('observacion_env', 'LIKE', $keyWord);
-            })
-            ->paginate(10);
+            });
+
+        // ✅ Filtro por dependencia (a través del formulario)
+        if (!empty($this->filtroDependencia)) {
+            $query->whereHas('formulario', function ($q) {
+                $q->where('id_depen', $this->filtroDependencia);
+            });
+        }
+
+        return $query->paginate(10);
     }
 
     public function render()
@@ -82,6 +92,7 @@ class Cargas extends Component
         return view('livewire.carga.view', [
             'cargas' => $this->filteredCargas,
             'formularios' => Formulario::all(),
+            'dependencias' => Dependencia::orderBy('nombre_depen')->get(),
         ]);
     }
 
@@ -239,6 +250,22 @@ class Cargas extends Component
         $carga->save();
 
         session()->flash('success', 'Carga aprobada correctamente.');
+    }
+
+    public function updatedFiltroDependencia()
+    {
+        $this->resetPage(); // vuelve a página 1 al cambiar dependencia
+    }
+
+    public function updatedKeyWord()
+    {
+        $this->resetPage();
+    }
+
+    public function limpiarFiltros()
+    {
+        $this->reset(['keyWord', 'filtroDependencia']);
+        $this->resetPage();
     }
 
     public function observar($id_carga)

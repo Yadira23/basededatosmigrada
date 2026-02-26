@@ -128,41 +128,41 @@
         </div>
     </div>
 
-    {{-- CHARTS (solo HTML aquí, el JS va abajo) --}}
-    <div class="row">
-        {{-- Serie histórica --}}
-        <div class="col-lg-6 mb-3">
-            <div class="card pro-card">
-                <div class="card-header d-flex align-items-center justify-content-between">
-                    <span>Formularios por mes (Serie histórica)</span>
-                    <span class="text-muted small"><i class="fas fa-chart-line mr-1"></i> Tendencia</span>
-                </div>
-                <div class="card-body">
-                    @php
-                        $vals = array_values($formulariosPorMes ?? []);
-                        $totalHist = array_sum($vals);
-                        $maxHist = count($vals) ? max($vals) : 0;
-                        $avgHist = count($vals) ? round($totalHist / count($vals), 1) : 0;
-                    @endphp
+    {{-- CHARTS --}}
+    <div class="row align-items-stretch">
 
-                    <div class="mini-stats">
-                        <div><span class="mini-k">Total</span><span class="mini-v">{{ $totalHist }}</span></div>
-                        <div><span class="mini-k">Máximo</span><span class="mini-v">{{ $maxHist }}</span></div>
-                        <div><span class="mini-k">Promedio</span><span class="mini-v">{{ $avgHist }}</span></div>
+        {{-- ✅ CARGAS POR ESTADO (HORIZONTAL PRO) --}}
+        <div class="col-lg-6 mb-3">
+            <div class="card pro-card h-100">
+                <div class="card-header d-flex align-items-center justify-content-between">
+                    <div>
+                        <span class="font-weight-bold text-gray-800">Cargas por estado</span>
+                        <div class="text-muted small">Conteo y porcentaje por estatus.</div>
                     </div>
-                    <div class="chart-box">
-                        <canvas id="formMes"></canvas>
+
+                    <div class="d-flex align-items-center" style="gap:10px;">
+                        <span class="badge-soft" id="topEstadoLabel">Top: —</span>
+                        <span class="badge-soft" id="pctBorradoresLabel">% borrador: —</span>
+                        <span class="badge-soft" id="totalCargasLabel">Total: —</span>
                     </div>
+                </div>
+
+                <div class="card-body">
+                    <div class="chart-box" style="height:190px;">
+                        <canvas id="chartCargasEstado"></canvas>
+                    </div>
+
+                    <div class="d-flex flex-wrap mt-2" style="gap:8px;" id="chipsEstados"></div>
                 </div>
             </div>
         </div>
 
-        {{-- Roles --}}
+        {{-- ✅ ROLES (como ya lo tienes) --}}
         <div class="col-lg-6 mb-3">
-            <div class="row">
+            <div class="row h-100">
 
                 <div class="col-md-6 mb-3 mb-md-0">
-                    <div class="card pro-card">
+                    <div class="card pro-card h-100">
                         <div class="card-header d-flex justify-content-between">
                             <span>Admins</span>
                             <span class="text-muted small" id="pctAdmin">{{ $totalUsuarios }} total</span>
@@ -176,7 +176,7 @@
                 </div>
 
                 <div class="col-md-6">
-                    <div class="card pro-card">
+                    <div class="card pro-card h-100">
                         <div class="card-header d-flex justify-content-between">
                             <span>Usuarios</span>
                             <span class="text-muted small" id="pctUsuario">{{ $totalUsuarios }} total</span>
@@ -191,6 +191,7 @@
 
             </div>
         </div>
+
     </div>
 
     {{-- ESTADO DE CARGAS (Semáforo) --}}
@@ -230,48 +231,136 @@
                 </div>
             @endif
 
-            <div class="table-responsive">
-                <table class="table table-hover table-pro mb-0">
-                    <thead>
-                        <tr>
-                            <th>Estado</th>
-                            <th style="width:140px;">Cantidad</th>
-                            <th style="width:320px;">Interpretación</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($cargasPorEstado as $estado => $cantidad)
-                            @php
-                                $estadoKey = strtoupper(trim($estado));
-                                $cfg = $mapSemaforo[$estadoKey] ?? [
-                                    'class' => 'sema-gris',
-                                    'desc' => 'Sin clasificación',
-                                ];
-                            @endphp
-                            <tr>
-                                <td class="font-weight-bold text-gray-800">{{ $estado }}</td>
-                                <td><span class="badge-soft">{{ (int) $cantidad }}</span></td>
-                                <td>
-                                    <span class="badge-semaforo {{ $cfg['class'] }}">
-                                        {{ $estado }}
-                                    </span>
-                                    <div class="text-muted small mt-1">
-                                        {{ $cfg['desc'] }}
-                                    </div>
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
+            {{-- ✅ RESUMEN (Opción A) - reemplaza tabla --}}
+            <div class="row g-3 align-items-stretch">
 
-            <div class="legend-box">
-                <div class="legend-item"><span class="legend-dot dot-verde"></span> Verde: Aprobado / Validado</div>
-                <div class="legend-item"><span class="legend-dot dot-amarillo"></span> Amarillo: Enviado / En revisión
-                    / Reenviado</div>
-                <div class="legend-item"><span class="legend-dot dot-rojo"></span> Rojo: Rechazado / Requiere
-                    corrección</div>
-                <div class="legend-item"><span class="legend-dot dot-gris"></span> Gris: Borrador / Sin enviar</div>
+                {{-- RESUMEN PRINCIPAL --}}
+                <div class="col-12 col-lg-7">
+                    <div class="border rounded-3 p-3 bg-white h-100">
+
+                        <div class="mb-2">
+                            <div class="font-weight-bold text-gray-800">Resumen de estado de cargas</div>
+                            <div class="text-muted small">Interpretación automática del sistema</div>
+                        </div>
+
+                        <div class="d-flex flex-column" style="gap:10px;">
+
+                            {{-- APROBADO --}}
+                            @if (($cargasPorEstado['APROBADO'] ?? 0) > 0)
+                                <div class="d-flex align-items-center justify-content-between border rounded-3 p-2">
+                                    <div class="d-flex align-items-center" style="gap:10px;">
+                                        <span class="badge badge-success">APROBADO</span>
+                                        <span class="text-muted small">Validado correctamente</span>
+                                    </div>
+                                    <span class="badge-soft">{{ (int) ($cargasPorEstado['APROBADO'] ?? 0) }}</span>
+                                </div>
+                            @endif
+
+                            {{-- ENVIADO --}}
+                            @if (($cargasPorEstado['ENVIADO'] ?? 0) > 0)
+                                <div class="d-flex align-items-center justify-content-between border rounded-3 p-2">
+                                    <div class="d-flex align-items-center" style="gap:10px;">
+                                        <span class="badge badge-warning">ENVIADO</span>
+                                        <span class="text-muted small">Pendiente de revisión</span>
+                                    </div>
+                                    <span class="badge-soft">{{ (int) ($cargasPorEstado['ENVIADO'] ?? 0) }}</span>
+                                </div>
+                            @endif
+
+                            {{-- BORRADOR --}}
+                            @if (($cargasPorEstado['BORRADOR'] ?? 0) > 0)
+                                <div class="d-flex align-items-center justify-content-between border rounded-3 p-2">
+                                    <div class="d-flex align-items-center" style="gap:10px;">
+                                        <span class="badge badge-secondary">BORRADOR</span>
+                                        <span class="text-muted small">Sin enviar</span>
+                                    </div>
+                                    <span class="badge-soft">{{ (int) ($cargasPorEstado['BORRADOR'] ?? 0) }}</span>
+                                </div>
+                            @endif
+
+                        </div>
+
+                        @php
+                            // ✅ Normaliza llaves de estatus para que el resumen sea consistente
+                            $cargasNorm = [];
+
+                            foreach ($cargasPorEstado ?? [] as $k => $v) {
+                                $key = strtoupper(trim((string) $k));
+                                $key = str_replace('REVISIÓN', 'REVISION', $key);
+                                $key = preg_replace('/\s+/', ' ', $key);
+
+                                $cargasNorm[$key] = ($cargasNorm[$key] ?? 0) + (int) $v;
+                            }
+
+                            // ✅ cálculos para el resumen
+                            $borr = (int) ($cargasNorm['BORRADOR'] ?? 0);
+                            $total = collect($cargasNorm)->sum();
+                            $pctBorr = $total > 0 ? round(($borr / $total) * 100) : 0;
+                        @endphp
+
+                        @if ($borr > 0)
+                            <div class="alert alert-warning mt-3 mb-0">
+                                <i class="fas fa-exclamation-triangle mr-1"></i>
+                                Hay <b>{{ $borr }}</b> borradores sin enviar ({{ $pctBorr }}%). Se
+                                recomienda enviar recordatorio.
+                            </div>
+                        @else
+                            <div class="alert alert-success mt-3 mb-0">
+                                <i class="fas fa-check-circle mr-1"></i>
+                                Excelente: no hay borradores pendientes.
+                            </div>
+                        @endif
+
+                    </div>
+                </div>
+
+                {{-- ACCIÓN SUGERIDA --}}
+                <div class="col-12 col-lg-5">
+                    <div class="border rounded-3 p-3 bg-white h-100 d-flex flex-column justify-content-center">
+
+                        <div class="d-flex align-items-start" style="gap:12px;">
+                            {{-- ICONO --}}
+                            <div class="rounded-circle d-flex align-items-center justify-content-center"
+                                style="width:42px;height:42px;background:rgba(13,110,253,.12);">
+                                <i class="fas fa-bell" style="color:#0d6efd;"></i>
+                            </div>
+
+                            {{-- CONTENIDO --}}
+                            <div class="flex-grow-1">
+                                <div class="font-weight-bold text-gray-800 mb-1">
+                                    Acción sugerida
+                                </div>
+
+                                @if ($borr > 0)
+                                    <div class="text-muted small mb-2">
+                                        Hay borradores pendientes. Puedes enviar un recordatorio global.
+                                    </div>
+
+                                    <div class="border rounded-3 p-2 bg-light small">
+                                        <i class="fas fa-bell mr-1"></i>
+                                        Recomendación: usar
+                                        <b>“Recordar borradores ({{ $borr }})”</b>.
+                                    </div>
+
+                                    <div class="text-muted small mt-2">
+                                        El botón se encuentra en el encabezado de esta sección.
+                                    </div>
+                                @else
+                                    <div class="text-muted small mb-2">
+                                        No hay borradores pendientes. No se requiere acción.
+                                    </div>
+
+                                    <div class="border rounded-3 p-2 bg-light small">
+                                        <i class="fas fa-check-circle mr-1"></i>
+                                        Todo al día ✅
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
@@ -280,11 +369,7 @@
     @php
         $depIndicadores = DB::table('dependencias as d')
             ->leftJoin('formularios as f', 'f.id_depen', '=', 'd.id_depen')
-            ->select(
-                'd.id_depen',
-                'd.nombre_depen',
-                DB::raw('COUNT(DISTINCT f.id_ind) as indicadores_asignados'),
-            )
+            ->select('d.id_depen', 'd.nombre_depen', DB::raw('COUNT(DISTINCT f.id_ind) as indicadores_asignados'))
             ->groupBy('d.id_depen', 'd.nombre_depen')
             ->get();
 
@@ -602,171 +687,384 @@
 
 </div>
 
-@push('scripts')
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+@once
+    @push('scripts')
+        {{-- ✅ Cargar librerías SOLO UNA VEZ --}}
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
 
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
+        <script>
+            (function() {
 
-            const dataContainer = document.getElementById("chart-data");
-            const formularios = JSON.parse(dataContainer.dataset.formularios || "{}");
-            const roles = JSON.parse(dataContainer.dataset.roles || "{}");
+                // =========================
+                // ✅ REGISTRO ÚNICO DE PLUGINS (NO DUPLICAR)
+                // =========================
+                function registerChartPluginsOnce() {
+                    if (!window.Chart) return;
 
-            const commonOptions = {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom'
+                    if (window.__chartPluginsRegistered) return;
+                    window.__chartPluginsRegistered = true;
+
+                    // ✅ PLUGIN TEXTO CENTRADO (para gauges)
+                    const centerTextPlugin = {
+                        id: 'centerTextPlugin',
+                        afterDraw(chart, args, options) {
+                            options = options || {};
+
+                            const {
+                                ctx
+                            } = chart;
+                            const meta = chart.getDatasetMeta(0);
+                            if (!meta || !meta.data || !meta.data[0]) return;
+
+                            const x = chart.chartArea.left + (chart.chartArea.right - chart.chartArea.left) / 2;
+                            const y = chart.chartArea.top + (chart.chartArea.bottom - chart.chartArea.top) / 2 + 18;
+
+                            ctx.save();
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+
+                            ctx.font = '700 18px Nunito, sans-serif';
+                            ctx.fillStyle = '#111';
+                            ctx.fillText(options.mainText || '', x, y - 6);
+
+                            ctx.font = '600 12px Nunito, sans-serif';
+                            ctx.fillStyle = '#6c757d';
+                            ctx.fillText(options.subText || '', x, y + 14);
+
+                            ctx.restore();
+                        }
+                    };
+
+                    Chart.register(centerTextPlugin);
+
+                    // ✅ datalabels SOLO UNA VEZ
+                    if (window.ChartDataLabels) {
+                        Chart.register(window.ChartDataLabels);
                     }
                 }
-            };
 
-            // =========================
-            // SERIE HISTÓRICA (labels bonitos)
-            // =========================
-            function formatLabel(ym) {
-                const parts = (ym || "").split("-");
-                if (parts.length < 2) return ym;
-                const y = parts[0];
-                const m = parseInt(parts[1], 10);
-                const meses = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-                if (!m || m < 1 || m > 12) return ym;
-                return meses[m - 1] + " " + y;
-            }
+                function initAdminCharts() {
+                    registerChartPluginsOnce();
 
-            const labelsRaw = Object.keys(formularios).sort();
-            const labelsForm = labelsRaw.map(formatLabel);
-            const valuesForm = labelsRaw.map(k => formularios[k]);
-            const avg = valuesForm.length ? (valuesForm.reduce((a, b) => a + b, 0) / valuesForm.length) : 0;
-            const avgLine = valuesForm.map(() => avg);
+                    const dataContainer = document.getElementById("chart-data");
+                    if (!dataContainer) return;
+
+                    const roles = JSON.parse(dataContainer.dataset.roles || "{}");
+                    let cargas = JSON.parse(dataContainer.dataset.cargas || "{}");
+
+                    window.__charts = window.__charts || {};
+
+                    // =========================
+                    // ✅ GAUGES (Admins / Usuarios)
+                    // =========================
+                    const totalRoles = Object.values(roles).reduce((a, b) => a + b, 0) || 1;
+
+                    const adminsCount =
+                        roles["admin"] ?? roles["ADMIN"] ?? roles["Administrador"] ?? roles["ADMINISTRADOR"] ?? 0;
+
+                    const usersCount =
+                        roles["usuario"] ?? roles["USUARIO"] ?? roles["Usuario"] ?? 0;
+
+                    const pctAdmin = Math.round((adminsCount / totalRoles) * 100);
+                    const pctUser = Math.round((usersCount / totalRoles) * 100);
+
+                    const elPctAdmin = document.getElementById("pctAdmin");
+                    const elPctUsuario = document.getElementById("pctUsuario");
+                    if (elPctAdmin) elPctAdmin.innerText = pctAdmin + "%";
+                    if (elPctUsuario) elPctUsuario.innerText = pctUser + "%";
+
+                    function gauge(canvas, pct, mainText, subText, key) {
+                        if (!canvas) return;
+
+                        if (window.__charts[key]) window.__charts[key].destroy();
+
+                        window.__charts[key] = new Chart(canvas, {
+                            type: 'doughnut',
+                            data: {
+                                datasets: [{
+                                    data: [pct, 100 - pct],
+                                    borderWidth: 0,
+                                    cutout: '78%'
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                rotation: -90,
+                                circumference: 180,
+                                plugins: {
+                                    legend: {
+                                        display: false
+                                    },
+                                    tooltip: {
+                                        enabled: false
+                                    },
+                                    centerTextPlugin: {
+                                        mainText: String(mainText ?? ''),
+                                        subText: String(subText ?? '')
+                                    }
+                                }
+                            }
+                        });
+                    }
+
+                    gauge(document.getElementById('roleAdminGauge'), pctAdmin, adminsCount + " admins", pctAdmin + "%",
+                        "gaugeAdmin");
+                    gauge(document.getElementById('roleUsuarioGauge'), pctUser, usersCount + " usuarios", pctUser + "%",
+                        "gaugeUsuario");
 
 
-            const centerTextPlugin = {
-                id: 'centerTextPlugin',
-                afterDraw(chart, args, options) {
-                    const {
-                        ctx
-                    } = chart;
-                    const meta = chart.getDatasetMeta(0);
-                    if (!meta || !meta.data || !meta.data[0]) return;
+                    // =========================
+                    // ✅ CARGAS POR ESTADO (HORIZONTAL PRO)
+                    // =========================
+                    const ordenEstados = ["APROBADO", "EN REVISION", "REENVIADO", "ENVIADO", "OBSERVADO", "RECHAZADO",
+                        "BORRADOR", "SIN CAPTURA"
+                    ];
 
-                    const x = chart.chartArea.left + (chart.chartArea.right - chart.chartArea.left) / 2;
-                    const y = chart.chartArea.top + (chart.chartArea.bottom - chart.chartArea.top) / 2 + 18;
-
-                    ctx.save();
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-
-                    ctx.font = '700 18px Nunito, sans-serif';
-                    ctx.fillStyle = '#111';
-                    ctx.fillText(options.mainText || '', x, y - 6);
-
-                    ctx.font = '600 12px Nunito, sans-serif';
-                    ctx.fillStyle = '#6c757d';
-                    ctx.fillText(options.subText || '', x, y + 14);
-
-                    ctx.restore();
-                }
-            };
-            Chart.register(centerTextPlugin);
-
-            new Chart(document.getElementById('formMes'), {
-                type: 'line',
-                data: {
-                    labels: labelsForm,
-                    datasets: [{
-                            label: 'Formularios',
-                            data: valuesForm,
-                            tension: 0.35,
-                            fill: true,
-                            pointRadius: 3,
-                            pointHoverRadius: 5,
-                            borderWidth: 2
+                    const estadoStyle = {
+                        "APROBADO": {
+                            bg: "rgba(25,135,84,.85)",
+                            bd: "rgba(25,135,84,1)"
                         },
-                        {
-                            label: 'Promedio',
-                            data: avgLine,
-                            tension: 0,
-                            fill: false,
-                            pointRadius: 0,
-                            borderDash: [6, 6],
-                            borderWidth: 2
+                        "EN REVISION": {
+                            bg: "rgba(255,193,7,.85)",
+                            bd: "rgba(255,193,7,1)"
+                        },
+                        "REENVIADO": {
+                            bg: "rgba(255,193,7,.70)",
+                            bd: "rgba(255,193,7,1)"
+                        },
+                        "ENVIADO": {
+                            bg: "rgba(13,110,253,.75)",
+                            bd: "rgba(13,110,253,1)"
+                        },
+                        "OBSERVADO": {
+                            bg: "rgba(253,126,20,.80)",
+                            bd: "rgba(253,126,20,1)"
+                        },
+                        "RECHAZADO": {
+                            bg: "rgba(220,53,69,.85)",
+                            bd: "rgba(220,53,69,1)"
+                        },
+                        "BORRADOR": {
+                            bg: "rgba(108,117,125,.70)",
+                            bd: "rgba(108,117,125,1)"
+                        },
+                        "SIN CAPTURA": {
+                            bg: "rgba(173,181,189,.70)",
+                            bd: "rgba(173,181,189,1)"
+                        },
+                        "DEFAULT": {
+                            bg: "rgba(108,117,125,.55)",
+                            bd: "rgba(108,117,125,1)"
+                        },
+                    };
+
+                    function normKey(k) {
+                        return String(k || "")
+                            .toUpperCase()
+                            .trim()
+                            .replace("REVISIÓN", "REVISION");
+                    }
+
+                    function buildEntries(rawObj) {
+                        const map = {};
+                        Object.entries(rawObj || {}).forEach(([k, v]) => {
+                            const key = normKey(k);
+                            map[key] = (map[key] || 0) + (Number(v) || 0);
+                        });
+
+                        const entries = Object.entries(map);
+                        entries.sort((a, b) => {
+                            const ia = ordenEstados.indexOf(a[0]);
+                            const ib = ordenEstados.indexOf(b[0]);
+                            return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
+                        });
+
+                        return entries;
+                    }
+
+                    function renderChips(entries, total) {
+                        const wrap = document.getElementById("chipsEstados");
+                        if (!wrap) return;
+
+                        wrap.innerHTML = "";
+
+                        entries.forEach(([k, v]) => {
+                            const pct = total ? Math.round((v / total) * 100) : 0;
+                            const st = estadoStyle[k] || estadoStyle.DEFAULT;
+
+                            const chip = document.createElement("div");
+                            chip.className = "badge-soft";
+                            chip.style.display = "inline-flex";
+                            chip.style.alignItems = "center";
+                            chip.style.gap = "6px";
+
+                            const dot = document.createElement("span");
+                            dot.style.width = "10px";
+                            dot.style.height = "10px";
+                            dot.style.borderRadius = "999px";
+                            dot.style.background = st.bd;
+
+                            const txt = document.createElement("span");
+                            txt.textContent = `${k}: ${v} (${pct}%)`;
+
+                            chip.appendChild(dot);
+                            chip.appendChild(txt);
+                            wrap.appendChild(chip);
+                        });
+                    }
+
+                    function renderCargasEstadoChart() {
+                        const canvas = document.getElementById("chartCargasEstado");
+                        if (!canvas) return;
+
+                        const entries = buildEntries(cargas);
+                        const labels = entries.map(e => e[0]);
+                        const values = entries.map(e => e[1]);
+                        const total = values.reduce((a, b) => a + b, 0) || 0;
+
+                        // ✅ Top estado
+                        let topIdx = 0;
+                        for (let i = 1; i < values.length; i++) {
+                            if (values[i] > values[topIdx]) topIdx = i;
                         }
-                    ]
-                },
-                options: {
-                    ...commonOptions,
-                    plugins: {
-                        legend: {
-                            position: 'bottom'
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                precision: 0
+                        const topLabel = labels[topIdx] || "—";
+                        const topVal = values[topIdx] || 0;
+                        const topPct = total ? Math.round((topVal / total) * 100) : 0;
+
+                        // ✅ % borradores
+                        const borrIdx = labels.indexOf("BORRADOR");
+                        const borrVal = borrIdx >= 0 ? values[borrIdx] : 0;
+                        const borrPct = total ? Math.round((borrVal / total) * 100) : 0;
+
+                        // pinta labels en header
+                        const totalLabel = document.getElementById("totalCargasLabel");
+                        const topEstadoLabel = document.getElementById("topEstadoLabel");
+                        const pctBorradoresLabel = document.getElementById("pctBorradoresLabel");
+
+                        if (totalLabel) totalLabel.textContent = `Total: ${total}`;
+                        if (topEstadoLabel) topEstadoLabel.textContent = `Top: ${topLabel} (${topPct}%)`;
+                        if (pctBorradoresLabel) pctBorradoresLabel.textContent = `% borrador: ${borrPct}%`;
+
+                        // chips abajo
+                        renderChips(entries, total);
+
+                        const bgColors = labels.map((k, i) => (estadoStyle[k] || estadoStyle.DEFAULT).bg);
+                        const bdColors = labels.map(k => (estadoStyle[k] || estadoStyle.DEFAULT).bd);
+
+                        // destruir si existe
+                        if (window.__charts.cargasEstado) window.__charts.cargasEstado.destroy();
+
+                        window.__charts.cargasEstado = new Chart(canvas, {
+                            type: "bar",
+                            data: {
+                                labels,
+                                datasets: [{
+                                    label: "Cargas",
+                                    data: values,
+                                    backgroundColor: bgColors,
+                                    borderColor: bdColors,
+                                    borderWidth: 1,
+                                    borderRadius: 10,
+                                    barThickness: 16,
+                                    maxBarThickness: 18
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                indexAxis: "y",
+                                layout: {
+                                    padding: {
+                                        right: 14,
+                                        left: 6
+                                    }
+                                },
+                                plugins: {
+                                    legend: {
+                                        display: false
+                                    },
+                                    tooltip: {
+                                        callbacks: {
+                                            title: (items) => items?.[0]?.label ?? '',
+                                            label: (ctx) => {
+                                                const v = ctx.parsed.x || 0;
+                                                const pct = total ? (v / total) * 100 : 0;
+                                                const isTop = ctx.dataIndex === topIdx;
+                                                return ` ${v} cargas (${pct.toFixed(1)}%)${isTop ? "  • TOP" : ""}`;
+                                            }
+                                        }
+                                    },
+                                    datalabels: {
+                                        anchor: "end",
+                                        align: "right",
+                                        offset: 6,
+                                        clamp: true,
+                                        formatter: (value) => {
+                                            const pct = total ? Math.round((value / total) * 100) : 0;
+                                            return value === 0 ? "0" : `${value} (${pct}%)`;
+                                        },
+                                        font: {
+                                            weight: "700"
+                                        },
+                                        color: "#111"
+                                    }
+                                },
+                                scales: {
+                                    x: {
+                                        beginAtZero: true,
+                                        ticks: {
+                                            precision: 0
+                                        },
+                                        grid: {
+                                            color: "rgba(0,0,0,.06)"
+                                        }
+                                    },
+                                    y: {
+                                        grid: {
+                                            display: false
+                                        },
+                                        ticks: {
+                                            font: {
+                                                weight: "700"
+                                            }
+                                        }
+                                    }
+                                }
                             }
-                        }
+                        });
+                    }
+
+                    renderCargasEstadoChart();
+
+                    // =========================
+                    // ✅ Livewire: refrescar sin duplicar hooks
+                    // =========================
+                    if (!window.__lwChartsHooked) {
+                        window.__lwChartsHooked = true;
+
+                        document.addEventListener('livewire:initialized', () => {
+                            if (!window.Livewire) return;
+
+                            Livewire.hook('message.processed', () => {
+                                const dc = document.getElementById("chart-data");
+                                if (!dc) return;
+
+                                // actualiza dataset
+                                cargas = JSON.parse(dc.dataset.cargas || "{}");
+
+                                // repinta
+                                renderCargasEstadoChart();
+                            });
+                        });
                     }
                 }
-            });
 
-            // =========================
-            // GAUGES (Admins / Usuarios con %)
-            // =========================
-            const totalRoles = Object.values(roles).reduce((a, b) => a + b, 0) || 1;
-
-            const adminsCount =
-                roles["admin"] ?? roles["ADMIN"] ?? roles["Administrador"] ?? roles["ADMINISTRADOR"] ?? 0;
-
-            const usersCount =
-                roles["usuario"] ?? roles["USUARIO"] ?? roles["Usuario"] ?? 0;
-
-            const pctAdmin = Math.round((adminsCount / totalRoles) * 100);
-            const pctUser = Math.round((usersCount / totalRoles) * 100);
-
-            const elPctAdmin = document.getElementById("pctAdmin");
-            const elPctUsuario = document.getElementById("pctUsuario");
-            if (elPctAdmin) elPctAdmin.innerText = pctAdmin + "%";
-            if (elPctUsuario) elPctUsuario.innerText = pctUser + "%";
-
-            function gauge(canvas, pct, mainText, subText) {
-                if (!canvas) return;
-                return new Chart(canvas, {
-                    type: 'doughnut',
-                    data: {
-                        datasets: [{
-                            data: [pct, 100 - pct],
-                            borderWidth: 0,
-                            cutout: '78%'
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        rotation: -90,
-                        circumference: 180,
-                        plugins: {
-                            legend: {
-                                display: false
-                            },
-                            tooltip: {
-                                enabled: false
-                            },
-                            centerTextPlugin: {
-                                mainText,
-                                subText
-                            }
-                        }
-                    }
-                });
-            }
-
-            gauge(document.getElementById('roleAdminGauge'), pctAdmin, adminsCount + " admins", pctAdmin + "%");
-            gauge(document.getElementById('roleUsuarioGauge'), pctUser, usersCount + " usuarios", pctUser + "%");
-
-        });
-    </script>
-@endpush
+                document.addEventListener("DOMContentLoaded", initAdminCharts);
+            })
+            ();
+        </script>
+    @endpush
+@endonce

@@ -64,14 +64,36 @@ class AdminDashboard extends Component
 
         // Cargas
         $this->cargasPendientes = DB::table('cargas')
-            ->where('status_env', 'EN REVISION')
+            ->where(DB::raw("UPPER(REPLACE(TRIM(status_env),'REVISIÓN','REVISION'))"), 'EN REVISION')
             ->count();
 
-        $this->cargasPorEstado = DB::table('cargas')
-            ->select('status_env', DB::raw('COUNT(*) as total'))
-            ->groupBy('status_env')
-            ->pluck('total', 'status_env')
+        // ✅ Estados que quieres ver SIEMPRE en la gráfica (aunque sean 0)
+        $estadosOrden = [
+            'APROBADO',
+            'EN REVISION',
+            'REENVIADO',
+            'ENVIADO',
+            'OBSERVADO',
+            'RECHAZADO',
+            'BORRADOR',
+            'SIN CAPTURA',
+        ];
+
+        // ✅ Query normalizada (por si viene “EN REVISIÓN”, espacios, minúsculas, etc.)
+        $raw = DB::table('cargas')
+            ->selectRaw("
+        UPPER(REPLACE(TRIM(status_env),'REVISIÓN','REVISION')) AS estado,
+        COUNT(*) AS total
+    ")
+            ->groupBy('estado')
+            ->pluck('total', 'estado')
             ->toArray();
+
+        // ✅ Rellenar faltantes con 0 y respetar el orden
+        $this->cargasPorEstado = [];
+        foreach ($estadosOrden as $st) {
+            $this->cargasPorEstado[$st] = (int) ($raw[$st] ?? 0);
+        }
 
         // Dependencias
         $this->depOptions = DB::table('dependencias')

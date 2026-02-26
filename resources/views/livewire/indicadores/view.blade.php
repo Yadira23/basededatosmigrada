@@ -86,7 +86,7 @@
                                                         </span>
                                                     @else
                                                         <span class="badge bg-success ms-1">
-                                                            campos OK
+                                                            Captura por campos
                                                         </span>
                                                     @endif
                                                 @endif
