@@ -15,8 +15,10 @@ return new class extends Migration
             $table->id();
 
             $table->unsignedBigInteger('id_ind'); // FK a indicadores.id_ind
+            $table->unsignedBigInteger('id_form')->nullable(); // FK a formularios (opcional)
             $table->string('titulo', 200);        // "Condiciones de vivienda"
-            $table->string('periodo', 50)->nullable(); // "S1", "2026-S1"
+            $table->unsignedSmallInteger('ejercicio')->nullable(); // 2026
+            $table->unsignedTinyInteger('corte')->nullable();      // 1..12, 1..4, 1..2, 1
             $table->unsignedInteger('orden')->default(1);
 
             // ✅ Igual que tu indicador: JSON de configuración de campos, pero por meta
@@ -28,6 +30,11 @@ return new class extends Migration
                 ->references('id_ind')
                 ->on('indicadores')
                 ->onDelete('cascade');
+
+            $table->foreign('id_form')
+                ->references('id_form')
+                ->on('formularios')
+                ->nullOnDelete();
         });
     }
 
