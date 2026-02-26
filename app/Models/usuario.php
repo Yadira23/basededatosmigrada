@@ -2,24 +2,27 @@
 
 namespace App\Models;
 
-use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 use Spatie\Permission\Traits\HasRoles;
 
 class Usuario extends Authenticatable
 {
     use HasFactory, HasRoles;
+
     public $timestamps = true;
 
     protected $table = 'usuarios';
+
     protected $primaryKey = 'id_usuario';
+
     protected $keyType = 'int';
 
     public $incrementing = true;
+
     protected $guard_name = 'web';
 
     protected $fillable = ['usuario_usr', 'nombre_usr', 'apellido_paterno', 'apellido_materno', 'email_usr', 'password', 'id_depen', 'estado_usr', 'telefono_usr'];
-
 
     public function getEmailAttribute()
     {

@@ -36,12 +36,16 @@ return new class extends Migration
     {
         Schema::table('metas', function (Blueprint $table) {
             // Revertir
-            if (!Schema::hasColumn('metas', 'periodo')) {
+            if (! Schema::hasColumn('metas', 'periodo')) {
                 $table->string('periodo', 50)->nullable()->after('titulo');
             }
 
-            if (Schema::hasColumn('metas', 'corte')) $table->dropColumn('corte');
-            if (Schema::hasColumn('metas', 'ejercicio')) $table->dropColumn('ejercicio');
+            if (Schema::hasColumn('metas', 'corte')) {
+                $table->dropColumn('corte');
+            }
+            if (Schema::hasColumn('metas', 'ejercicio')) {
+                $table->dropColumn('ejercicio');
+            }
         });
     }
 };

@@ -2,101 +2,128 @@
 
 namespace App\Livewire\Usuario;
 
-use Livewire\Component;
-use Livewire\WithFileUploads;
-use App\Models\Region;
-use App\Models\Municipio;
+use App\Models\Anexo;
 use App\Models\Carga;
 use App\Models\DetalleCarga;
-use Illuminate\Support\Facades\DB;
-use App\Models\Anexo;
 use App\Models\Formulario;
 use App\Models\Indicador;
-use Illuminate\Support\Facades\Auth;
+use App\Models\Meta;
+use App\Models\Municipio;
+use App\Models\Region;
+use App\Support\CapturaPolicy;
 use Carbon\Carbon;
-use PhpOffice\PhpSpreadsheet\IOFactory;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-use PhpOffice\PhpSpreadsheet\Reader\Csv;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
-use Maatwebsite\Excel\Facades\Excel;
-use App\Exports\PlantillaIndicadorExport;
-use App\Models\MapeoIndicador; // si es tu tabla de campos
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Log;
-use App\Models\Meta;
-use App\Support\CapturaPolicy;
-
+use Livewire\Component;
+// si es tu tabla de campos
+use Livewire\WithFileUploads;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Reader\Csv;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class FormularioCaptura extends Component
 {
     use WithFileUploads;
 
     public $id_form;
+
     public $id_ind;
+
     public $formulario;
+
     public $indicador;
 
     public $metodo = null;
+
     public bool $guardando = false;
+
     public bool $hayPlantilla = false;
 
     public bool $soloLectura = false;
+
     public ?string $mensajeBloqueo = null;
 
     public ?string $periodoLabel = null;     // ej. "S1 2026", "T2 2026", "Enero 2026"
-    public ?string $capturaOpenAt = null;    // fecha apertura dd/mm/yyyy
-    public ?string $capturaCloseAt = null;   // fecha cierre dd/mm/yyyy
-    public ?int $diasRestantes = null;       // si está abierto
 
+    public ?string $capturaOpenAt = null;    // fecha apertura dd/mm/yyyy
+
+    public ?string $capturaCloseAt = null;   // fecha cierre dd/mm/yyyy
+
+    public ?int $diasRestantes = null;       // si está abierto
 
     // SIN_AMBITO | REGION | MUNICIPIO
     public string $ambito_geo = 'SIN_AMBITO';
 
     // filtros manual
     public $regionFiltro = '';
+
     public $municipiosFiltrados;
 
     public $region = '';
+
     public $municipio = '';
 
     public $id_carga = null;
-    public $cargaActual = null;
 
+    public $cargaActual = null;
 
     // schema dinámico
     public array $schema = [];
+
     public array $manualCampos = [];
+
     public array $manualData = [];
+
     public ?int $editManualIndex = null;
+
     public $archivoData = [];
+
     public ?int $id_meta = null;
+
     public $metasDisponibles = [];
+
     public ?string $metaTitulo = null;
 
     // metadata
     public $fuente_dato = '';
+
     public $descripcion_env = '';
 
     // archivo + flujo plantilla
     public $archivo;
+
     public string $archivoNombre = '';
+
     public ?int $id_carga_actual = null;
+
     public bool $modoCorreccion = false;
+
     public bool $metodoBloqueado = false;
+
     public $mensajeObservacion = null;
 
     public bool $plantillaDescargada = false;
+
     public bool $archivoProcesado = false;
+
     public int $detallesInsertados = 0;
 
     // catálogos
     public $regiones;
+
     public string $ambito_plantilla_descargada = ''; // para saber con qué ámbito se descargó
+
     public string $motivoResetPlantilla = '';        // mensaje para UI
+
     public bool $requiereMeta = false;
+
     public bool $metaBloqueada = false;
+
     public bool $ambitoElegido = false;
 
     public function mount($id_form, $id_ind, $id_meta = null)
@@ -104,13 +131,13 @@ class FormularioCaptura extends Component
         $this->id_carga = request('id_carga');
         $this->modoCorreccion = request('modo') === 'correccion';
         $this->id_form = $id_form;
-        $this->id_ind  = $id_ind;
+        $this->id_ind = $id_ind;
 
         $this->formulario = Formulario::with('indicador')
             ->where('id_form', $this->id_form)
             ->firstOrFail();
 
-        if ((int)$this->formulario->id_ind !== (int)$this->id_ind) {
+        if ((int) $this->formulario->id_ind !== (int) $this->id_ind) {
             abort(403, 'Indicador inválido para este formulario.');
         }
 
@@ -125,7 +152,7 @@ class FormularioCaptura extends Component
         // Permitidos para entrar a la pantalla
         $permitidos = ['PUBLICADO', 'VER']; // VER solo por compatibilidad
 
-        if (!in_array($estado, $permitidos, true)) {
+        if (! in_array($estado, $permitidos, true)) {
             abort(403, 'Este formulario aún no ha sido publicado.');
         }
 
@@ -146,10 +173,10 @@ class FormularioCaptura extends Component
             ->toArray();
 
         // ✅ Si hay metas disponibles, entonces SÍ se requiere meta
-        $this->requiereMeta = !empty($this->metasDisponibles);
+        $this->requiereMeta = ! empty($this->metasDisponibles);
 
         // ✅ Si NO requiere meta, forzar null (para que no estorbe)
-        if (!$this->requiereMeta) {
+        if (! $this->requiereMeta) {
             $this->id_meta = null;
         }
 
@@ -159,10 +186,10 @@ class FormularioCaptura extends Component
             : null;
         $this->metaTitulo = null;
 
-        if (!empty($this->metasDisponibles) && !empty($this->id_meta)) {
-            $ids = collect($this->metasDisponibles)->pluck('id')->map(fn($v) => (int)$v)->all();
+        if (! empty($this->metasDisponibles) && ! empty($this->id_meta)) {
+            $ids = collect($this->metasDisponibles)->pluck('id')->map(fn ($v) => (int) $v)->all();
 
-            if (!in_array((int)$this->id_meta, $ids, true)) {
+            if (! in_array((int) $this->id_meta, $ids, true)) {
                 $this->id_meta = null;
                 session()->flash('error', 'La meta seleccionada no pertenece a este formulario. Selecciona una meta válida.');
             }
@@ -173,11 +200,10 @@ class FormularioCaptura extends Component
                 ->where('id_ind', $this->id_ind)
                 ->first();
 
-            $this->metaTitulo = $meta ? ("Meta " . ($meta->orden ?? '') . " – " . ($meta->titulo ?? '')) : null;
+            $this->metaTitulo = $meta ? ('Meta '.($meta->orden ?? '').' – '.($meta->titulo ?? '')) : null;
         }
         // ✅ Si viene id_meta en la URL, no permitir cambiarla en esta pantalla
-        $this->metaBloqueada = $this->requiereMeta && !empty($this->id_meta);
-
+        $this->metaBloqueada = $this->requiereMeta && ! empty($this->id_meta);
 
         /* =========================================================
        ✅ 2) SCHEMA (por meta si existe, si no por indicador)
@@ -189,14 +215,16 @@ class FormularioCaptura extends Component
                 ->where('id_ind', $this->id_ind)
                 ->first();
 
-            if ($meta && !empty($meta->config_campos)) {
+            if ($meta && ! empty($meta->config_campos)) {
                 $raw = $meta->config_campos;
             }
         }
 
         if ($raw === null) {
             $raw = $this->indicador->config_campos ?? [];
-            if (is_string($raw)) $raw = json_decode($raw, true) ?: [];
+            if (is_string($raw)) {
+                $raw = json_decode($raw, true) ?: [];
+            }
         }
 
         $this->schema = $this->normalizarSchema(is_array($raw) ? $raw : []);
@@ -211,7 +239,7 @@ class FormularioCaptura extends Component
        ✅ 3) SEGURIDAD DEPENDENCIA
        ========================================================= */
         $user = Auth::user();
-        if ((int)$this->formulario->id_depen !== (int)$user->id_depen) {
+        if ((int) $this->formulario->id_depen !== (int) $user->id_depen) {
             abort(403, 'Este formulario no pertenece a tu dependencia.');
         }
 
@@ -220,7 +248,7 @@ class FormularioCaptura extends Component
         ========================================================= */
 
         // Primero respeta VER / FINALIZADO
-        //$this->soloLectura = ($estado !== 'EDITABLE');
+        // $this->soloLectura = ($estado !== 'EDITABLE');
 
         // Luego aplica política de ventana (puede forzar soloLectura=true)
         $this->aplicarVentanaCaptura();
@@ -231,23 +259,23 @@ class FormularioCaptura extends Component
         $this->regiones = Region::orderBy('nombre_region')->get();
         $this->municipiosFiltrados = collect();
 
-        $this->hayPlantilla = !empty($this->schema);
+        $this->hayPlantilla = ! empty($this->schema);
 
         $this->id_carga_actual = $this->id_carga;
 
         /* =========================================================
        ✅ CASO A: CONTINUAR BORRADOR NORMAL
        ========================================================= */
-        if (!$this->modoCorreccion && $this->id_carga_actual) {
+        if (! $this->modoCorreccion && $this->id_carga_actual) {
 
             $carga = Carga::find($this->id_carga_actual);
 
-            if (!$carga) {
+            if (! $carga) {
                 abort(404, 'Carga no encontrada.');
             }
 
             // ✅ seguridad extra: la carga debe ser del mismo formulario
-            if ((int)$carga->id_form !== (int)$this->id_form) {
+            if ((int) $carga->id_form !== (int) $this->id_form) {
                 abort(403, 'Esta carga no pertenece a este formulario.');
             }
 
@@ -266,9 +294,11 @@ class FormularioCaptura extends Component
                         ->where('id_ind', $this->id_ind)
                         ->first();
 
-                    if ($meta && !empty($meta->config_campos)) {
+                    if ($meta && ! empty($meta->config_campos)) {
                         $raw = $meta->config_campos;
-                        if (is_string($raw)) $raw = json_decode($raw, true) ?: [];
+                        if (is_string($raw)) {
+                            $raw = json_decode($raw, true) ?: [];
+                        }
                         $this->schema = $this->normalizarSchema(is_array($raw) ? $raw : []);
 
                         $this->manualCampos = [];
@@ -276,24 +306,24 @@ class FormularioCaptura extends Component
                             $this->manualCampos[$c['slug']] = null;
                         }
 
-                        $this->hayPlantilla = !empty($this->schema);
+                        $this->hayPlantilla = ! empty($this->schema);
                     }
                 }
             }
 
             // ✅ método fijo desde BD
-            $this->metodo = (strtoupper((string)$carga->metodo_captura) === 'ARCHIVO') ? 'archivo' : 'manual';
+            $this->metodo = (strtoupper((string) $carga->metodo_captura) === 'ARCHIVO') ? 'archivo' : 'manual';
 
             // ✅ bloquear cambio de método (ya inició)
             $this->metodoBloqueado = true;
 
             // ✅ ámbito guardado
-            if (!empty($carga->ambito_geo_carga)) {
+            if (! empty($carga->ambito_geo_carga)) {
                 $this->ambito_geo = $carga->ambito_geo_carga;
             }
 
             // ✅ si NO es borrador => solo lectura
-            $estadoNorm = mb_strtoupper(trim((string)($carga->status_env ?? '')));
+            $estadoNorm = mb_strtoupper(trim((string) ($carga->status_env ?? '')));
             $estadoNorm = str_replace('REVISIÓN', 'REVISION', $estadoNorm);
 
             if ($estadoNorm !== 'BORRADOR') {
@@ -302,7 +332,7 @@ class FormularioCaptura extends Component
 
             // ✅ si es ARCHIVO: flags para UI
             if ($this->metodo === 'archivo') {
-                $this->plantillaDescargada = !is_null($carga->plantilla_descargada_at);
+                $this->plantillaDescargada = ! is_null($carga->plantilla_descargada_at);
 
                 $this->archivoProcesado = DetalleCarga::where('id_carga', $carga->id_carga)
                     ->where('id_ind', $this->id_ind)
@@ -332,27 +362,27 @@ class FormularioCaptura extends Component
 
             $carga = Carga::find($this->id_carga_actual);
 
-            if (!$carga) {
+            if (! $carga) {
                 abort(404, 'Carga no encontrada para corrección.');
             }
 
-            if ((int)$carga->id_form !== (int)$this->id_form) {
+            if ((int) $carga->id_form !== (int) $this->id_form) {
                 abort(403, 'Esta carga no pertenece a este formulario.');
             }
 
-            $this->metodo = (strtoupper((string)$carga->metodo_captura) === 'ARCHIVO') ? 'archivo' : 'manual';
+            $this->metodo = (strtoupper((string) $carga->metodo_captura) === 'ARCHIVO') ? 'archivo' : 'manual';
             $this->metodoBloqueado = true;
 
             $this->mensajeObservacion = $carga->observacion_env;
 
-            if (!empty($carga->ambito_geo_carga)) {
+            if (! empty($carga->ambito_geo_carga)) {
                 $this->ambito_geo = $carga->ambito_geo_carga;
             }
 
             $this->cargarDatosDeCarga($carga);
 
             if ($this->metodo === 'archivo') {
-                $this->plantillaDescargada = !is_null($carga->plantilla_descargada_at);
+                $this->plantillaDescargada = ! is_null($carga->plantilla_descargada_at);
 
                 $this->archivoProcesado = DetalleCarga::where('id_carga', $carga->id_carga)
                     ->where('id_ind', $this->id_ind)
@@ -382,7 +412,9 @@ class FormularioCaptura extends Component
                 if (is_string($payload)) {
                     $payload = json_decode($payload, true) ?: [];
                 }
-                if (!is_array($payload)) $payload = [];
+                if (! is_array($payload)) {
+                    $payload = [];
+                }
 
                 // Nombre visible (para tu tabla manual: $row['nombre'])
                 $nombre = 'ESTATAL';
@@ -394,9 +426,9 @@ class FormularioCaptura extends Component
 
                 $this->manualData[] = [
                     'ambito_geo' => $d->ambito_geo,
-                    'id_region'  => $d->id_region,
-                    'id_mun'     => $d->id_mun,
-                    'nombre'     => $nombre,
+                    'id_region' => $d->id_region,
+                    'id_mun' => $d->id_mun,
+                    'nombre' => $nombre,
 
                     // ✅ lo que tu Blade usa:
                     'payload_det' => [
@@ -420,13 +452,15 @@ class FormularioCaptura extends Component
         foreach ($raw as $c) {
             // soporta ambas llaves: name o slug
             $slug = $c['slug'] ?? $c['name'] ?? null;
-            if (!$slug) continue;
+            if (! $slug) {
+                continue;
+            }
 
             $out[] = [
-                'slug' => (string)$slug,
-                'label' => (string)($c['label'] ?? $c['nombre'] ?? $slug),
+                'slug' => (string) $slug,
+                'label' => (string) ($c['label'] ?? $c['nombre'] ?? $slug),
                 'type' => $c['type'] ?? $c['tipo'] ?? 'number',
-                'required' => (bool)($c['required'] ?? $c['requerido'] ?? false),
+                'required' => (bool) ($c['required'] ?? $c['requerido'] ?? false),
                 'min' => $c['min'] ?? null,
                 'max' => $c['max'] ?? null,
             ];
@@ -437,16 +471,19 @@ class FormularioCaptura extends Component
 
     public function updatedIdMeta($value)
     {
-        if ($this->metaBloqueada) return;
-        $this->id_meta = $value ? (int)$value : null;
+        if ($this->metaBloqueada) {
+            return;
+        }
+        $this->id_meta = $value ? (int) $value : null;
 
         // reset UI / datos
         $this->manualData = [];
         $this->manualCampos = [];
         $this->schema = [];
 
-        if (!$this->id_meta) {
+        if (! $this->id_meta) {
             $this->hayPlantilla = false;
+
             return;
         }
 
@@ -463,10 +500,12 @@ class FormularioCaptura extends Component
             ->first();
 
         $raw = $meta?->config_campos ?? [];
-        if (is_string($raw)) $raw = json_decode($raw, true) ?: [];
+        if (is_string($raw)) {
+            $raw = json_decode($raw, true) ?: [];
+        }
 
         $this->schema = $this->normalizarSchema(is_array($raw) ? $raw : []);
-        $this->hayPlantilla = !empty($this->schema);
+        $this->hayPlantilla = ! empty($this->schema);
 
         foreach ($this->schema as $c) {
             $this->manualCampos[$c['slug']] = null;
@@ -482,13 +521,15 @@ class FormularioCaptura extends Component
 
     public function seleccionar($metodo)
     {
-        if (!empty($this->metasDisponibles) && empty($this->id_meta)) {
+        if (! empty($this->metasDisponibles) && empty($this->id_meta)) {
             session()->flash('error', 'Primero selecciona una meta.');
+
             return;
         }
 
         if ($this->metodoBloqueado) {
             session()->flash('error', 'Esta carga está en corrección. No puedes cambiar el método de captura.');
+
             return;
         }
 
@@ -497,7 +538,7 @@ class FormularioCaptura extends Component
             $carga = Carga::find($this->id_carga_actual);
 
             if ($carga) {
-                $metodoBD = strtolower((string)$carga->metodo_captura); // "manual" o "archivo"
+                $metodoBD = strtolower((string) $carga->metodo_captura); // "manual" o "archivo"
 
                 // si intenta cambiar a otro método distinto al que ya tiene la carga
                 if ($metodoBD && $metodoBD !== $metodo) {
@@ -510,9 +551,10 @@ class FormularioCaptura extends Component
                     if ($hayDetalles) {
                         session()->flash(
                             'error',
-                            "No puedes cambiar a {$metodo} porque esta carga ya tiene información capturada en {$metodoBD}. " .
-                                "Si deseas cambiar, debes eliminar el avance y reiniciar la captura."
+                            "No puedes cambiar a {$metodo} porque esta carga ya tiene información capturada en {$metodoBD}. ".
+                                'Si deseas cambiar, debes eliminar el avance y reiniciar la captura.'
                         );
+
                         return;
                     }
 
@@ -537,8 +579,9 @@ class FormularioCaptura extends Component
                 ->whereNotNull('id_meta')
                 ->value('id_meta');
 
-            if ($metaEnBorrador && (int)$metaEnBorrador !== (int)$this->id_meta) {
+            if ($metaEnBorrador && (int) $metaEnBorrador !== (int) $this->id_meta) {
                 session()->flash('error', 'Este borrador pertenece a otra meta. Reinicia la captura para cambiar de meta.');
+
                 return;
             }
         }
@@ -554,12 +597,14 @@ class FormularioCaptura extends Component
         if ($metodo === 'archivo') {
             $this->prepararCargaBorradorArchivo();
             $this->refrescarEstadoPlantilla();
+
             return;
         }
 
         if ($metodo === 'manual') {
             $this->prepararCargaBorradorManual();
             $this->resetArchivoState();
+
             return;
         }
     }
@@ -575,7 +620,7 @@ class FormularioCaptura extends Component
             ->where('ejercicio', $ejercicio);
 
         // ✅ meta (si aplica) — importante manejar NULL correctamente
-        if (!empty($this->id_meta)) {
+        if (! empty($this->id_meta)) {
             $q->where('id_meta', $this->id_meta);
         } else {
             $q->whereNull('id_meta');
@@ -586,9 +631,9 @@ class FormularioCaptura extends Component
         if ($borrador) {
             // ✅ reusar: solo actualizar método/ámbito, NO crear otro folio
             $borrador->update([
-                'metodo_captura'   => strtoupper($metodo), // MANUAL/ARCHIVO
+                'metodo_captura' => strtoupper($metodo), // MANUAL/ARCHIVO
                 'ambito_geo_carga' => $this->ambito_geo,
-                'updated_at'       => now(),
+                'updated_at' => now(),
             ]);
 
             return $borrador;
@@ -597,26 +642,29 @@ class FormularioCaptura extends Component
         // ✅ crear uno nuevo (único por form+periodo+ejercicio+meta)
         return Carga::create([
             'folioUnico_carga' => Str::upper(Str::random(6)),
-            'fecha_carga'      => now(),
-            'periodo'          => $periodoPermitido,
-            'ejercicio'        => $ejercicio,
-            'fuente'           => 'N/D',
-            'status_env'       => 'BORRADOR',
+            'fecha_carga' => now(),
+            'periodo' => $periodoPermitido,
+            'ejercicio' => $ejercicio,
+            'fuente' => 'N/D',
+            'status_env' => 'BORRADOR',
             'ambito_geo_carga' => $this->ambito_geo,
-            'metodo_captura'   => strtoupper($metodo),
-            'descripcion_env'  => $metodo === 'archivo' ? 'Borrador (archivo)' : 'Borrador (manual)',
-            'observacion_env'  => '',
-            'id_form'          => $this->id_form,
-            'id_meta'          => $this->id_meta,
+            'metodo_captura' => strtoupper($metodo),
+            'descripcion_env' => $metodo === 'archivo' ? 'Borrador (archivo)' : 'Borrador (manual)',
+            'observacion_env' => '',
+            'id_form' => $this->id_form,
+            'id_meta' => $this->id_meta,
         ]);
     }
 
     private function prepararCargaBorradorArchivo()
     {
-        if ($this->soloLectura) return;
+        if ($this->soloLectura) {
+            return;
+        }
 
-        if (!empty($this->metasDisponibles) && empty($this->id_meta)) {
+        if (! empty($this->metasDisponibles) && empty($this->id_meta)) {
             session()->flash('error', 'Primero selecciona una meta.');
+
             return;
         }
 
@@ -624,7 +672,7 @@ class FormularioCaptura extends Component
         $this->id_carga_actual = (int) $carga->id_carga;
 
         // flags desde BD
-        $this->plantillaDescargada = !is_null($carga->plantilla_descargada_at);
+        $this->plantillaDescargada = ! is_null($carga->plantilla_descargada_at);
 
         $this->archivoProcesado = DetalleCarga::where('id_carga', $carga->id_carga)
             ->where('id_ind', $this->id_ind)
@@ -634,17 +682,20 @@ class FormularioCaptura extends Component
             ->where('id_ind', $this->id_ind)
             ->count();
 
-        if (!empty($carga->ambito_geo_carga)) {
+        if (! empty($carga->ambito_geo_carga)) {
             $this->ambito_geo = $carga->ambito_geo_carga;
         }
     }
 
     private function prepararCargaBorradorManual()
     {
-        if ($this->soloLectura) return;
+        if ($this->soloLectura) {
+            return;
+        }
 
-        if (!empty($this->metasDisponibles) && empty($this->id_meta)) {
+        if (! empty($this->metasDisponibles) && empty($this->id_meta)) {
             session()->flash('error', 'Primero selecciona una meta.');
+
             return;
         }
 
@@ -664,35 +715,39 @@ class FormularioCaptura extends Component
 
     public function refrescarEstadoPlantilla()
     {
-        if (!$this->id_carga_actual) {
+        if (! $this->id_carga_actual) {
             $this->plantillaDescargada = false;
+
             return;
         }
         $carga = Carga::find($this->id_carga_actual);
-        $this->plantillaDescargada = !is_null($carga?->plantilla_descargada_at);
+        $this->plantillaDescargada = ! is_null($carga?->plantilla_descargada_at);
     }
 
     public function reiniciarCaptura()
     {
         if ($this->soloLectura) {
             session()->flash('error', 'Solo lectura. No puedes reiniciar.');
+
             return;
         }
 
         if ($this->modoCorreccion) {
             session()->flash('error', 'Esta carga está en corrección. No puedes reiniciar el método.');
+
             return;
         }
 
-        if (!$this->id_carga_actual) {
+        if (! $this->id_carga_actual) {
             // nada que reiniciar
             $this->metodo = null;
             $this->metodoBloqueado = false;
+
             return;
         }
 
         $carga = Carga::find($this->id_carga_actual);
-        if (!$carga) {
+        if (! $carga) {
             // si por algo no existe, resetea estado
             $this->id_carga_actual = null;
             $this->metodo = null;
@@ -701,12 +756,14 @@ class FormularioCaptura extends Component
             $this->manualData = [];
             $this->editManualIndex = null;
             session()->flash('success', 'Captura reiniciada.');
+
             return;
         }
 
         // ✅ Solo permitir reiniciar si sigue siendo borrador
-        if (strtoupper((string)$carga->status_env) !== 'BORRADOR' && (string)$carga->status_env !== 'Borrador') {
+        if (strtoupper((string) $carga->status_env) !== 'BORRADOR' && (string) $carga->status_env !== 'Borrador') {
             session()->flash('error', 'Esta captura ya fue enviada. No se puede reiniciar.');
+
             return;
         }
 
@@ -716,11 +773,12 @@ class FormularioCaptura extends Component
             ->exists();
 
         // ✅ Consideramos "avance" también: plantilla descargada / archivo procesado / filas en memoria manual
-        $hayAvanceArchivo = !is_null($carga->plantilla_descargada_at) || $this->archivoProcesado || !empty($this->archivoNombre);
-        $hayAvanceManual  = !empty($this->manualData);
+        $hayAvanceArchivo = ! is_null($carga->plantilla_descargada_at) || $this->archivoProcesado || ! empty($this->archivoNombre);
+        $hayAvanceManual = ! empty($this->manualData);
 
         if ($hayDetalles || $hayAvanceArchivo || $hayAvanceManual) {
             session()->flash('error', 'No puedes reiniciar porque ya hay avance en la captura. Si deseas cambiar de método, elimina el avance primero.');
+
             return;
         }
 
@@ -778,13 +836,19 @@ class FormularioCaptura extends Component
 
     public function updatedRegionFiltro($value)
     {
-        if ($this->soloLectura) return;
+        if ($this->soloLectura) {
+            return;
+        }
 
         $this->municipio = '';
         $this->municipiosFiltrados = collect();
 
-        if ($this->ambito_geo !== 'MUNICIPIO') return;
-        if (!$value) return;
+        if ($this->ambito_geo !== 'MUNICIPIO') {
+            return;
+        }
+        if (! $value) {
+            return;
+        }
 
         $this->municipiosFiltrados = Municipio::where('id_region', $value)
             ->orderBy('nombre_municipio')
@@ -793,11 +857,11 @@ class FormularioCaptura extends Component
 
     private function validarFilaManual()
     {
-        if ($this->ambito_geo === 'REGION' && !$this->region) {
-            throw new \Exception("Selecciona una región.");
+        if ($this->ambito_geo === 'REGION' && ! $this->region) {
+            throw new \Exception('Selecciona una región.');
         }
-        if ($this->ambito_geo === 'MUNICIPIO' && !$this->municipio) {
-            throw new \Exception("Selecciona un municipio.");
+        if ($this->ambito_geo === 'MUNICIPIO' && ! $this->municipio) {
+            throw new \Exception('Selecciona un municipio.');
         }
 
         // validar campos del schema
@@ -810,11 +874,17 @@ class FormularioCaptura extends Component
             }
 
             if (($c['type'] === 'number' || $c['type'] === 'porcentaje') && $val !== null && $val !== '') {
-                if (!is_numeric($val)) throw new \Exception("El campo '{$c['label']}' debe ser numérico.");
-                $num = (float)$val;
+                if (! is_numeric($val)) {
+                    throw new \Exception("El campo '{$c['label']}' debe ser numérico.");
+                }
+                $num = (float) $val;
 
-                if ($c['min'] !== null && $num < $c['min']) throw new \Exception("{$c['label']} debe ser >= {$c['min']}.");
-                if ($c['max'] !== null && $num > $c['max']) throw new \Exception("{$c['label']} debe ser <= {$c['max']}.");
+                if ($c['min'] !== null && $num < $c['min']) {
+                    throw new \Exception("{$c['label']} debe ser >= {$c['min']}.");
+                }
+                if ($c['max'] !== null && $num > $c['max']) {
+                    throw new \Exception("{$c['label']} debe ser <= {$c['max']}.");
+                }
 
                 // decimales: number = entero, porcentaje = decimal ok
                 if ($c['type'] === 'number' && floor($num) != $num) {
@@ -828,17 +898,19 @@ class FormularioCaptura extends Component
     {
         if ($this->requiereMeta && empty($this->id_meta)) {
             session()->flash('error', 'Selecciona una meta antes de capturar.');
+
             return;
         }
 
         if ($this->soloLectura) {
             session()->flash('error', 'Este formulario está finalizado. Solo lectura.');
+
             return;
         }
 
         try {
             if (empty($this->schema)) {
-                throw new \Exception("Este indicador no tiene config_campos. Pídele al admin que lo configure.");
+                throw new \Exception('Este indicador no tiene config_campos. Pídele al admin que lo configure.');
             }
 
             $this->validarFilaManual();
@@ -850,30 +922,43 @@ class FormularioCaptura extends Component
 
             if ($this->ambito_geo === 'REGION') {
                 $r = Region::find($this->region);
-                if (!$r) throw new \Exception("Región inválida.");
+                if (! $r) {
+                    throw new \Exception('Región inválida.');
+                }
                 $nombre = $r->nombre_region;
-                $idRegion = (int)$r->id_region;
+                $idRegion = (int) $r->id_region;
             }
 
             if ($this->ambito_geo === 'MUNICIPIO') {
                 $m = Municipio::find($this->municipio);
-                if (!$m) throw new \Exception("Municipio inválido.");
+                if (! $m) {
+                    throw new \Exception('Municipio inválido.');
+                }
                 $nombre = $m->nombre_municipio;
-                $idMun = (int)$m->id_mun;
-                $idRegion = (int)$m->id_region;
+                $idMun = (int) $m->id_mun;
+                $idRegion = (int) $m->id_region;
             }
 
             // evita duplicados por ubicación (opcional)
             $yaExiste = collect($this->manualData)->contains(function ($row) use ($idRegion, $idMun) {
-                if (($row['ambito_geo'] ?? '') !== $this->ambito_geo) return false;
-                if ($this->ambito_geo === 'SIN_AMBITO') return true; // solo una global
-                if ($this->ambito_geo === 'REGION') return (int)($row['id_region'] ?? 0) === (int)$idRegion;
-                if ($this->ambito_geo === 'MUNICIPIO') return (int)($row['id_mun'] ?? 0) === (int)$idMun;
+                if (($row['ambito_geo'] ?? '') !== $this->ambito_geo) {
+                    return false;
+                }
+                if ($this->ambito_geo === 'SIN_AMBITO') {
+                    return true;
+                } // solo una global
+                if ($this->ambito_geo === 'REGION') {
+                    return (int) ($row['id_region'] ?? 0) === (int) $idRegion;
+                }
+                if ($this->ambito_geo === 'MUNICIPIO') {
+                    return (int) ($row['id_mun'] ?? 0) === (int) $idMun;
+                }
+
                 return false;
             });
 
             if ($yaExiste && $this->editManualIndex === null) {
-                throw new \Exception("Esa ubicación ya fue agregada. Edita el registro existente.");
+                throw new \Exception('Esa ubicación ya fue agregada. Edita el registro existente.');
             }
 
             $fila = [
@@ -913,11 +998,14 @@ class FormularioCaptura extends Component
     {
         if ($this->soloLectura) {
             session()->flash('error', 'Solo lectura.');
+
             return;
         }
 
         $row = $this->manualData[$index] ?? null;
-        if (!$row) return;
+        if (! $row) {
+            return;
+        }
 
         $this->editManualIndex = $index;
         $this->ambito_geo = $row['ambito_geo'] ?? 'SIN_AMBITO';
@@ -934,10 +1022,13 @@ class FormularioCaptura extends Component
     {
         if ($this->soloLectura) {
             session()->flash('error', 'Solo lectura.');
+
             return;
         }
 
-        if (!isset($this->manualData[$index])) return;
+        if (! isset($this->manualData[$index])) {
+            return;
+        }
 
         unset($this->manualData[$index]);
 
@@ -950,11 +1041,11 @@ class FormularioCaptura extends Component
         session()->flash('success', 'Fila eliminada.');
     }
 
-
     public function reenviarCorreccion()
     {
         if ($this->soloLectura) {
             session()->flash('error', 'Solo lectura.');
+
             return;
         }
 
@@ -962,7 +1053,7 @@ class FormularioCaptura extends Component
 
         DB::transaction(function () use ($carga) {
             $this->asegurarPeriodoPermitidoEnCarga($carga);
-            $metodo = strtoupper((string)$carga->metodo_captura);
+            $metodo = strtoupper((string) $carga->metodo_captura);
 
             if ($metodo === 'MANUAL') {
                 // ✅ MANUAL: reemplaza reinsertando desde lo capturado en pantalla
@@ -977,7 +1068,7 @@ class FormularioCaptura extends Component
                     ->where('id_ind', $this->id_ind)
                     ->exists();
 
-                if (!$hay) {
+                if (! $hay) {
                     throw new \Exception('Sube y procesa el archivo antes de reenviar la corrección.');
                 }
             }
@@ -996,29 +1087,29 @@ class FormularioCaptura extends Component
 
         $fila = 1;
 
-        foreach ((array)$this->manualData as $row) {
-            $ambito   = $row['ambito_geo'] ?? $this->ambito_geo ?? 'SIN_AMBITO';
+        foreach ((array) $this->manualData as $row) {
+            $ambito = $row['ambito_geo'] ?? $this->ambito_geo ?? 'SIN_AMBITO';
             $idRegion = $row['id_region'] ?? null;
-            $idMun    = $row['id_mun'] ?? null;
+            $idMun = $row['id_mun'] ?? null;
 
             $campos = $row['payload_det']['campos'] ?? [];
 
             \App\Models\DetalleCarga::create([
                 'id_carga' => $idCarga,
-                'id_ind'   => $this->id_ind,
-                'id_meta'  => $this->id_meta,
+                'id_ind' => $this->id_ind,
+                'id_meta' => $this->id_meta,
 
                 'ambito_geo' => $ambito,
-                'id_region'  => ($ambito === 'REGION' || $ambito === 'MUNICIPIO') ? $idRegion : null,
-                'id_mun'     => ($ambito === 'MUNICIPIO') ? $idMun : null,
+                'id_region' => ($ambito === 'REGION' || $ambito === 'MUNICIPIO') ? $idRegion : null,
+                'id_mun' => ($ambito === 'MUNICIPIO') ? $idMun : null,
 
                 'fila_det' => $fila++,
 
-                'periodo_det'        => $permitido,
-                'ejercicio_det'      => $ejercicioPermitido,
+                'periodo_det' => $permitido,
+                'ejercicio_det' => $ejercicioPermitido,
                 'fecha_registro_det' => now()->toDateString(),
-                'fuente_det'         => 'Registro manual',
-                'valor_det'          => null,
+                'fuente_det' => 'Registro manual',
+                'valor_det' => null,
 
                 'payload_det' => [
                     'origen' => 'manual',
@@ -1030,35 +1121,39 @@ class FormularioCaptura extends Component
 
     private function syncManualDraftToDB(): void
     {
-        if ($this->soloLectura) return;
+        if ($this->soloLectura) {
+            return;
+        }
 
         // ✅ si no hay borrador aún, créalo
-        if (!$this->id_carga_actual) {
+        if (! $this->id_carga_actual) {
             $this->prepararCargaBorradorManual();
         }
 
         $carga = Carga::find($this->id_carga_actual);
-        if (!$carga) return;
+        if (! $carga) {
+            return;
+        }
 
         // ✅ borra y reinsertar el snapshot actual del manual (simple y seguro)
         DetalleCarga::where('id_carga', $carga->id_carga)
             ->where('id_ind', $this->id_ind)
             ->delete();
 
-        $periodo   = $carga->periodo ?? now()->format('Y-m');
+        $periodo = $carga->periodo ?? now()->format('Y-m');
         $ejercicio = $carga->ejercicio ?? now()->year;
 
-        foreach (array_values((array)$this->manualData) as $idx => $item) {
+        foreach (array_values((array) $this->manualData) as $idx => $item) {
             $ambito = $item['ambito_geo'] ?? 'SIN_AMBITO';
 
             DetalleCarga::create([
                 'id_carga' => $carga->id_carga,
-                'id_ind'   => $this->id_ind,
+                'id_ind' => $this->id_ind,
                 'id_meta' => $this->id_meta,
                 'ambito_geo' => $ambito,
                 'id_region' => $item['id_region'] ?? null,
-                'id_mun'    => $item['id_mun'] ?? null,
-                'fila_det'  => $idx + 1,
+                'id_mun' => $item['id_mun'] ?? null,
+                'fila_det' => $idx + 1,
                 'periodo_det' => $periodo,
                 'ejercicio_det' => $ejercicio,
                 'fecha_registro_det' => now()->toDateString(),
@@ -1071,7 +1166,6 @@ class FormularioCaptura extends Component
         // ✅ marca actividad (updated_at)
         $carga->touch();
     }
-
 
     /* =========================
        ARCHIVO (tu lógica + ajustes)
@@ -1089,10 +1183,13 @@ class FormularioCaptura extends Component
         if ($this->soloLectura) {
             session()->flash('error', 'Este formulario está finalizado. No puedes subir archivos.');
             $this->archivo = null;
+
             return;
         }
 
-        if (!$this->archivo) return;
+        if (! $this->archivo) {
+            return;
+        }
 
         $this->validateOnly('archivo');
 
@@ -1107,11 +1204,13 @@ class FormularioCaptura extends Component
         // ✅ si hay metas, obligar selección
         if ($this->requiereMeta && empty($this->id_meta)) {
             session()->flash('error', 'Primero selecciona una meta antes de descargar/procesar.');
+
             return;
         }
 
         if ($this->soloLectura) {
             session()->flash('error', 'Solo lectura.');
+
             return;
         }
 
@@ -1123,12 +1222,12 @@ class FormularioCaptura extends Component
         // ✅ 1) CAMPOS: siempre desde META (si existe)
         $raw = null;
 
-        if (!empty($this->id_meta)) {
-            $meta = Meta::where('id', (int)$this->id_meta)
+        if (! empty($this->id_meta)) {
+            $meta = Meta::where('id', (int) $this->id_meta)
                 ->where('id_ind', $this->id_ind)
                 ->first();
 
-            if ($meta && !empty($meta->config_campos)) {
+            if ($meta && ! empty($meta->config_campos)) {
                 $raw = $meta->config_campos;
             }
         }
@@ -1138,14 +1237,19 @@ class FormularioCaptura extends Component
             $raw = $indicador->config_campos ?? [];
         }
 
-        if (is_string($raw)) $raw = json_decode($raw, true) ?: [];
-        if (!is_array($raw)) $raw = [];
+        if (is_string($raw)) {
+            $raw = json_decode($raw, true) ?: [];
+        }
+        if (! is_array($raw)) {
+            $raw = [];
+        }
 
         // normaliza igual que tu schema
         $campos = $this->normalizarSchema($raw);
 
         if (empty($campos)) {
             session()->flash('error', 'Esta meta/indicador no tiene campos definidos.');
+
             return;
         }
 
@@ -1163,18 +1267,18 @@ class FormularioCaptura extends Component
         $headerRow = 7;
         $dataStart = 8;
 
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Plantilla');
 
-        $sheet->setCellValue('A1', mb_strtoupper((string)$indicador->nombre_ind));
-        $sheet->setCellValue('A2', 'Periodo: ' . (string)($carga->periodo ?? $indicador->periodo_ind ?? '—'));
-        $sheet->setCellValue('A3', 'Folio: ' . (string)$carga->folioUnico_carga);
-        $sheet->setCellValue('A4', 'Ámbito: ' . (string)$ambito);
+        $sheet->setCellValue('A1', mb_strtoupper((string) $indicador->nombre_ind));
+        $sheet->setCellValue('A2', 'Periodo: '.(string) ($carga->periodo ?? $indicador->periodo_ind ?? '—'));
+        $sheet->setCellValue('A3', 'Folio: '.(string) $carga->folioUnico_carga);
+        $sheet->setCellValue('A4', 'Ámbito: '.(string) $ambito);
 
         // ✅ opcional: escribir qué META es (para que el usuario lo vea)
-        if (!empty($this->id_meta) && isset($meta)) {
-            $sheet->setCellValue('A5', 'Meta: ' . (string)$meta->titulo);
+        if (! empty($this->id_meta) && isset($meta)) {
+            $sheet->setCellValue('A5', 'Meta: '.(string) $meta->titulo);
         }
 
         $sheet->setCellValue("A{$headerRow}", $colAHeader);
@@ -1206,7 +1310,9 @@ class FormularioCaptura extends Component
             $r = $dataStart;
             foreach ($regiones as $reg) {
                 $sheet->setCellValue("A{$r}", $reg->nombre_region);
-                if ($usaClave) $sheet->setCellValue("B{$r}", $reg->id_region);
+                if ($usaClave) {
+                    $sheet->setCellValue("B{$r}", $reg->id_region);
+                }
                 $r++;
             }
         } else {
@@ -1221,13 +1327,13 @@ class FormularioCaptura extends Component
         $spreadsheet->setActiveSheetIndex(1);
 
         $ayuda->setCellValue('A1', 'GUÍA DE CAPTURA');
-        $ayuda->setCellValue('A2', 'Indicador: ' . (string)$indicador->nombre_ind);
-        $ayuda->setCellValue('A3', 'Periodo: ' . (string)($carga->periodo ?? $indicador->periodo_ind ?? '—'));
-        $ayuda->setCellValue('A4', 'Ámbito: ' . (string)$ambito);
+        $ayuda->setCellValue('A2', 'Indicador: '.(string) $indicador->nombre_ind);
+        $ayuda->setCellValue('A3', 'Periodo: '.(string) ($carga->periodo ?? $indicador->periodo_ind ?? '—'));
+        $ayuda->setCellValue('A4', 'Ámbito: '.(string) $ambito);
 
-        if (!empty($this->id_meta) && isset($meta)) {
-            $ayuda->setCellValue('A5', 'Meta: ' . (string)$meta->titulo);
-            $ayuda->setCellValue('A6', 'Periodo Meta: ' . (string)($meta->periodo ?? '—'));
+        if (! empty($this->id_meta) && isset($meta)) {
+            $ayuda->setCellValue('A5', 'Meta: '.(string) $meta->titulo);
+            $ayuda->setCellValue('A6', 'Periodo Meta: '.(string) ($meta->periodo ?? '—'));
         }
 
         $row = 9;
@@ -1242,7 +1348,7 @@ class FormularioCaptura extends Component
         ];
 
         foreach ($reglas as $txt) {
-            $ayuda->setCellValue("A{$row}", '• ' . $txt);
+            $ayuda->setCellValue("A{$row}", '• '.$txt);
             $row++;
         }
 
@@ -1258,16 +1364,16 @@ class FormularioCaptura extends Component
         $row++;
 
         foreach ($campos as $c) {
-            $label = (string)($c['label'] ?? $c['slug'] ?? 'campo');
-            $slug  = (string)($c['slug'] ?? '');
-            $tipo  = (string)($c['type'] ?? '');
-            $req   = !empty($c['required']) ? 'SI' : 'NO';
-            $min   = $c['min'] ?? '';
-            $max   = $c['max'] ?? '';
+            $label = (string) ($c['label'] ?? $c['slug'] ?? 'campo');
+            $slug = (string) ($c['slug'] ?? '');
+            $tipo = (string) ($c['type'] ?? '');
+            $req = ! empty($c['required']) ? 'SI' : 'NO';
+            $min = $c['min'] ?? '';
+            $max = $c['max'] ?? '';
 
             $rango = '';
             if ($min !== '' || $max !== '') {
-                $rango = ($min === '' ? '—' : $min) . ' a ' . ($max === '' ? '—' : $max);
+                $rango = ($min === '' ? '—' : $min).' a '.($max === '' ? '—' : $max);
             }
 
             $ayuda->setCellValue("A{$row}", $label);
@@ -1291,7 +1397,7 @@ class FormularioCaptura extends Component
         $this->ambito_plantilla_descargada = $ambito;
         $this->motivoResetPlantilla = '';
 
-        $filename = 'Plantilla_' . ($indicador->id_ind ?? 'ind') . '_' . $ambito . '_' . $carga->folioUnico_carga . '.xlsx';
+        $filename = 'Plantilla_'.($indicador->id_ind ?? 'ind').'_'.$ambito.'_'.$carga->folioUnico_carga.'.xlsx';
 
         $spreadsheet->setActiveSheetIndex(0);
 
@@ -1310,11 +1416,13 @@ class FormularioCaptura extends Component
     {
         if ($this->requiereMeta && empty($this->id_meta)) {
             session()->flash('error', 'Selecciona una meta antes de procesar el archivo.');
+
             return;
         }
 
         if ($this->soloLectura) {
             session()->flash('error', 'Solo lectura.');
+
             return;
         }
 
@@ -1325,8 +1433,9 @@ class FormularioCaptura extends Component
         $this->prepararCargaBorradorArchivo();
         $carga = Carga::findOrFail($this->id_carga_actual);
 
-        if ($this->modoCorreccion && strtoupper((string)$carga->metodo_captura) !== 'ARCHIVO') {
+        if ($this->modoCorreccion && strtoupper((string) $carga->metodo_captura) !== 'ARCHIVO') {
             session()->flash('error', 'Esta carga se creó como MANUAL. No puedes corregirla subiendo archivo.');
+
             return;
         }
 
@@ -1336,9 +1445,10 @@ class FormularioCaptura extends Component
             ->delete();
 
         // ✅ FIX: sincroniza el flag local con BD
-        $this->plantillaDescargada = !is_null($carga->plantilla_descargada_at);
+        $this->plantillaDescargada = ! is_null($carga->plantilla_descargada_at);
         if (is_null($carga->plantilla_descargada_at)) {
             session()->flash('error', 'Debes descargar la plantilla antes de subir el archivo.');
+
             return;
         }
 
@@ -1348,13 +1458,15 @@ class FormularioCaptura extends Component
             $campos = $this->schema ?? [];
             if (empty($campos)) {
                 session()->flash('error', 'Esta meta/indicador no tiene campos definidos.');
+
                 return;
             }
 
             $ambito = $this->ambito_geo;
 
-            if (!empty($carga->plantilla_ambito) && $carga->plantilla_ambito !== $ambito) {
+            if (! empty($carga->plantilla_ambito) && $carga->plantilla_ambito !== $ambito) {
                 session()->flash('error', "El ámbito actual ({$ambito}) no coincide con el de la plantilla descargada ({$carga->plantilla_ambito}). Descarga una nueva plantilla.");
+
                 return;
             }
 
@@ -1367,11 +1479,11 @@ class FormularioCaptura extends Component
                 default => 'Ámbito',
             };
 
-            $ext  = strtolower($this->archivo->getClientOriginalExtension());
+            $ext = strtolower($this->archivo->getClientOriginalExtension());
             $path = $this->archivo->getRealPath();
 
             if ($ext === 'csv') {
-                $reader = new Csv();
+                $reader = new Csv;
                 $reader->setDelimiter(',');
                 $reader->setEnclosure('"');
                 $reader->setInputEncoding('UTF-8');
@@ -1383,71 +1495,82 @@ class FormularioCaptura extends Component
             $sheet = $spreadsheet->getActiveSheet();
 
             // ✅ VALIDACIONES DE ENCABEZADOS
-            $headerA = trim((string)$sheet->getCell("A{$headerRow}")->getValue());
+            $headerA = trim((string) $sheet->getCell("A{$headerRow}")->getValue());
             if (mb_strtolower($headerA) !== mb_strtolower($colAEsperado)) {
                 session()->flash('error', "Estructura inválida: en A{$headerRow} se esperaba '{$colAEsperado}'.");
+
                 return;
             }
 
             // valida columnas dinámicas desde E (col 5)
             $colIndex = 5;
             foreach ($campos as $c) {
-                $labelEsperado = trim((string)($c['label'] ?? $c['slug']));
-                $labelArchivo  = trim((string)$sheet->getCellByColumnAndRow($colIndex, $headerRow)->getValue());
+                $labelEsperado = trim((string) ($c['label'] ?? $c['slug']));
+                $labelArchivo = trim((string) $sheet->getCellByColumnAndRow($colIndex, $headerRow)->getValue());
 
                 if (mb_strtolower($labelArchivo) !== mb_strtolower($labelEsperado)) {
                     session()->flash('error', "Estructura inválida: columna {$this->colLetra($colIndex)} debía ser '{$labelEsperado}' y llegó '{$labelArchivo}'.");
+
                     return;
                 }
                 $colIndex++;
             }
 
-            $maxRow = (int)$sheet->getHighestRow();
+            $maxRow = (int) $sheet->getHighestRow();
             $insertados = 0;
             $errores = [];
 
             DB::transaction(function () use ($sheet, $maxRow, $dataStart, $headerRow, $ambito, $campos, $carga, $indicador, $ext, &$insertados, &$errores) {
 
                 for ($r = $dataStart; $r <= $maxRow; $r++) {
-                    $dim = trim((string)$sheet->getCell("A{$r}")->getValue());
-                    if ($dim === '') continue;
+                    $dim = trim((string) $sheet->getCell("A{$r}")->getValue());
+                    if ($dim === '') {
+                        continue;
+                    }
                     $id_region = null;
                     $id_mun = null;
 
                     if ($ambito === 'MUNICIPIO') {
-                        $headerB = trim((string)$sheet->getCell("B{$headerRow}")->getValue());
+                        $headerB = trim((string) $sheet->getCell("B{$headerRow}")->getValue());
                         if (mb_strtolower($headerB) !== mb_strtolower('Clave municipio (opcional)')) {
                             $errores[] = "Encabezado inválido en B{$headerRow}.";
+
                             continue;
                         }
 
-                        $clave = trim((string)$sheet->getCell("B{$r}")->getValue());
+                        $clave = trim((string) $sheet->getCell("B{$r}")->getValue());
 
                         $mun = null;
                         if ($clave !== '' && Schema::hasColumn('municipios', 'clave_municipio')) {
                             $mun = Municipio::where('clave_municipio', $clave)->first();
                         }
-                        if (!$mun) {
+                        if (! $mun) {
                             $mun = Municipio::where('nombre_municipio', $dim)->first();
                         }
-                        if (!$mun) {
+                        if (! $mun) {
                             $errores[] = "Fila {$r}: municipio no encontrado ({$dim}).";
+
                             continue;
                         }
-                        $id_mun = (int)$mun->id_mun;
-                        $id_region = (int)$mun->id_region;
+                        $id_mun = (int) $mun->id_mun;
+                        $id_region = (int) $mun->id_region;
                     }
 
                     if ($ambito === 'REGION') {
-                        $id = trim((string)$sheet->getCell("B{$r}")->getValue());
+                        $id = trim((string) $sheet->getCell("B{$r}")->getValue());
                         $reg = null;
-                        if ($id !== '') $reg = Region::where('id_region', $id)->first();
-                        if (!$reg) $reg = Region::where('nombre_region', $dim)->first();
-                        if (!$reg) {
+                        if ($id !== '') {
+                            $reg = Region::where('id_region', $id)->first();
+                        }
+                        if (! $reg) {
+                            $reg = Region::where('nombre_region', $dim)->first();
+                        }
+                        if (! $reg) {
                             $errores[] = "Fila {$r}: región no encontrada ({$dim}).";
+
                             continue;
                         }
-                        $id_region = (int)$reg->id_region;
+                        $id_region = (int) $reg->id_region;
                     }
 
                     // payload en formato compatible con tu esquema general
@@ -1455,14 +1578,15 @@ class FormularioCaptura extends Component
                     $colIndex = 5;
 
                     foreach ($campos as $c) {
-                        $slug = (string)($c['slug'] ?? '');
+                        $slug = (string) ($c['slug'] ?? '');
                         if ($slug === '') {
                             $errores[] = "Fila {$r}: hay un campo sin slug en config_campos.";
+
                             continue 2;
                         }
 
                         $type = $c['type'] ?? 'number';
-                        $required = (bool)($c['required'] ?? false);
+                        $required = (bool) ($c['required'] ?? false);
                         $min = $c['min'] ?? null;
                         $max = $c['max'] ?? null;
 
@@ -1471,27 +1595,32 @@ class FormularioCaptura extends Component
 
                         if ($required && ($val === '' || $val === null)) {
                             $errores[] = "Fila {$r}: el campo '{$slug}' es requerido.";
+
                             continue 2;
                         }
 
                         if (($type === 'number' || $type === 'porcentaje') && $val !== '' && $val !== null) {
-                            if (!is_numeric($val)) {
+                            if (! is_numeric($val)) {
                                 $errores[] = "Fila {$r}: '{$slug}' debe ser numérico.";
-                                continue 2;
-                            }
-                            $num = (float)$val;
 
-                            if ($min !== null && $min !== '' && $num < (float)$min) {
-                                $errores[] = "Fila {$r}: '{$slug}' menor al mínimo ({$min}).";
                                 continue 2;
                             }
-                            if ($max !== null && $max !== '' && $num > (float)$max) {
+                            $num = (float) $val;
+
+                            if ($min !== null && $min !== '' && $num < (float) $min) {
+                                $errores[] = "Fila {$r}: '{$slug}' menor al mínimo ({$min}).";
+
+                                continue 2;
+                            }
+                            if ($max !== null && $max !== '' && $num > (float) $max) {
                                 $errores[] = "Fila {$r}: '{$slug}' mayor al máximo ({$max}).";
+
                                 continue 2;
                             }
 
                             if ($type === 'number' && floor($num) != $num) {
                                 $errores[] = "Fila {$r}: '{$slug}' no acepta decimales.";
+
                                 continue 2;
                             }
 
@@ -1529,10 +1658,11 @@ class FormularioCaptura extends Component
                 }
             });
 
-            if (!empty($errores)) {
-                session()->flash('error', "Se detectaron errores. Insertados: {$insertados}. Primeros: " . implode(' | ', array_slice($errores, 0, 6)));
+            if (! empty($errores)) {
+                session()->flash('error', "Se detectaron errores. Insertados: {$insertados}. Primeros: ".implode(' | ', array_slice($errores, 0, 6)));
                 $this->archivoProcesado = false;
                 $this->detallesInsertados = $insertados;
+
                 return;
             }
 
@@ -1549,9 +1679,9 @@ class FormularioCaptura extends Component
                 $peso = $archivo->getSize(); // bytes
 
                 // nombre seguro para storage (evita espacios, colisiones, etc.)
-                $nombreSeguro = 'EVIDENCIA_' . ($indicador->id_ind ?? 'ind') . '_'
-                    . ($carga->folioUnico_carga ?? 'folio') . '_'
-                    . now()->format('Ymd_His') . '_' . Str::random(6) . '.' . $extOriginal;
+                $nombreSeguro = 'EVIDENCIA_'.($indicador->id_ind ?? 'ind').'_'
+                    .($carga->folioUnico_carga ?? 'folio').'_'
+                    .now()->format('Ymd_His').'_'.Str::random(6).'.'.$extOriginal;
 
                 $ruta = $archivo->storeAs('anexos/evidencias', $nombreSeguro, 'public');
 
@@ -1564,19 +1694,19 @@ class FormularioCaptura extends Component
                     ->delete();
 
                 Anexo::create([
-                    'nombre_anexo'        => $original,
-                    'tipo_anexo'          => 'evidencia',
-                    'peso_anexo'          => $peso,
-                    'guia_anexo'          => "Evidencia del capturador. Ámbito: {$ambito}. Filas insertadas: {$insertados}.",
+                    'nombre_anexo' => $original,
+                    'tipo_anexo' => 'evidencia',
+                    'peso_anexo' => $peso,
+                    'guia_anexo' => "Evidencia del capturador. Ámbito: {$ambito}. Filas insertadas: {$insertados}.",
                     'fin_proposito_anexo' => 'Evidencia de captura del indicador',
-                    'fecha_subida_anexo'  => now(),
-                    'ruta_archivo_anexo'  => $ruta,
-                    'id_form'             => $this->id_form,
-                    'id_ind'              => $this->id_ind,
+                    'fecha_subida_anexo' => now(),
+                    'ruta_archivo_anexo' => $ruta,
+                    'id_form' => $this->id_form,
+                    'id_ind' => $this->id_ind,
                 ]);
             } catch (\Throwable $e) {
                 // no tumba el proceso de datos, solo avisa
-                Log::warning('No se pudo guardar evidencia en anexos: ' . $e->getMessage());
+                Log::warning('No se pudo guardar evidencia en anexos: '.$e->getMessage());
             }
 
             // 🔹 marcar actividad
@@ -1587,7 +1717,7 @@ class FormularioCaptura extends Component
 
             session()->flash('success', "Archivo procesado correctamente. Filas insertadas: {$insertados}");
         } catch (\Throwable $e) {
-            session()->flash('error', "No se pudo procesar el archivo: " . $e->getMessage());
+            session()->flash('error', 'No se pudo procesar el archivo: '.$e->getMessage());
             $this->archivoProcesado = false;
         }
     }
@@ -1597,9 +1727,10 @@ class FormularioCaptura extends Component
         $col = '';
         while ($colIndex > 0) {
             $colIndex--;
-            $col = chr($colIndex % 26 + 65) . $col;
+            $col = chr($colIndex % 26 + 65).$col;
             $colIndex = intdiv($colIndex, 26);
         }
+
         return $col;
     }
 
@@ -1622,12 +1753,12 @@ class FormularioCaptura extends Component
         if ($p === 'mensual') {
             $periodoValor = $ym;
         } elseif ($p === 'trimestral') {
-            $q = (int) ceil(((int)substr($ym, 5, 2)) / 3);
-            $periodoValor = substr($ym, 0, 4) . "-T{$q}";
+            $q = (int) ceil(((int) substr($ym, 5, 2)) / 3);
+            $periodoValor = substr($ym, 0, 4)."-T{$q}";
         } elseif ($p === 'semestral') {
             $m = (int) substr($ym, 5, 2);
             $s = ($m <= 6) ? 1 : 2;
-            $periodoValor = substr($ym, 0, 4) . "-S{$s}";
+            $periodoValor = substr($ym, 0, 4)."-S{$s}";
         } else {
             $periodoValor = substr($ym, 0, 4);
             $p = 'anual';
@@ -1635,7 +1766,7 @@ class FormularioCaptura extends Component
 
         [$permitido, $msg] = \App\Support\CapturaPolicy::permite($p, $periodoValor);
 
-        if (!$permitido) {
+        if (! $permitido) {
             throw new \Exception($msg);
         }
 
@@ -1649,10 +1780,13 @@ class FormularioCaptura extends Component
     {
         if ($this->soloLectura) {
             session()->flash('error', 'Este formulario está finalizado. Solo lectura.');
+
             return;
         }
 
-        if ($this->guardando) return;
+        if ($this->guardando) {
+            return;
+        }
         $this->guardando = true;
 
         try {
@@ -1668,15 +1802,17 @@ class FormularioCaptura extends Component
                     ->where('id_ind', $this->id_ind)
                     ->exists();
 
-                if (!$metaOk) {
+                if (! $metaOk) {
                     throw new \Exception('Meta inválida para este indicador.');
                 }
             }
 
-            $fuenteDato = trim((string)$this->fuente_dato);
-            if ($fuenteDato === '') $fuenteDato = 'N/D';
+            $fuenteDato = trim((string) $this->fuente_dato);
+            if ($fuenteDato === '') {
+                $fuenteDato = 'N/D';
+            }
 
-            $desc = trim((string)$this->descripcion_env);
+            $desc = trim((string) $this->descripcion_env);
             if ($desc === '') {
                 $desc = $this->metodo === 'manual' ? 'Registro manual' : 'Importación de archivo';
             }
@@ -1687,7 +1823,7 @@ class FormularioCaptura extends Component
                 }
 
                 // ✅ debe existir una carga borrador manual (creada al seleccionar método)
-                if (!$this->id_carga_actual) {
+                if (! $this->id_carga_actual) {
                     throw new \Exception('No existe carga borrador para manual. Vuelve a seleccionar "Captura Manual".');
                 }
 
@@ -1699,10 +1835,10 @@ class FormularioCaptura extends Component
                     $ejercicioPermitido = (int) substr($permitido, 0, 4);
 
                     // ✅ seguridad: debe ser del formulario y método MANUAL
-                    if ((int)$carga->id_form !== (int)$this->id_form) {
+                    if ((int) $carga->id_form !== (int) $this->id_form) {
                         throw new \Exception('La carga borrador no pertenece a este formulario.');
                     }
-                    if (strtoupper((string)$carga->metodo_captura) !== 'MANUAL') {
+                    if (strtoupper((string) $carga->metodo_captura) !== 'MANUAL') {
                         throw new \Exception('Esta carga no es de método MANUAL.');
                     }
 
@@ -1751,7 +1887,9 @@ class FormularioCaptura extends Component
                 // limpiar manual
                 $this->manualData = [];
                 $this->editManualIndex = null;
-                foreach ($this->schema as $c) $this->manualCampos[$c['slug']] = null;
+                foreach ($this->schema as $c) {
+                    $this->manualCampos[$c['slug']] = null;
+                }
                 $this->region = '';
                 $this->municipio = '';
 
@@ -1759,23 +1897,26 @@ class FormularioCaptura extends Component
 
                 $this->dispatch(
                     'swal-enviado',
-                    indicador: (string)($this->indicador->nombre_ind ?? 'Indicador'),
-                    folio: (string)($cargaFinal->folioUnico_carga ?? ''),
+                    indicador: (string) ($this->indicador->nombre_ind ?? 'Indicador'),
+                    folio: (string) ($cargaFinal->folioUnico_carga ?? ''),
                     url: url('/usuario/dashboard')
                 );
                 $this->guardando = false;
+
                 return;
             }
 
             // ARCHIVO: solo “finaliza” la carga borrador
-            if (!$this->id_carga_actual) {
+            if (! $this->id_carga_actual) {
                 throw new \Exception('No existe carga borrador para archivo.');
             }
-            if (!$this->plantillaDescargada) {
+            if (! $this->plantillaDescargada) {
                 $this->refrescarEstadoPlantilla();
-                if (!$this->plantillaDescargada) throw new \Exception('Primero descarga la plantilla.');
+                if (! $this->plantillaDescargada) {
+                    throw new \Exception('Primero descarga la plantilla.');
+                }
             }
-            if (!$this->archivoProcesado) {
+            if (! $this->archivoProcesado) {
                 throw new \Exception('Primero sube y procesa el archivo.');
             }
 
@@ -1806,14 +1947,15 @@ class FormularioCaptura extends Component
 
             $this->dispatch(
                 'swal-enviado',
-                indicador: (string)($this->indicador->nombre_ind ?? 'Indicador'),
-                folio: (string)($cargaFinal->folioUnico_carga ?? ''),
+                indicador: (string) ($this->indicador->nombre_ind ?? 'Indicador'),
+                folio: (string) ($cargaFinal->folioUnico_carga ?? ''),
                 url: url('/usuario/dashboard')
             );
             $this->guardando = false;
+
             return;
         } catch (\Throwable $e) {
-            session()->flash('error', 'Error: ' . $e->getMessage());
+            session()->flash('error', 'Error: '.$e->getMessage());
         } finally {
             $this->guardando = false;
         }
@@ -1844,8 +1986,9 @@ class FormularioCaptura extends Component
 
         if ($p === 'MENSUAL') {
             $start = $ref->copy()->startOfMonth();
-            $end   = $ref->copy()->endOfMonth();
+            $end = $ref->copy()->endOfMonth();
             $label = $start->translatedFormat('F Y'); // "febrero 2026"
+
             return compact('start', 'end', 'label');
         }
 
@@ -1853,8 +1996,9 @@ class FormularioCaptura extends Component
             $q = (int) ceil($ref->month / 3);                // 1..4
             $startMonth = (($q - 1) * 3) + 1;
             $start = $ref->copy()->setMonth($startMonth)->startOfMonth();
-            $end   = $start->copy()->addMonths(2)->endOfMonth();
-            $label = "T{$q} " . $start->format('Y');
+            $end = $start->copy()->addMonths(2)->endOfMonth();
+            $label = "T{$q} ".$start->format('Y');
+
             return compact('start', 'end', 'label');
         }
 
@@ -1862,15 +2006,17 @@ class FormularioCaptura extends Component
             $s = ($ref->month <= 6) ? 1 : 2;
             $startMonth = ($s === 1) ? 1 : 7;
             $start = $ref->copy()->setMonth($startMonth)->startOfMonth();
-            $end   = $start->copy()->addMonths(5)->endOfMonth();
-            $label = "S{$s} " . $start->format('Y');
+            $end = $start->copy()->addMonths(5)->endOfMonth();
+            $label = "S{$s} ".$start->format('Y');
+
             return compact('start', 'end', 'label');
         }
 
         // ANUAL (default)
         $start = $ref->copy()->startOfYear();
-        $end   = $ref->copy()->endOfYear();
+        $end = $ref->copy()->endOfYear();
         $label = $start->format('Y');
+
         return compact('start', 'end', 'label');
     }
 
@@ -1897,12 +2043,12 @@ class FormularioCaptura extends Component
         if ($p === 'mensual') {
             $periodoValor = $ym; // ya viene YYYY-MM
         } elseif ($p === 'trimestral') {
-            $q = (int) ceil(((int)substr($ym, 5, 2)) / 3);
-            $periodoValor = substr($ym, 0, 4) . "-T{$q}";
+            $q = (int) ceil(((int) substr($ym, 5, 2)) / 3);
+            $periodoValor = substr($ym, 0, 4)."-T{$q}";
         } elseif ($p === 'semestral') {
             $m = (int) substr($ym, 5, 2);
             $s = ($m <= 6) ? 1 : 2;
-            $periodoValor = substr($ym, 0, 4) . "-S{$s}";
+            $periodoValor = substr($ym, 0, 4)."-S{$s}";
         } else { // anual
             $periodoValor = substr($ym, 0, 4);
             $p = 'anual';
@@ -1916,25 +2062,26 @@ class FormularioCaptura extends Component
         $inicioPeriodo = $r['start']->copy()->startOfDay();
 
         $diasApertura = match ($p) {
-            'mensual'    => config_int('CAPTURA_DIAS_APERTURA_MENSUAL', 60),
+            'mensual' => config_int('CAPTURA_DIAS_APERTURA_MENSUAL', 60),
             'trimestral' => config_int('CAPTURA_DIAS_APERTURA_TRIMESTRAL', 120),
-            'semestral'  => config_int('CAPTURA_DIAS_APERTURA_SEMESTRAL', 180),
-            default      => config_int('CAPTURA_DIAS_APERTURA_ANUAL', 365),
+            'semestral' => config_int('CAPTURA_DIAS_APERTURA_SEMESTRAL', 180),
+            default => config_int('CAPTURA_DIAS_APERTURA_ANUAL', 365),
         };
         $diasGracia = config_int('CAPTURA_DIAS_GRACIA', 0);
 
-        $open  = $inicioPeriodo->copy();
+        $open = $inicioPeriodo->copy();
         $close = $inicioPeriodo->copy()->addDays($diasApertura + $diasGracia)->endOfDay();
 
-        $this->capturaOpenAt  = $open->format('d/m/Y');
+        $this->capturaOpenAt = $open->format('d/m/Y');
         $this->capturaCloseAt = $close->format('d/m/Y');
 
         // 7) Setear bloqueo / mensaje
         // OJO: NO forzamos soloLectura=false si está permitido, porque otros factores pueden bloquear (corrección, no publicado, etc.)
-        if (!$permitido) {
+        if (! $permitido) {
             $this->soloLectura = true;
             $this->mensajeBloqueo = $msg;
             $this->diasRestantes = null;
+
             return;
         }
 
@@ -1947,6 +2094,7 @@ class FormularioCaptura extends Component
     public function render()
     {
         $this->cargaActual = $this->id_carga_actual ? Carga::find($this->id_carga_actual) : null;
+
         return view('livewire.usuarios.formulario-captura', [
             'regiones' => $this->regiones,
             'municipiosFiltrados' => $this->municipiosFiltrados,

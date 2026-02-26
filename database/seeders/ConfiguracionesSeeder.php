@@ -2,9 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
-use Illuminate\Database\Seeder;
 use App\Models\Configuracion;
+use Illuminate\Database\Seeder;
 
 class ConfiguracionesSeeder extends Seeder
 {
@@ -18,13 +17,13 @@ class ConfiguracionesSeeder extends Seeder
                 'clave' => 'CAPTURA_MODO_PRUEBAS',
                 'valor' => '0',
                 'tipo' => 'bool',
-                'descripcion' => 'Si = permite capturar aunque esté fuera de fechas.'
+                'descripcion' => 'Si = permite capturar aunque esté fuera de fechas.',
             ],
             [
                 'clave' => 'CAPTURA_DIAS_GRACIA',
                 'valor' => '0',
                 'tipo' => 'int',
-                'descripcion' => 'Días extra después del cierre para permitir capturas.'
+                'descripcion' => 'Días extra después del cierre para permitir capturas.',
             ],
 
             // Días de apertura por tipo de periodo
@@ -32,25 +31,25 @@ class ConfiguracionesSeeder extends Seeder
                 'clave' => 'CAPTURA_DIAS_APERTURA_MENSUAL',
                 'valor' => '60',
                 'tipo' => 'int',
-                'descripcion' => 'Días que permanece abierta la captura para periodos mensuales.'
+                'descripcion' => 'Días que permanece abierta la captura para periodos mensuales.',
             ],
             [
                 'clave' => 'CAPTURA_DIAS_APERTURA_TRIMESTRAL',
                 'valor' => '120',
                 'tipo' => 'int',
-                'descripcion' => 'Días que permanece abierta la captura para periodos trimestrales.'
+                'descripcion' => 'Días que permanece abierta la captura para periodos trimestrales.',
             ],
             [
                 'clave' => 'CAPTURA_DIAS_APERTURA_SEMESTRAL',
                 'valor' => '180',
                 'tipo' => 'int',
-                'descripcion' => 'Días que permanece abierta la captura para periodos semestrales.'
+                'descripcion' => 'Días que permanece abierta la captura para periodos semestrales.',
             ],
             [
                 'clave' => 'CAPTURA_DIAS_APERTURA_ANUAL',
                 'valor' => '365',
                 'tipo' => 'int',
-                'descripcion' => 'Días que permanece abierta la captura para periodos anuales.'
+                'descripcion' => 'Días que permanece abierta la captura para periodos anuales.',
             ],
         ];
 

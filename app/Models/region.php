@@ -10,11 +10,12 @@ class Region extends Model
     use HasFactory;
 
     protected $table = 'regiones';
+
     protected $primaryKey = 'id_region';
 
     protected $fillable = [
         'clave_region',
-        'nombre_region'
+        'nombre_region',
     ];
 
     // 🔗 Una región tiene muchos municipios

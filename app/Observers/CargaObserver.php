@@ -3,18 +3,13 @@
 namespace App\Observers;
 
 use App\Models\Carga;
-use App\Models\DetalleCarga;
-use App\Models\Indicador;
 
 class CargaObserver
 {
     /**
      * Handle the Carga "created" event.
      */
-    public function created(Carga $carga): void
-    {
-        return;
-    }
+    public function created(Carga $carga): void {}
 
     /**
      * Handle the Carga "updated" event.

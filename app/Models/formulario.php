@@ -2,10 +2,9 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 
 class Formulario extends Model
 {
@@ -14,8 +13,11 @@ class Formulario extends Model
     public $timestamps = true;
 
     protected $table = 'formularios';
+
     protected $primaryKey = 'id_form';
+
     public $incrementing = true;
+
     protected $keyType = 'int';
 
     protected $fillable = [
@@ -26,7 +28,7 @@ class Formulario extends Model
         'secciones_form',
         'periodo_form',
         'id_ind',      // 🔴 SE AGREGA
-        'id_depen'
+        'id_depen',
     ];
 
     /**
@@ -91,7 +93,7 @@ class Formulario extends Model
         $iniMes = $hoy->copy()->startOfMonth();
         $finMes = $hoy->copy()->endOfMonth();
 
-        $mes = (int)$hoy->month;
+        $mes = (int) $hoy->month;
 
         // Trimestre actual
         $qNum = (int) ceil($mes / 3);                 // 1..4
@@ -139,14 +141,14 @@ class Formulario extends Model
         $hoy = $fecha ? Carbon::parse($fecha) : Carbon::now();
 
         $year = $hoy->year;
-        $mes  = $hoy->month;
+        $mes = $hoy->month;
 
         return match (mb_strtolower($periodicidad)) {
-            'mensual'    => $hoy->format('Y-m'),                 // 2026-02
-            'trimestral' => $year . '-T' . (int) ceil($mes / 3), // 2026-T1
-            'semestral'  => $year . '-S' . ($mes <= 6 ? 1 : 2),  // 2026-S1
-            'anual'      => (string) $year,                      // 2026
-            default      => $hoy->format('Y-m'),
+            'mensual' => $hoy->format('Y-m'),                 // 2026-02
+            'trimestral' => $year.'-T'.(int) ceil($mes / 3), // 2026-T1
+            'semestral' => $year.'-S'.($mes <= 6 ? 1 : 2),  // 2026-S1
+            'anual' => (string) $year,                      // 2026
+            default => $hoy->format('Y-m'),
         };
     }
 
@@ -154,15 +156,15 @@ class Formulario extends Model
     {
         $hoy = $fecha ? Carbon::parse($fecha) : Carbon::now();
 
-        $y = (int)$hoy->year;
-        $m = (int)$hoy->month;
+        $y = (int) $hoy->year;
+        $m = (int) $hoy->month;
 
         $mesInicio = match (mb_strtolower(trim($periodicidad))) {
-            'mensual'    => $m,
-            'trimestral' => (int)(floor(($m - 1) / 3) * 3 + 1), // 1,4,7,10
-            'semestral'  => $m <= 6 ? 1 : 7,                   // 1 o 7
-            'anual'      => 1,
-            default      => $m,
+            'mensual' => $m,
+            'trimestral' => (int) (floor(($m - 1) / 3) * 3 + 1), // 1,4,7,10
+            'semestral' => $m <= 6 ? 1 : 7,                   // 1 o 7
+            'anual' => 1,
+            default => $m,
         };
 
         return sprintf('%04d-%02d', $y, $mesInicio);

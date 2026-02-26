@@ -2,12 +2,12 @@
 
 namespace App\Livewire;
 
+use App\Models\Formulario;
+use App\Models\Indicador;
+use Illuminate\Support\Facades\DB;
+use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Livewire\WithPagination;
-use Livewire\Attributes\Computed;
-use App\Models\Indicador;
-use App\Models\Formulario;
-use Illuminate\Support\Facades\DB;
 
 class Indicadores extends Component
 {
@@ -20,23 +20,36 @@ class Indicadores extends Component
     ];
 
     public $selected_id;
+
     public $keyWord;
 
     public $tiene_formula = false;
 
-    public $nombre_ind,
-        $definicion_ind,
-        $formula_ind,
-        $tendencia_ind,
-        $restriccion_ind,
-        $formato_ind,
-        $unidadmedida_ind,
-        $meta_ind,
-        $requerido_ind,
-        $status_ind,
-        $periodo_ind,
-        $etiquetas_ind,
-        $fuenteverificacion_ind;
+    public $nombre_ind;
+
+    public $definicion_ind;
+
+    public $formula_ind;
+
+    public $tendencia_ind;
+
+    public $restriccion_ind;
+
+    public $formato_ind;
+
+    public $unidadmedida_ind;
+
+    public $meta_ind;
+
+    public $requerido_ind;
+
+    public $status_ind;
+
+    public $periodo_ind;
+
+    public $etiquetas_ind;
+
+    public $fuenteverificacion_ind;
 
     /* ===============================
        LISTADO + BÚSQUEDA
@@ -44,7 +57,7 @@ class Indicadores extends Component
     #[Computed]
     public function indicadores()
     {
-        $keyWord = '%' . $this->keyWord . '%';
+        $keyWord = '%'.$this->keyWord.'%';
 
         return Indicador::withCount('metas')
             ->where(function ($query) use ($keyWord) {
@@ -90,15 +103,15 @@ class Indicadores extends Component
 
         // VALIDACIÓN BASE
         $rules = [
-            'nombre_ind'              => 'required|string|min:5',
-            'definicion_ind'          => 'required|string|min:15',
-            'formato_ind'             => 'required|in:porcentaje,cantidad,promedio',
-            'tendencia_ind'           => 'required|in:ascendente,descendente,estable',
-            'requerido_ind'           => 'nullable|boolean',
-            'status_ind'              => 'required|in:0,1',
-            'periodo_ind'             => 'required',
-            'fuenteverificacion_ind'  => 'required|string',
-            'unidadmedida_ind'        => 'nullable|string|max:50',
+            'nombre_ind' => 'required|string|min:5',
+            'definicion_ind' => 'required|string|min:15',
+            'formato_ind' => 'required|in:porcentaje,cantidad,promedio',
+            'tendencia_ind' => 'required|in:ascendente,descendente,estable',
+            'requerido_ind' => 'nullable|boolean',
+            'status_ind' => 'required|in:0,1',
+            'periodo_ind' => 'required',
+            'fuenteverificacion_ind' => 'required|string',
+            'unidadmedida_ind' => 'nullable|string|max:50',
         ];
 
         if ($this->tiene_formula) {
@@ -111,9 +124,9 @@ class Indicadores extends Component
         if ($this->requerido_ind) {
             $rules['meta_ind'] = match ($this->formato_ind) {
                 'porcentaje' => 'required|numeric|min:0|max:100',
-                'cantidad'   => 'required|numeric|min:0',
-                'promedio'   => 'required|numeric|min:0',
-                default      => 'nullable',
+                'cantidad' => 'required|numeric|min:0',
+                'promedio' => 'required|numeric|min:0',
+                default => 'nullable',
             };
         } else {
             $this->meta_ind = null;
@@ -133,6 +146,7 @@ class Indicadores extends Component
 
             if ($tieneCapturas) {
                 $this->addError('periodo_ind', 'No puedes cambiar el periodo: este indicador ya tiene capturas registradas. Para cambiar la periodicidad, crea un nuevo indicador (o versiona).');
+
                 return;
             }
         }
@@ -147,32 +161,36 @@ class Indicadores extends Component
 
             if ($tieneCapturas && $antes) {
 
-                $cambioFormato   = $antes->formato_ind !== $this->formato_ind;
-                $cambioUnidad    = (string)$antes->unidadmedida_ind !== (string)$this->unidadmedida_ind;
-                $cambioRequerido = (int)$antes->requerido_ind !== (int)$this->requerido_ind;
+                $cambioFormato = $antes->formato_ind !== $this->formato_ind;
+                $cambioUnidad = (string) $antes->unidadmedida_ind !== (string) $this->unidadmedida_ind;
+                $cambioRequerido = (int) $antes->requerido_ind !== (int) $this->requerido_ind;
 
                 // meta puede ser null; comparamos como string para evitar líos
-                $metaAntes = $antes->meta_ind === null ? null : (string)$antes->meta_ind;
-                $metaNueva = $this->meta_ind === null ? null : (string)$this->meta_ind;
+                $metaAntes = $antes->meta_ind === null ? null : (string) $antes->meta_ind;
+                $metaNueva = $this->meta_ind === null ? null : (string) $this->meta_ind;
                 $cambioMeta = $metaAntes !== $metaNueva;
 
                 if ($cambioFormato) {
                     $this->addError('formato_ind', 'No puedes cambiar el formato porque este indicador ya tiene capturas registradas.');
+
                     return;
                 }
 
                 if ($cambioUnidad) {
                     $this->addError('unidadmedida_ind', 'No puedes cambiar la unidad de medida porque este indicador ya tiene capturas registradas.');
+
                     return;
                 }
 
                 if ($cambioRequerido) {
                     $this->addError('requerido_ind', 'No puedes cambiar si es requerido/opcional porque este indicador ya tiene capturas registradas.');
+
                     return;
                 }
 
                 if ($cambioMeta) {
                     $this->addError('meta_ind', 'No puedes cambiar la meta porque este indicador ya tiene capturas registradas.');
+
                     return;
                 }
             }
@@ -188,9 +206,9 @@ class Indicadores extends Component
         if ($this->unidadmedida_ind === '') {
             $this->unidadmedida_ind = match ($this->formato_ind) {
                 'porcentaje' => '%',
-                'cantidad'   => 'unidades',
-                'promedio'   => 'indice',
-                default      => 'unidades',
+                'cantidad' => 'unidades',
+                'promedio' => 'indice',
+                default => 'unidades',
             };
         }
 
@@ -198,18 +216,18 @@ class Indicadores extends Component
         Indicador::updateOrCreate(
             ['id_ind' => $this->selected_id],
             [
-                'nombre_ind'             => $this->nombre_ind,
-                'definicion_ind'         => $this->definicion_ind,
-                'formula_ind'            => $this->formula_ind,
-                'tendencia_ind'          => $this->tendencia_ind,
-                'restriccion_ind'        => $this->restriccion_ind,
-                'formato_ind'            => $this->formato_ind,
-                'unidadmedida_ind'       => $this->unidadmedida_ind,
-                'meta_ind'               => $this->meta_ind,
-                'requerido_ind'          => $this->requerido_ind,
-                'status_ind'             => $this->status_ind,
-                'periodo_ind'            => $this->periodo_ind,
-                'etiquetas_ind'          => $this->etiquetas_ind,
+                'nombre_ind' => $this->nombre_ind,
+                'definicion_ind' => $this->definicion_ind,
+                'formula_ind' => $this->formula_ind,
+                'tendencia_ind' => $this->tendencia_ind,
+                'restriccion_ind' => $this->restriccion_ind,
+                'formato_ind' => $this->formato_ind,
+                'unidadmedida_ind' => $this->unidadmedida_ind,
+                'meta_ind' => $this->meta_ind,
+                'requerido_ind' => $this->requerido_ind,
+                'status_ind' => $this->status_ind,
+                'periodo_ind' => $this->periodo_ind,
+                'etiquetas_ind' => $this->etiquetas_ind,
                 'fuenteverificacion_ind' => $this->fuenteverificacion_ind,
             ]
         );
@@ -264,21 +282,21 @@ class Indicadores extends Component
     {
         $ind = Indicador::findOrFail($id);
 
-        $this->selected_id             = $ind->id_ind;
-        $this->nombre_ind              = $ind->nombre_ind;
-        $this->definicion_ind          = $ind->definicion_ind;
-        $this->formula_ind             = $ind->formula_ind;
-        $this->tendencia_ind           = $ind->tendencia_ind;
-        $this->restriccion_ind         = $ind->restriccion_ind;
-        $this->formato_ind             = $ind->formato_ind;
-        $this->unidadmedida_ind        = $ind->unidadmedida_ind;
-        $this->meta_ind                = $ind->meta_ind;
-        $this->requerido_ind           = $ind->requerido_ind;
-        $this->status_ind              = $ind->status_ind;
-        $this->periodo_ind             = $ind->periodo_ind;
-        $this->etiquetas_ind           = $ind->etiquetas_ind;
-        $this->fuenteverificacion_ind  = $ind->fuenteverificacion_ind;
-        $this->tiene_formula           = !is_null($ind->formula_ind);
+        $this->selected_id = $ind->id_ind;
+        $this->nombre_ind = $ind->nombre_ind;
+        $this->definicion_ind = $ind->definicion_ind;
+        $this->formula_ind = $ind->formula_ind;
+        $this->tendencia_ind = $ind->tendencia_ind;
+        $this->restriccion_ind = $ind->restriccion_ind;
+        $this->formato_ind = $ind->formato_ind;
+        $this->unidadmedida_ind = $ind->unidadmedida_ind;
+        $this->meta_ind = $ind->meta_ind;
+        $this->requerido_ind = $ind->requerido_ind;
+        $this->status_ind = $ind->status_ind;
+        $this->periodo_ind = $ind->periodo_ind;
+        $this->etiquetas_ind = $ind->etiquetas_ind;
+        $this->fuenteverificacion_ind = $ind->fuenteverificacion_ind;
+        $this->tiene_formula = ! is_null($ind->formula_ind);
     }
 
     /* ===============================
@@ -294,6 +312,7 @@ class Indicadores extends Component
 
         if ($tieneCapturas) {
             session()->flash('message', 'No puedes eliminar este indicador porque ya tiene capturas registradas.');
+
             return;
         }
 

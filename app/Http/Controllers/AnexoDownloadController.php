@@ -33,7 +33,7 @@ class AnexoDownloadController extends Controller
     {
         $path = $anexo->ruta_archivo_anexo;
 
-        if (!$path || !Storage::disk('public')->exists($path)) {
+        if (! $path || ! Storage::disk('public')->exists($path)) {
             abort(404, 'Archivo no encontrado.');
         }
 
@@ -42,12 +42,12 @@ class AnexoDownloadController extends Controller
         $baseName = $anexo->nombre_anexo ?: basename($path);
         $extReal = pathinfo($path, PATHINFO_EXTENSION);
 
-        if ($extReal && !preg_match('/\.[a-z0-9]+$/i', $baseName)) {
-            $baseName .= '.' . $extReal;
+        if ($extReal && ! preg_match('/\.[a-z0-9]+$/i', $baseName)) {
+            $baseName .= '.'.$extReal;
         }
 
         return response()->download(
-            storage_path('app/public/' . $path),
+            storage_path('app/public/'.$path),
             $baseName
         );
     }

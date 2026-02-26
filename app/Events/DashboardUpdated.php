@@ -22,7 +22,7 @@ class DashboardUpdated implements ShouldBroadcast
     public function broadcastOn(): array
     {
         return [
-            new Channel('dashboard.dependencia.' . $this->idDepen),
+            new Channel('dashboard.dependencia.'.$this->idDepen),
             new Channel('dashboard.admin'),
         ];
     }

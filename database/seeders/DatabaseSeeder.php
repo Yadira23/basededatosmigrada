@@ -20,11 +20,11 @@ class DatabaseSeeder extends Seeder
         // ]);
 
         $this->call([
-        RolSeeder::class,
-        SectorSeeder::class,
-        RegionSeeder::class,
-        MunicipioSeeder::class,
-        DependenciaSeeder::class,
-    ]);
+            RolSeeder::class,
+            SectorSeeder::class,
+            RegionSeeder::class,
+            MunicipioSeeder::class,
+            DependenciaSeeder::class,
+        ]);
     }
 }

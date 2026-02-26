@@ -2,26 +2,24 @@
 
 namespace App\Livewire;
 
+use App\Models\Dependencia;
+use App\Models\Formulario;
+use App\Models\Indicador;
+use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Livewire\WithPagination;
-use App\Models\Formulario;
-use Livewire\Attributes\Computed;
-use Illuminate\Support\Facades\Auth;
-use App\Models\Dependencia;
-use App\Models\Usuario;
-use App\Models\Indicador;
-use Illuminate\Support\Facades\DB;
-
-
 
 class Formularios extends Component
 {
     use WithPagination;
-    public $indicadores;
-    public $dependencias;
-    public bool $indicadorBloqueado = false;
-    public ?int $id_ind_fijo = null;
 
+    public $indicadores;
+
+    public $dependencias;
+
+    public bool $indicadorBloqueado = false;
+
+    public ?int $id_ind_fijo = null;
 
     public function mount()
     {
@@ -34,7 +32,7 @@ class Formularios extends Component
             ->get();
 
         // Inicializa la acción por defecto para formularios nuevos
-        if (!$this->selected_id) {
+        if (! $this->selected_id) {
             $this->boton_accion_form = 'Publicar';
             $this->fecha_creacion_form = now()->toDateString();
         }
@@ -69,12 +67,33 @@ class Formularios extends Component
     }
 
     protected $paginationTheme = 'bootstrap';
-    public $selected_id, $keyWord, $id_form, $titulo_form, $fecha_creacion_form, $descripcion_form, $boton_accion_form, $secciones_form, $periodo_form, $id_ind, $id_depen;
+
+    public $selected_id;
+
+    public $keyWord;
+
+    public $id_form;
+
+    public $titulo_form;
+
+    public $fecha_creacion_form;
+
+    public $descripcion_form;
+
+    public $boton_accion_form;
+
+    public $secciones_form;
+
+    public $periodo_form;
+
+    public $id_ind;
+
+    public $id_depen;
 
     #[Computed]
     public function filteredFormularios()
     {
-        $keyWord = '%' . $this->keyWord . '%';
+        $keyWord = '%'.$this->keyWord.'%';
 
         $query = Formulario::query();
 
@@ -92,20 +111,20 @@ class Formularios extends Component
         return $query->latest()->paginate(10);
     }
 
-
     public function render()
     {
         return view('livewire.formularios.view', [
             'formularios' => $this->filteredFormularios,
-            'indicadores'  => $this->indicadores,   // ✅
+            'indicadores' => $this->indicadores,   // ✅
             'dependencias' => $this->dependencias,  // ✅
         ])->extends('layouts.app')->section('content');
     }
 
     public function updatedIdInd($value)
     {
-        if (!$value) {
+        if (! $value) {
             $this->periodo_form = null;
+
             return;
         }
 
@@ -128,7 +147,7 @@ class Formularios extends Component
             $this->id_ind = $this->id_ind_fijo;
         }
 
-        $this->validate(['id_ind' => 'required',]);
+        $this->validate(['id_ind' => 'required']);
         $this->validate([
             'titulo_form' => 'required',
             'fecha_creacion_form' => 'required',
@@ -142,16 +161,17 @@ class Formularios extends Component
         // ✅ Forzar periodo_form desde el indicador (fuente de verdad)
         $this->periodo_form = Indicador::where('id_ind', $this->id_ind)->value('periodo_ind');
 
-        if (!$this->periodo_form) {
+        if (! $this->periodo_form) {
             $this->addError('id_ind', 'No se encontró el periodo del indicador seleccionado.');
+
             return;
         }
 
-        if (!$this->fecha_creacion_form) {
+        if (! $this->fecha_creacion_form) {
             $this->fecha_creacion_form = now()->format('Y-m-d');
         }
 
-        if (!$this->selected_id) {
+        if (! $this->selected_id) {
             $this->boton_accion_form = 'Publicar';
         }
 
@@ -203,7 +223,6 @@ class Formularios extends Component
         }
     }
 
-
     // Acción dinámica del botón
     public function accionFormulario($id)
     {
@@ -215,14 +234,14 @@ class Formularios extends Component
                 session()->flash('message', "Formulario publicado en {$formulario->dependencia->nombre_depen}");
                 break;
 
-            //case 'Finalizar':
-             //   $formulario->boton_accion_form = 'Ver';
-             //   session()->flash('message', "Formulario finalizado");
-             //   break;
+                // case 'Finalizar':
+                //   $formulario->boton_accion_form = 'Ver';
+                //   session()->flash('message', "Formulario finalizado");
+                //   break;
 
-           // case 'Ver':
-             //   session()->flash('message', "Formulario en modo solo lectura");
-            //    break;
+                // case 'Ver':
+                //   session()->flash('message', "Formulario en modo solo lectura");
+                //    break;
         }
         $formulario->save();
     }
@@ -271,21 +290,21 @@ class Formularios extends Component
         return $hoy->gte($fechaFin); // Devuelve true si ya pasó el periodo
     }
 
-    //public function ver($id)
-    //{
-        // Aquí puedes redirigir o abrir modal con detalles del formulario
-     //   $formulario = Formulario::find($id);
-     //   session()->flash('message', "Viendo formulario: {$formulario->titulo_form}");
-   // }
+    // public function ver($id)
+    // {
+    // Aquí puedes redirigir o abrir modal con detalles del formulario
+    //   $formulario = Formulario::find($id);
+    //   session()->flash('message', "Viendo formulario: {$formulario->titulo_form}");
+    // }
 
-   // public function finalizar($id)
-   // {
+    // public function finalizar($id)
+    // {
     //    $formulario = Formulario::find($id);
     //    $formulario->boton_accion_form = 'Finalizado';
     //    $formulario->save();
 
     //    session()->flash('message', "Formulario {$formulario->titulo_form} finalizado.");
-    //}
+    // }
 
     protected $listeners = ['openCreateModal'];
 

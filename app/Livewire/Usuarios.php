@@ -2,13 +2,12 @@
 
 namespace App\Livewire;
 
-use Livewire\Component;
-use Livewire\WithPagination;
-use App\Models\Usuario;
 use App\Models\Dependencia;
 use App\Models\Role;
+use App\Models\Usuario;
 use Illuminate\Support\Facades\Hash;
-use Livewire\Attributes\Computed;
+use Livewire\Component;
+use Livewire\WithPagination;
 
 class Usuarios extends Component
 {
@@ -17,7 +16,29 @@ class Usuarios extends Component
     public $dependenciasDisponibles;
 
     // Campos para crear/editar usuarios
-    public $selected_id, $keyWord, $usuario_usr, $nombre_usr, $apellido_paterno, $apellido_materno, $email_usr, $password, $id_depen, $id_rol, $estado_usr, $telefono_usr;
+    public $selected_id;
+
+    public $keyWord;
+
+    public $usuario_usr;
+
+    public $nombre_usr;
+
+    public $apellido_paterno;
+
+    public $apellido_materno;
+
+    public $email_usr;
+
+    public $password;
+
+    public $id_depen;
+
+    public $id_rol;
+
+    public $estado_usr;
+
+    public $telefono_usr;
 
     protected $paginationTheme = 'bootstrap';
 
@@ -26,6 +47,7 @@ class Usuarios extends Component
         // Bloqueo si no hay dependencias registradas
         if (Dependencia::count() === 0) {
             session()->flash('error', 'Debes registrar al menos una Dependencia.');
+
             return redirect()->route('dependencias');
         }
 
@@ -41,7 +63,8 @@ class Usuarios extends Component
     // Filtrado de usuarios para la tabla
     public function getFilteredUsuariosProperty()
     {
-        $keyWord = '%' . $this->keyWord . '%';
+        $keyWord = '%'.$this->keyWord.'%';
+
         return Usuario::latest()
             ->where(function ($query) use ($keyWord) {
                 $query
@@ -75,11 +98,11 @@ class Usuarios extends Component
     {
         // Validaciones base
         $rules = [
-            'usuario_usr' => 'required|unique:usuarios,usuario_usr,' . $this->selected_id . ',id_usuario',
+            'usuario_usr' => 'required|unique:usuarios,usuario_usr,'.$this->selected_id.',id_usuario',
             'nombre_usr' => 'required',
             'apellido_paterno' => 'required',
             'apellido_materno' => 'nullable',
-            'email_usr' => 'required|email|unique:usuarios,email_usr,' . $this->selected_id . ',id_usuario',
+            'email_usr' => 'required|email|unique:usuarios,email_usr,'.$this->selected_id.',id_usuario',
             'password' => $this->selected_id ? 'nullable|min:6' : 'required|min:6',
             'id_rol' => 'required',
             'estado_usr' => 'required',
@@ -88,14 +111,15 @@ class Usuarios extends Component
 
         // Si no es admin, dependencia obligatoria
         if ($this->id_rol != 1) {
-            $rules['id_depen'] = 'required|unique:usuarios,id_depen,' . $this->selected_id . ',id_usuario';
+            $rules['id_depen'] = 'required|unique:usuarios,id_depen,'.$this->selected_id.',id_usuario';
         }
 
         $this->validate($rules);
 
         // Solo un admin permitido
-        if ($this->id_rol == 1 && $this->adminExiste && !$this->selected_id) {
+        if ($this->id_rol == 1 && $this->adminExiste && ! $this->selected_id) {
             session()->flash('error', 'Ya existe un Administrador registrado.');
+
             return;
         }
 
@@ -119,7 +143,7 @@ class Usuarios extends Component
         // ✅ Contraseña:
         // - Si es NUEVO: siempre se guarda
         // - Si es EDICIÓN: solo si escribieron algo
-        if (!$this->selected_id || !empty($this->password)) {
+        if (! $this->selected_id || ! empty($this->password)) {
             $data['password'] = Hash::make($this->password);
         }
 

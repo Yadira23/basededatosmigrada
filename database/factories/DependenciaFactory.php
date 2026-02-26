@@ -5,7 +5,6 @@ namespace Database\Factories;
 use App\Models\Dependencia;
 use App\Models\Sector;
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Illuminate\Support\Str;
 
 class DependenciaFactory extends Factory
 {
@@ -14,9 +13,9 @@ class DependenciaFactory extends Factory
     public function definition(): array
     {
         return [
-			'nombre_depen' => fake()->company(),
-			'id_sector' => Sector::factory(),
-			'email_depen' => fake()->unique()->safeEmail(),
+            'nombre_depen' => fake()->company(),
+            'id_sector' => Sector::factory(),
+            'email_depen' => fake()->unique()->safeEmail(),
             'extension_depen' => fake()->numerify('####'),
             'telefono_depen' => fake()->numerify('##########'),
             'calle_depen' => fake()->streetName(),

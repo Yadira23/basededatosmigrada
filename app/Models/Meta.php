@@ -49,15 +49,15 @@ class Meta extends Model
         $p = strtolower((string) ($this->indicador->periodo_ind ?? ''));
 
         if (str_contains($p, 'mens')) {
-            return $anio . ' M' . str_pad((string)$corte, 2, '0', STR_PAD_LEFT);
+            return $anio.' M'.str_pad((string) $corte, 2, '0', STR_PAD_LEFT);
         }
 
         if (str_contains($p, 'trim')) {
-            return $anio . ' T' . $corte;
+            return $anio.' T'.$corte;
         }
 
         if (str_contains($p, 'sem')) {
-            return $anio . ' S' . $corte;
+            return $anio.' S'.$corte;
         }
 
         // anual o fallback

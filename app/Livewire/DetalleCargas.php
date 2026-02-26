@@ -2,12 +2,12 @@
 
 namespace App\Livewire;
 
+use App\Models\Carga;
+use App\Models\DetalleCarga;
+use App\Models\Indicador;
+use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Livewire\WithPagination;
-use Livewire\Attributes\Computed;
-use App\Models\DetalleCarga;
-use App\Models\Carga;
-use App\Models\Indicador;
 
 class DetalleCargas extends Component
 {
@@ -18,20 +18,39 @@ class DetalleCargas extends Component
     // ✅ filtro por ruta /detallecargas/{id_carga}
     public $id_carga_filtro = null;
 
-    public $selected_id, $keyWord;
-    public $id_detalle, $id_carga, $id_ind, $periodo_det, $ejercicio_det, $fecha_registro_det, $fuente_det, $valor_det;
+    public $selected_id;
+
+    public $keyWord;
+
+    public $id_detalle;
+
+    public $id_carga;
+
+    public $id_ind;
+
+    public $periodo_det;
+
+    public $ejercicio_det;
+
+    public $fecha_registro_det;
+
+    public $fuente_det;
+
+    public $valor_det;
 
     public function mount($id_carga = null)
     {
         // No hay cargas → manda a cargas
-        if (!Carga::exists()) {
+        if (! Carga::exists()) {
             session()->flash('error', 'Debes registrar al menos una Carga.');
+
             return redirect()->to('/cargas');
         }
 
         // Sí hay cargas, pero NO indicadores → manda a indicadores
-        if (!Indicador::exists()) {
+        if (! Indicador::exists()) {
             session()->flash('error', 'Debes registrar al menos un Indicador.');
+
             return redirect()->to('/indicadores');
         }
 
@@ -40,7 +59,7 @@ class DetalleCargas extends Component
 
             // si viene numérico, es id_carga
             if (is_numeric($id_carga)) {
-                $this->id_carga_filtro = (int)$id_carga;
+                $this->id_carga_filtro = (int) $id_carga;
             } else {
                 // si viene string, es folio → buscar id_carga real
                 $c = Carga::where('folioUnico_carga', $id_carga)->first();
@@ -58,18 +77,18 @@ class DetalleCargas extends Component
     #[Computed]
     public function filteredDetalleCargas()
     {
-        $keyWord = '%' . ($this->keyWord ?? '') . '%';
+        $keyWord = '%'.($this->keyWord ?? '').'%';
 
         $query = DetalleCarga::with(['carga', 'indicador', 'region', 'municipio'])
             ->latest();
 
         // ✅ aplicar filtro por carga si viene en la ruta
-        if (!empty($this->id_carga_filtro)) {
+        if (! empty($this->id_carga_filtro)) {
             $query->where('id_carga', $this->id_carga_filtro);
         }
 
         // ✅ buscador
-        if (!empty($this->keyWord)) {
+        if (! empty($this->keyWord)) {
             $query->where(function ($q) use ($keyWord) {
                 $q->orWhere('id_detalle', 'LIKE', $keyWord)
                     ->orWhere('id_carga', 'LIKE', $keyWord)
@@ -103,8 +122,9 @@ class DetalleCargas extends Component
 
     public function save()
     {
-        if (!Carga::exists() || !Indicador::exists()) {
+        if (! Carga::exists() || ! Indicador::exists()) {
             session()->flash('error', 'Proceso inválido.');
+
             return;
         }
 

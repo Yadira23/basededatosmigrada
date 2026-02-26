@@ -2,14 +2,16 @@
 
 namespace App\Livewire\Usuario;
 
-use Livewire\Component;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Livewire\Component;
 
 class NotificacionesUsuario extends Component
 {
     public $notificaciones = [];
+
     public $borradoresUsuario = [];
+
     public $soloNoLeidas = true;
 
     public function mount()
@@ -26,8 +28,9 @@ class NotificacionesUsuario extends Component
     {
         $user = Auth::user();
 
-        if (!$user) {
+        if (! $user) {
             $this->notificaciones = [];
+
             return;
         }
 
@@ -58,7 +61,9 @@ class NotificacionesUsuario extends Component
     public function marcarComoLeida($id_notificacion)
     {
         $user = Auth::user();
-        if (!$user) return;
+        if (! $user) {
+            return;
+        }
 
         DB::table('notificaciones')
             ->where('id_notificacion', $id_notificacion)
@@ -75,7 +80,9 @@ class NotificacionesUsuario extends Component
     public function marcarTodas()
     {
         $user = Auth::user();
-        if (!$user) return;
+        if (! $user) {
+            return;
+        }
 
         DB::table('notificaciones')
             ->where('id_usuario', $user->id_usuario)

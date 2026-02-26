@@ -3,9 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
 use Spatie\Permission\Models\Role as SpatieRole;
-
 
 class Role extends SpatieRole
 {
@@ -15,7 +13,7 @@ class Role extends SpatieRole
 
     protected $fillable = [
         'nombre_rol',
-        'descripcion_rol'
+        'descripcion_rol',
     ];
 
     // 🔗 Un rol tiene muchos usuarios

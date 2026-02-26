@@ -11,7 +11,7 @@ class MunicipioSeeder extends Seeder
     {
         $path = database_path('seeders/data/municipios.csv');
 
-        if (!file_exists($path)) {
+        if (! file_exists($path)) {
             throw new \RuntimeException("No se encontró el archivo: {$path}");
         }
 
@@ -33,8 +33,8 @@ class MunicipioSeeder extends Seeder
             $firstLine = preg_replace('/^\xEF\xBB\xBF/', '', $firstLine);
 
             // Detectar delimitador (coma, punto y coma, tab)
-            $delims = ["," , ";" , "\t"];
-            $bestDelim = ",";
+            $delims = [',', ';', "\t"];
+            $bestDelim = ',';
             $bestCount = -1;
             foreach ($delims as $d) {
                 $c = substr_count($firstLine, $d);
@@ -49,17 +49,18 @@ class MunicipioSeeder extends Seeder
 
             // Leer encabezado con el delimitador detectado
             $header = fgetcsv($handle, 0, $bestDelim);
-            if (!$header) {
+            if (! $header) {
                 fclose($handle);
                 throw new \RuntimeException("No se pudo leer el encabezado del CSV: {$path}");
             }
 
             // Normalizar encabezados: minúsculas, trim, quitar BOM raro
             $norm = function ($h) {
-                $h = preg_replace('/^\xEF\xBB\xBF/', '', (string)$h);
+                $h = preg_replace('/^\xEF\xBB\xBF/', '', (string) $h);
                 $h = trim(mb_strtolower($h));
                 // reemplazos comunes
                 $h = str_replace([' ', '-'], ['_', '_'], $h);
+
                 return $h;
             };
 
@@ -68,9 +69,9 @@ class MunicipioSeeder extends Seeder
 
             // Aceptar nombres alternativos (por si tu CSV viene diferente)
             $aliases = [
-                'cve_municipio'     => ['cve_municipio', 'clave_municipio', 'cve_mun', 'cve_mpio', 'cve'],
-                'cve_region'        => ['cve_region', 'id_region', 'region', 'clave_region'],
-                'nombre_municipio'  => ['nombre_municipio', 'municipio', 'nom_municipio', 'nombre'],
+                'cve_municipio' => ['cve_municipio', 'clave_municipio', 'cve_mun', 'cve_mpio', 'cve'],
+                'cve_region' => ['cve_region', 'id_region', 'region', 'clave_region'],
+                'nombre_municipio' => ['nombre_municipio', 'municipio', 'nom_municipio', 'nombre'],
             ];
 
             $idx = [];
@@ -86,7 +87,7 @@ class MunicipioSeeder extends Seeder
                 if ($found === null) {
                     fclose($handle);
                     throw new \RuntimeException(
-                        "Falta la columna '{$target}' en el CSV. Encabezados detectados: " . implode(', ', $headerNorm)
+                        "Falta la columna '{$target}' en el CSV. Encabezados detectados: ".implode(', ', $headerNorm)
                     );
                 }
                 $idx[$target] = $found;
@@ -95,13 +96,13 @@ class MunicipioSeeder extends Seeder
             while (($row = fgetcsv($handle, 0, $bestDelim)) !== false) {
 
                 // Salta filas vacías
-                if (count(array_filter($row, fn($v) => trim((string)$v) !== '')) === 0) {
+                if (count(array_filter($row, fn ($v) => trim((string) $v) !== '')) === 0) {
                     continue;
                 }
 
-                $cveMunicipio = trim((string)($row[$idx['cve_municipio']] ?? ''));
-                $cveRegion    = trim((string)($row[$idx['cve_region']] ?? ''));
-                $nombre       = trim((string)($row[$idx['nombre_municipio']] ?? ''));
+                $cveMunicipio = trim((string) ($row[$idx['cve_municipio']] ?? ''));
+                $cveRegion = trim((string) ($row[$idx['cve_region']] ?? ''));
+                $nombre = trim((string) ($row[$idx['nombre_municipio']] ?? ''));
 
                 if ($cveMunicipio === '' || $cveRegion === '' || $nombre === '') {
                     continue;

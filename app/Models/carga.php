@@ -6,13 +6,16 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
-
 class Carga extends Model
 {
     use HasFactory;
+
     public $timestamps = true;
+
     protected $table = 'cargas';
+
     protected $primaryKey = 'id_carga';
+
     protected $fillable = [
         'folioUnico_carga',
         'fecha_carga',

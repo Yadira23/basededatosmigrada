@@ -15,8 +15,8 @@ return new class extends Migration
             // Configuración dinámica de campos del indicador
             // Ej: población total, hombres, mujeres, etc.
             $table->json('config_campos')
-                  ->nullable()
-                  ->after('fuenteverificacion_ind');
+                ->nullable()
+                ->after('fuenteverificacion_ind');
         });
     }
 

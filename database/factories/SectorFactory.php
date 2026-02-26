@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 class SectorFactory extends Factory
 {
     protected $model = Sector::class;
+
     /**
      * Define the model's default state.
      *

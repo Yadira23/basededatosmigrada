@@ -10,12 +10,13 @@ class Municipio extends Model
     use HasFactory;
 
     protected $table = 'municipios';
+
     protected $primaryKey = 'id_mun';
 
     protected $fillable = [
         'clave_municipio',
         'nombre_municipio',
-        'id_region'
+        'id_region',
     ];
 
     // 🔗 Un municipio pertenece a una región

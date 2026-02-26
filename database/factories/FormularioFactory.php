@@ -4,7 +4,6 @@ namespace Database\Factories;
 
 use App\Models\Formulario;
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Illuminate\Support\Str;
 
 class FormularioFactory extends Factory
 {
@@ -13,14 +12,14 @@ class FormularioFactory extends Factory
     public function definition()
     {
         return [
-			'titulo_form' => fake()->name(),
-			'fecha_creacion_form' => fake()->name(),
-			'descripcion_form' => fake()->name(),
-			'boton_accion_form' => fake()->name(),
-			'secciones_form' => fake()->name(),
-			'periodo_form' => fake()->name(),
-			'id_depen' => fake()->name(),
-			'id_usr' => fake()->name(),
+            'titulo_form' => fake()->name(),
+            'fecha_creacion_form' => fake()->name(),
+            'descripcion_form' => fake()->name(),
+            'boton_accion_form' => fake()->name(),
+            'secciones_form' => fake()->name(),
+            'periodo_form' => fake()->name(),
+            'id_depen' => fake()->name(),
+            'id_usr' => fake()->name(),
         ];
     }
 }

@@ -10,6 +10,7 @@ class Indicador extends Model
     use HasFactory;
 
     protected $table = 'indicadores';
+
     protected $primaryKey = 'id_ind';
 
     protected $fillable = [
@@ -27,14 +28,16 @@ class Indicador extends Model
         'etiquetas_ind',
         'fuenteverificacion_ind',
     ];
+
     protected $casts = [
         'config_campos' => 'array',
     ];
 
-
     // Constantes
     const FORMATOS = ['porcentaje', 'entero', 'decimal'];
+
     const PERIODOS = ['mensual', 'trimestral', 'semestral', 'anual'];
+
     const TENDENCIAS = ['ascendente', 'descendente'];
 
     /**
@@ -92,9 +95,9 @@ class Indicador extends Model
 
         return match ($this->formato_ind) {
             'porcentaje' => '%',
-            'entero'     => 'entero',
-            'decimal'    => 'decimal',
-            default      => null,
+            'entero' => 'entero',
+            'decimal' => 'decimal',
+            default => null,
         };
     }
 }

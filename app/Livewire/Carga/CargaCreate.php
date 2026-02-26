@@ -2,27 +2,30 @@
 
 namespace App\Livewire\Carga;
 
-use Livewire\Component;
-use Illuminate\Support\Facades\Auth;
 use App\Models\Formulario;
+use Illuminate\Support\Facades\Auth;
+use Livewire\Component;
 
 class CargaCreate extends Component
 {
     // 🔹 ESTADOS (variables vivas)
 
     public $formulario;
+
     public $indicadores = [];
+
     public $anexos = [];
 
     public $tipoCarga = null; // anexo | web
 
     public $archivo;     // opción anexo
+
     public $datosWeb = []; // opción web
 
     // 🔹 ESTE MÉTODO SE EJECUTA AL ENTRAR A LA VISTA
     public function mount()
     {
-        if (!Auth::check()) {
+        if (! Auth::check()) {
             return redirect()->route('login');
         }
 

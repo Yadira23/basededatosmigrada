@@ -2,24 +2,27 @@
 
 namespace App\Livewire\Admin\Cargas;
 
-use Livewire\Component;
-use App\Models\Carga;
 use App\Events\DashboardUpdated;
-
+use App\Models\Carga;
+use Livewire\Component;
 
 class CargaRevision extends Component
 {
     public $id_carga;
+
     public $carga;
 
     public $showObsModal = false;
+
     public $observacion = '';
+
     public $returnUrl;
 
     public $filas = [];
-    public $headers = [];
-    public $rows = [];
 
+    public $headers = [];
+
+    public $rows = [];
 
     public function mount($id_carga)
     {
@@ -42,9 +45,9 @@ class CargaRevision extends Component
             $headers = array_unique(array_merge($headers, array_keys($campos)));
 
             $rows[] = [
-                'num'    => $d->fila_det ?? null,   // #
+                'num' => $d->fila_det ?? null,   // #
                 'campos' => $campos,               // valores
-                'fuente' => $d->fuente_det ?? null // para mostrar método
+                'fuente' => $d->fuente_det ?? null, // para mostrar método
             ];
         }
 
@@ -84,7 +87,7 @@ class CargaRevision extends Component
             $campos = json_decode($campos, true);
         }
 
-        if (!is_array($campos)) {
+        if (! is_array($campos)) {
             return [];
         }
 
@@ -97,17 +100,21 @@ class CargaRevision extends Component
         // Caso 2: Lista de pares/objetos: [ ["slug"=>"pobreza_porcentaje","valor"=>8], ... ]
         $out = [];
         foreach ($campos as $item) {
-            if (!is_array($item)) continue;
+            if (! is_array($item)) {
+                continue;
+            }
 
             // slug / valor
             if (isset($item['slug']) && array_key_exists('valor', $item)) {
                 $out[$item['slug']] = $item['valor'];
+
                 continue;
             }
 
             // campo / valor
             if (isset($item['campo']) && array_key_exists('valor', $item)) {
                 $out[$item['campo']] = $item['valor'];
+
                 continue;
             }
 
@@ -131,6 +138,7 @@ class CargaRevision extends Component
         event(new DashboardUpdated($this->carga->formulario->id_depen));
 
         session()->flash('message', 'Carga aprobada.');
+
         return redirect()->to($this->returnUrl ?: url('/cargas')); // 👈 vuelve al listado
     }
 
@@ -151,6 +159,7 @@ class CargaRevision extends Component
         event(new DashboardUpdated($this->carga->formulario->id_depen));
 
         session()->flash('message', 'Observación guardada y enviada.');
+
         return redirect()->to($this->returnUrl ?: url('/cargas')); // 👈 vuelve al listado
     }
 

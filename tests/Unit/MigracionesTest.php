@@ -2,10 +2,10 @@
 
 namespace Tests\Unit;
 
-//use PHPUnit\Framework\TestCase;
-use Tests\TestCase;
-use Illuminate\Support\Facades\Schema;
+// use PHPUnit\Framework\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
+use Tests\TestCase;
 
 class MigracionesTest extends TestCase
 {
@@ -13,10 +13,10 @@ class MigracionesTest extends TestCase
     /**
      * A basic unit test example.
      */
-    //public function test_example(): void
-    //{
-       // $this->assertTrue(true);
-    //}
+    // public function test_example(): void
+    // {
+    // $this->assertTrue(true);
+    // }
 
     public function test_existe_tabla_sectores()
     {

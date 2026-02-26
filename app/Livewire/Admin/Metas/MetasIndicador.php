@@ -2,11 +2,10 @@
 
 namespace App\Livewire\Admin\Metas;
 
-use Livewire\Component;
-use Livewire\WithPagination;
 use App\Models\Indicador;
 use App\Models\Meta;
-use App\Models\Formulario;
+use Livewire\Component;
+use Livewire\WithPagination;
 
 class MetasIndicador extends Component
 {
@@ -21,17 +20,23 @@ class MetasIndicador extends Component
 
     // modal create/edit
     public ?int $selectedId = null; // metas.id
+
     public string $titulo = '';
+
     public ?int $ejercicio = null;   // 2026
+
     public ?int $corte = null;       // 1..12 | 1..4 | 1..2 | 1
 
     // para llenar el select de corte según el periodo del indicador
     public array $cortesDisponibles = [];
+
     public array $cortesUsados = [];
 
     // modal campos
     public bool $camposModalOpen = false;
+
     public ?int $metaCamposId = null;
+
     public array $campos = []; // array de campos [{slug,label,type,required,min,max}]
 
     protected $paginationTheme = 'bootstrap';
@@ -70,13 +75,19 @@ class MetasIndicador extends Component
 
         if (str_contains($p, 'mens')) {
             // Mensual: 1..12
-            for ($i = 1; $i <= 12; $i++) $map[$i] = 'M' . str_pad((string)$i, 2, '0', STR_PAD_LEFT);
+            for ($i = 1; $i <= 12; $i++) {
+                $map[$i] = 'M'.str_pad((string) $i, 2, '0', STR_PAD_LEFT);
+            }
         } elseif (str_contains($p, 'trim')) {
             // Trimestral: 1..4
-            for ($i = 1; $i <= 4; $i++) $map[$i] = 'T' . $i;
+            for ($i = 1; $i <= 4; $i++) {
+                $map[$i] = 'T'.$i;
+            }
         } elseif (str_contains($p, 'sem')) {
             // Semestral: 1..2
-            for ($i = 1; $i <= 2; $i++) $map[$i] = 'S' . $i;
+            for ($i = 1; $i <= 2; $i++) {
+                $map[$i] = 'S'.$i;
+            }
         } elseif (str_contains($p, 'an')) {
             // Anual: solo 1
             $map[1] = 'Anual';
@@ -88,7 +99,7 @@ class MetasIndicador extends Component
         $this->cortesDisponibles = $map;
 
         // Si el corte actual ya no existe, lo ajustamos
-        if ($this->corte !== null && !array_key_exists($this->corte, $this->cortesDisponibles)) {
+        if ($this->corte !== null && ! array_key_exists($this->corte, $this->cortesDisponibles)) {
             $this->corte = (int) array_key_first($this->cortesDisponibles);
         }
     }
@@ -98,7 +109,7 @@ class MetasIndicador extends Component
         $this->cortesUsados = Meta::where('id_ind', $this->id_ind)
             ->where('ejercicio', $this->ejercicio)
             ->pluck('corte')
-            ->map(fn($v) => (int) $v)
+            ->map(fn ($v) => (int) $v)
             ->toArray();
     }
 
@@ -118,9 +129,9 @@ class MetasIndicador extends Component
         $this->loadCortesUsados();
 
         // si el corte actual está ocupado, selecciona el primero libre
-        if (in_array((int)$this->corte, $this->cortesUsados, true)) {
+        if (in_array((int) $this->corte, $this->cortesUsados, true)) {
             foreach ($this->cortesDisponibles as $key => $label) {
-                if (!in_array((int)$key, $this->cortesUsados, true)) {
+                if (! in_array((int) $key, $this->cortesUsados, true)) {
                     $this->corte = (int) $key;
                     break;
                 }
@@ -146,8 +157,9 @@ class MetasIndicador extends Component
         ]);
 
         // validar que el corte exista en el mapa actual
-        if (!array_key_exists((int)$this->corte, $this->cortesDisponibles)) {
+        if (! array_key_exists((int) $this->corte, $this->cortesDisponibles)) {
             $this->addError('corte', 'El corte no es válido para el periodo del indicador.');
+
             return;
         }
 
@@ -159,6 +171,7 @@ class MetasIndicador extends Component
 
         if ($yaExiste) {
             $this->addError('corte', 'Ese periodo ya tiene una meta registrada para este ejercicio.');
+
             return;
         }
 
@@ -201,8 +214,9 @@ class MetasIndicador extends Component
             'corte' => 'required|integer',
         ]);
 
-        if (!array_key_exists((int)$this->corte, $this->cortesDisponibles)) {
+        if (! array_key_exists((int) $this->corte, $this->cortesDisponibles)) {
             $this->addError('corte', 'El corte no es válido para el periodo del indicador.');
+
             return;
         }
 
@@ -214,6 +228,7 @@ class MetasIndicador extends Component
 
         if ($yaExiste) {
             $this->addError('corte', 'Ese periodo ya tiene una meta registrada para este ejercicio.');
+
             return;
         }
 
@@ -251,7 +266,9 @@ class MetasIndicador extends Component
         if (is_string($raw)) {
             $raw = json_decode($raw, true) ?: [];
         }
-        if (!is_array($raw)) $raw = [];
+        if (! is_array($raw)) {
+            $raw = [];
+        }
 
         $this->campos = $raw;
 
@@ -288,14 +305,16 @@ class MetasIndicador extends Component
 
     public function saveCampos()
     {
-        if (!$this->metaCamposId) return;
+        if (! $this->metaCamposId) {
+            return;
+        }
 
         // validación simple: slug requerido y único
         $slugs = [];
         foreach ($this->campos as $i => $c) {
-            $slug = trim((string)($c['slug'] ?? ''));
+            $slug = trim((string) ($c['slug'] ?? ''));
             if ($slug === '') {
-                throw new \Exception("El campo #" . ($i + 1) . " necesita slug.");
+                throw new \Exception('El campo #'.($i + 1).' necesita slug.');
             }
             if (in_array($slug, $slugs, true)) {
                 throw new \Exception("Slug repetido: {$slug}.");

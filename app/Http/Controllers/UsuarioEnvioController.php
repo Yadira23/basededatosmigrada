@@ -2,15 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Formulario;
 use App\Models\Carga;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
-use Symfony\Component\HttpFoundation\StreamedResponse;
-use Illuminate\Support\Facades\File;
-use Illuminate\Support\Str;
+use App\Models\Formulario;
 use Illuminate\Support\Facades\DB;
-
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class UsuarioEnvioController extends Controller
 {
@@ -38,7 +35,7 @@ class UsuarioEnvioController extends Controller
             'total' => 0,
         ];
 
-        $metodo = strtolower((string)($ultima->metodo_captura ?? ''));
+        $metodo = strtolower((string) ($ultima->metodo_captura ?? ''));
 
         if ($ultima && in_array($metodo, ['manual', 'manual_dinamico'], true)) {
 
@@ -61,7 +58,9 @@ class UsuarioEnvioController extends Controller
 
                 // juntar columnas dinámicas
                 foreach (array_keys($campos) as $k) {
-                    if (!in_array($k, $columns, true)) $columns[] = $k;
+                    if (! in_array($k, $columns, true)) {
+                        $columns[] = $k;
+                    }
                 }
 
                 $dataRows[] = [
@@ -86,13 +85,14 @@ class UsuarioEnvioController extends Controller
 
             if (\Illuminate\Support\Facades\File::isDirectory($dir)) {
                 $files = collect(\Illuminate\Support\Facades\File::files($dir))
-                    ->filter(fn($f) => \Illuminate\Support\Str::contains($f->getFilename(), $folio))
-                    ->sortByDesc(fn($f) => $f->getMTime())
+                    ->filter(fn ($f) => \Illuminate\Support\Str::contains($f->getFilename(), $folio))
+                    ->sortByDesc(fn ($f) => $f->getMTime())
                     ->values();
 
                 $archivoEvidencia = $files->first()?->getFilename();
             }
         }
+
         return view('usuario.envios.show', compact('form', 'ultima', 'archivoEvidencia', 'manualPreview'));
     }
 
@@ -120,7 +120,7 @@ class UsuarioEnvioController extends Controller
             'total' => 0,
         ];
 
-        $metodo = strtolower((string)($ultima->metodo_captura ?? ''));
+        $metodo = strtolower((string) ($ultima->metodo_captura ?? ''));
 
         if ($ultima && in_array($metodo, ['manual', 'manual_dinamico'], true)) {
             $rows = DB::table('detallecargas')
@@ -141,7 +141,9 @@ class UsuarioEnvioController extends Controller
                 $campos = $payload['campos'] ?? [];
 
                 foreach (array_keys($campos) as $k) {
-                    if (!in_array($k, $columns, true)) $columns[] = $k;
+                    if (! in_array($k, $columns, true)) {
+                        $columns[] = $k;
+                    }
                 }
 
                 $dataRows[] = [
@@ -166,8 +168,8 @@ class UsuarioEnvioController extends Controller
 
             if (\Illuminate\Support\Facades\File::isDirectory($dir)) {
                 $files = collect(\Illuminate\Support\Facades\File::files($dir))
-                    ->filter(fn($f) => \Illuminate\Support\Str::contains($f->getFilename(), $folio))
-                    ->sortByDesc(fn($f) => $f->getMTime())
+                    ->filter(fn ($f) => \Illuminate\Support\Str::contains($f->getFilename(), $folio))
+                    ->sortByDesc(fn ($f) => $f->getMTime())
                     ->values();
 
                 $archivoEvidencia = $files->first()?->getFilename();
@@ -217,7 +219,7 @@ class UsuarioEnvioController extends Controller
         // ✅ Tu carpeta real (dentro de storage/app)
         $dir = storage_path('app/public/anexos/evidencias');
 
-        if (!File::isDirectory($dir)) {
+        if (! File::isDirectory($dir)) {
             abort(404, 'No existe la carpeta de evidencias.');
         }
 
@@ -225,10 +227,11 @@ class UsuarioEnvioController extends Controller
         $files = collect(File::files($dir))
             ->filter(function ($f) use ($folio) {
                 $name = $f->getFilename();
+
                 return Str::contains($name, $folio);
             })
             // ordenar por más reciente
-            ->sortByDesc(fn($f) => $f->getMTime())
+            ->sortByDesc(fn ($f) => $f->getMTime())
             ->values();
 
         if ($files->isEmpty()) {
@@ -268,9 +271,10 @@ class UsuarioEnvioController extends Controller
                     ->filter(function ($f) use ($folio) {
                         $name = $f->getFilename();
                         $ext = strtolower($f->getExtension());
+
                         return Str::contains($name, $folio) && in_array($ext, ['log', 'txt'], true);
                     })
-                    ->sortByDesc(fn($f) => $f->getMTime());
+                    ->sortByDesc(fn ($f) => $f->getMTime());
 
                 $candidatos = $candidatos->merge($files);
             }
@@ -281,6 +285,7 @@ class UsuarioEnvioController extends Controller
         }
 
         $file = $candidatos->first();
+
         return response()->download($file->getPathname(), $file->getFilename());
     }
 }

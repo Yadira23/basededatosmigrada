@@ -20,7 +20,10 @@ class PeriodoParser
         if (preg_match('/^([a-záéíóúñ]+)\s+(\d{4})$/u', $texto, $m)) {
             $mes = $m[1];
             $anio = $m[2];
-            if (!isset($map[$mes])) return null;
+            if (! isset($map[$mes])) {
+                return null;
+            }
+
             return "{$anio}-{$map[$mes]}";
         }
 

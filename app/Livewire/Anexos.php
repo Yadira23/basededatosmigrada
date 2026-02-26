@@ -2,24 +2,40 @@
 
 namespace App\Livewire;
 
-use Livewire\Component;
-use Livewire\WithPagination;
-use Livewire\WithFileUploads;
 use App\Models\Anexo;
 use App\Models\Formulario;
-use Illuminate\Support\Facades\Storage;
 use App\Models\Indicador;
-
+use Illuminate\Support\Facades\Storage;
+use Livewire\Component;
+use Livewire\WithFileUploads;
+use Livewire\WithPagination;
 
 class Anexos extends Component
 {
-    use WithPagination, WithFileUploads;
+    use WithFileUploads, WithPagination;
 
     protected $paginationTheme = 'bootstrap';
 
-    public $selected_id, $keyWord;
-    public $nombre_anexo, $tipo_anexo, $archivo, $guia_anexo, $fin_proposito_anexo, $id_form, $id_ind;
+    public $selected_id;
+
+    public $keyWord;
+
+    public $nombre_anexo;
+
+    public $tipo_anexo;
+
+    public $archivo;
+
+    public $guia_anexo;
+
+    public $fin_proposito_anexo;
+
+    public $id_form;
+
+    public $id_ind;
+
     public $formularios;
+
     public $indicadores;
 
     protected $rules = [
@@ -45,15 +61,16 @@ class Anexos extends Component
     public function crearAnexo()
     {
         // Verifica de nuevo por seguridad
-        if (!$this->id_form) {
+        if (! $this->id_form) {
             session()->flash('error', 'Debes seleccionar un formulario antes de subir un anexo.');
+
             return;
         }
 
         Anexo::create([
             'nombre_anexo' => $this->nombre_anexo,
             'tipo_anexo' => $this->tipo_anexo,
-            'id_form' => $this->id_form
+            'id_form' => $this->id_form,
         ]);
 
         session()->flash('success', 'Anexo creado correctamente.');
@@ -61,7 +78,9 @@ class Anexos extends Component
 
     public function updatedArchivo()
     {
-        if (!$this->archivo) return;
+        if (! $this->archivo) {
+            return;
+        }
 
         // permite xlsx/xls/csv/pdf/doc/docx/jpg/png según lo que quieras
         $this->validate([
@@ -86,14 +105,14 @@ class Anexos extends Component
         }
 
         $ext = $this->archivo->getClientOriginalExtension();
-        $nombre = trim((string)$this->nombre_anexo);
+        $nombre = trim((string) $this->nombre_anexo);
 
         if ($nombre === '') {
             $nombre = $this->archivo->getClientOriginalName();
         } else {
             // si no trae extensión, se la agregamos
-            if (!preg_match('/\.[a-z0-9]+$/i', $nombre)) {
-                $nombre .= '.' . $ext;
+            if (! preg_match('/\.[a-z0-9]+$/i', $nombre)) {
+                $nombre .= '.'.$ext;
             }
         }
 
@@ -145,7 +164,8 @@ class Anexos extends Component
 
     public function render()
     {
-        $keyWord = '%' . $this->keyWord . '%';
+        $keyWord = '%'.$this->keyWord.'%';
+
         return view('livewire.anexos.view', [
             'anexos' => Anexo::with(['formulario', 'indicador'])
                 ->where('nombre_anexo', 'LIKE', $keyWord)

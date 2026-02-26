@@ -2,14 +2,13 @@
 
 namespace App\Livewire;
 
+use App\Models\Carga;
+use App\Models\Dependencia;
+use App\Models\Formulario;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Livewire\Component;
 use Livewire\WithPagination;
-use App\Models\Carga;
-use App\Models\Formulario;
-use App\Models\Indicador;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Auth;
-use App\Models\Dependencia;
 
 class Cargas extends Component
 {
@@ -17,10 +16,38 @@ class Cargas extends Component
 
     protected $paginationTheme = 'bootstrap';
 
-    public $selected_id, $keyWord;
+    public $selected_id;
+
+    public $keyWord;
+
     public $filtroDependencia = '';
-    public $id_carga, $folioUnico_carga, $fecha_carga, $periodo, $periodo_det, $ejercicio, $ejercicio_det, $fuente, $status_env, $descripcion_env, $observacion_env, $id_form;
+
+    public $id_carga;
+
+    public $folioUnico_carga;
+
+    public $fecha_carga;
+
+    public $periodo;
+
+    public $periodo_det;
+
+    public $ejercicio;
+
+    public $ejercicio_det;
+
+    public $fuente;
+
+    public $status_env;
+
+    public $descripcion_env;
+
+    public $observacion_env;
+
+    public $id_form;
+
     public $indicadores = [];
+
     public $selectedIndicador;
 
     public function mount()
@@ -58,13 +85,13 @@ class Cargas extends Component
     #[\Livewire\Attributes\Computed]
     public function filteredCargas()
     {
-        $keyWord = '%' . $this->keyWord . '%';
+        $keyWord = '%'.$this->keyWord.'%';
 
         $query = Carga::query()
             ->with([
                 'formulario',
                 'primerDetalle',
-                'primerDetalle.indicador'
+                'primerDetalle.indicador',
             ])
             ->withCount('detallecargas')
             ->latest()
@@ -78,7 +105,7 @@ class Cargas extends Component
             });
 
         // ✅ Filtro por dependencia (a través del formulario)
-        if (!empty($this->filtroDependencia)) {
+        if (! empty($this->filtroDependencia)) {
             $query->whereHas('formulario', function ($q) {
                 $q->where('id_depen', $this->filtroDependencia);
             });
@@ -135,7 +162,7 @@ class Cargas extends Component
         session()->flash(
             'message',
             $this->selected_id
-                ? "Carga actualizada correctamente"
+                ? 'Carga actualizada correctamente'
                 : "Carga creada correctamente con {$carga->detallecargas()->count()} detalles"
         );
 
@@ -144,7 +171,6 @@ class Cargas extends Component
         $this->reset();
         $this->mount(); // reinicia folio, fecha y estado
     }
-
 
     public function edit($id)
     {
@@ -165,15 +191,16 @@ class Cargas extends Component
         $carga = Carga::findOrFail($id);
 
         // Normaliza (mayúsculas + sin espacios raros)
-        $estadoActual = mb_strtoupper(trim((string)($carga->status_env ?? '')));
+        $estadoActual = mb_strtoupper(trim((string) ($carga->status_env ?? '')));
         $estadoActual = str_replace('REVISIÓN', 'REVISION', $estadoActual);
 
-        $nuevo = mb_strtoupper(trim((string)$nuevoStatus));
+        $nuevo = mb_strtoupper(trim((string) $nuevoStatus));
         $nuevo = str_replace('REVISIÓN', 'REVISION', $nuevo);
 
         // ✅ Permitir "Tomar revisión" desde ENVIADO o REENVIADO
-        if ($nuevo === 'EN REVISION' && !in_array($estadoActual, ['ENVIADO', 'REENVIADO'])) {
-            session()->flash('message', "Solo puedes pasar a EN REVISION si está en ENVIADO o REENVIADO.");
+        if ($nuevo === 'EN REVISION' && ! in_array($estadoActual, ['ENVIADO', 'REENVIADO'])) {
+            session()->flash('message', 'Solo puedes pasar a EN REVISION si está en ENVIADO o REENVIADO.');
+
             return;
         }
 
@@ -186,7 +213,7 @@ class Cargas extends Component
     public function saveObservation()
     {
         $this->validate([
-            'observacion_env' => 'required|min:3'
+            'observacion_env' => 'required|min:3',
         ]);
 
         $carga = Carga::findOrFail($this->selected_id);
@@ -204,7 +231,6 @@ class Cargas extends Component
         $this->dispatch('closeObservationModal');
         $this->reset(['observacion_env', 'selected_id']);
     }
-
 
     public function openObservation($id)
     {
@@ -237,11 +263,12 @@ class Cargas extends Component
     {
         $carga = \App\Models\Carga::findOrFail($id_carga);
 
-        $estado = strtoupper(trim((string)$carga->status_env));
+        $estado = strtoupper(trim((string) $carga->status_env));
 
         // ✅ permite aprobar si está EN REVISION o REENVIADO
-        if (!in_array($estado, ['EN REVISION', 'REENVIADO'])) {
+        if (! in_array($estado, ['EN REVISION', 'REENVIADO'])) {
             session()->flash('error', 'Solo puedes aprobar cargas en revisión.');
+
             return;
         }
 
@@ -272,11 +299,12 @@ class Cargas extends Component
     {
         $carga = \App\Models\Carga::findOrFail($id_carga);
 
-        $estado = strtoupper(trim((string)$carga->status_env));
+        $estado = strtoupper(trim((string) $carga->status_env));
 
         // ✅ permite observar si está EN REVISION o REENVIADO
-        if (!in_array($estado, ['EN REVISION', 'REENVIADO'])) {
+        if (! in_array($estado, ['EN REVISION', 'REENVIADO'])) {
             session()->flash('error', 'Solo puedes observar cargas en revisión.');
+
             return;
         }
 

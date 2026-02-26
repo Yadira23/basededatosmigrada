@@ -24,7 +24,7 @@ class LoginController extends Controller
 
         if (Auth::guard('web')->attempt([
             'email_usr' => $credentials['email'],
-            'password'  => $credentials['password'],
+            'password' => $credentials['password'],
         ], $remember)) { // ✅ aquí se aplica
 
             $request->session()->regenerate();

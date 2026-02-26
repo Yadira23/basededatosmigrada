@@ -8,14 +8,16 @@ use Illuminate\Database\Eloquent\Model;
 class Sector extends Model
 {
     use HasFactory;
-    
+
     protected $table = 'sectores';
+
     protected $primaryKey = 'id_sector';
+
     public $timestamps = false;
 
     protected $fillable = [
         'nombre_sector',
-        'descripcion_sector'
+        'descripcion_sector',
     ];
 
     // 🔗 RELACIÓN
@@ -24,5 +26,4 @@ class Sector extends Model
     {
         return $this->hasMany(Dependencia::class, 'id_sector');
     }
-    
 }

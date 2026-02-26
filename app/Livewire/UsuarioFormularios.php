@@ -2,13 +2,14 @@
 
 namespace App\Livewire;
 
-use Livewire\Component;
 use App\Models\Formulario;
 use Illuminate\Support\Facades\Auth;
+use Livewire\Component;
 
 class UsuarioFormularios extends Component
 {
     public $formularios;
+
     public function mount()
     {
         // Trae solo los formularios "Ver" de la dependencia del usuario logueado
@@ -22,7 +23,7 @@ class UsuarioFormularios extends Component
     public function render()
     {
         return view('livewire.usuarios.usuario-formularios', [
-            'formularios' => $this->formularios
+            'formularios' => $this->formularios,
         ]);
     }
 
@@ -35,14 +36,15 @@ class UsuarioFormularios extends Component
             ->firstOrFail();
 
         // ✅ DEFENSA: por si el formulario no tiene indicador
-        if (!$form->id_ind) {
+        if (! $form->id_ind) {
             session()->flash('error', 'Este formulario no tiene indicador asignado.');
+
             return;
         }
 
         return redirect()->route('usuario.formulario.captura', [
             'id_form' => $form->id_form,
-            'id_ind'  => $form->id_ind,
+            'id_ind' => $form->id_ind,
         ]);
     }
 }

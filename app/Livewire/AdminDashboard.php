@@ -2,35 +2,46 @@
 
 namespace App\Livewire;
 
-use Livewire\Component;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+use Livewire\Component;
 
 class AdminDashboard extends Component
 {
     public $totalUsuarios;
+
     public $totalFormularios;
+
     public $cargasPendientes;
+
     public $nuevosRegistros;
 
     public $formulariosPorMes = [];
+
     public $usuariosPorRol = [];
+
     public $cargasPorEstado = [];
 
     public $borradoresPorDep = []; // [id_depen => total]
+
     public $totalBorradores = 0;
 
     public $avancePorDep = [];     // [id_depen => ['meta','hechos','pct','color']]
+
     public $kardexPorDep = [];     // [id_depen => ['meta','hechas','pct','color']]
+
     public $kardexPeriodosPorDep = []; // [id_depen => [ ['label','meta','hechas','estado'], ... ]]
+
     public $estatusPorDepSeg = []; // [id_depen][seg][estatus => total]
 
     public $depSeleccionadaMetas = null;
+
     public $depOptions = [];
 
     public $modalOpen = false;
+
     public $modalTitulo = '';
+
     public $modalCargas = [];
 
     /* =========================================================
@@ -124,9 +135,10 @@ class AdminDashboard extends Component
             ->toArray();
 
         if (empty($usuariosIds)) {
-            if (!$silent) {
+            if (! $silent) {
                 session()->flash('message', 'No hay usuarios registrados en esa dependencia.');
             }
+
             return;
         }
 
@@ -148,23 +160,23 @@ class AdminDashboard extends Component
 
             $inserts[] = [
                 'id_usuario' => $id_usuario,
-                'id_depen'   => $id_depen,
-                'id_carga'   => null,
-                'tipo'       => 'RECORDATORIO',
-                'titulo'     => 'Tienes cargas en borrador',
-                'mensaje'    => 'Tu dependencia tiene cargas en estatus BORRADOR. Por favor revisa y envía tus cargas pendientes.',
-                'leida'      => 0,
+                'id_depen' => $id_depen,
+                'id_carga' => null,
+                'tipo' => 'RECORDATORIO',
+                'titulo' => 'Tienes cargas en borrador',
+                'mensaje' => 'Tu dependencia tiene cargas en estatus BORRADOR. Por favor revisa y envía tus cargas pendientes.',
+                'leida' => 0,
                 'created_at' => $ahora,
                 'updated_at' => $ahora,
             ];
         }
 
-        if (!empty($inserts)) {
+        if (! empty($inserts)) {
             DB::table('notificaciones')->insert($inserts);
-            if (!$silent) {
+            if (! $silent) {
                 session()->flash('message', 'Recordatorio enviado a la dependencia seleccionada.');
             }
-        } elseif (!$silent) {
+        } elseif (! $silent) {
             session()->flash('message', 'Ya se envió un recordatorio recientemente (últimas 12h).');
         }
     }
@@ -176,16 +188,16 @@ class AdminDashboard extends Component
     {
         $ejercicio = (int) now()->year;
 
-        $peri = mb_strtolower(trim((string)$periodicidad));
-        $seg  = (int) $seg;
+        $peri = mb_strtolower(trim((string) $periodicidad));
+        $seg = (int) $seg;
 
         // ✅ etiqueta bonita
         $label = match ($peri) {
-            'mensual'    => 'M' . $seg,
-            'trimestral' => 'T' . $seg,
-            'semestral'  => 'S' . $seg,
-            'anual'      => 'A',
-            default      => (string)$periodicidad . ' ' . $seg,
+            'mensual' => 'M'.$seg,
+            'trimestral' => 'T'.$seg,
+            'semestral' => 'S'.$seg,
+            'anual' => 'A',
+            default => (string) $periodicidad.' '.$seg,
         };
 
         $this->modalOpen = true;
@@ -196,13 +208,13 @@ class AdminDashboard extends Component
         $whereSegmento = match ($peri) {
             'mensual' => function ($q) use ($seg) {
                 // mes exacto
-                $q->where(DB::raw("CAST(SUBSTRING(c.periodo,6,2) AS UNSIGNED)"), $seg);
+                $q->where(DB::raw('CAST(SUBSTRING(c.periodo,6,2) AS UNSIGNED)'), $seg);
             },
             'trimestral' => function ($q) use ($seg) {
-                $q->where(DB::raw("CEIL(CAST(SUBSTRING(c.periodo,6,2) AS UNSIGNED) / 3)"), $seg);
+                $q->where(DB::raw('CEIL(CAST(SUBSTRING(c.periodo,6,2) AS UNSIGNED) / 3)'), $seg);
             },
             'semestral' => function ($q) use ($seg) {
-                $q->where(DB::raw("CEIL(CAST(SUBSTRING(c.periodo,6,2) AS UNSIGNED) / 6)"), $seg);
+                $q->where(DB::raw('CEIL(CAST(SUBSTRING(c.periodo,6,2) AS UNSIGNED) / 6)'), $seg);
             },
             'anual' => function ($q) {
                 // anual = todo el año (no filtramos por seg, siempre 1)
@@ -211,7 +223,7 @@ class AdminDashboard extends Component
             },
             default => function ($q) use ($seg) {
                 // fallback: trimestral
-                $q->where(DB::raw("CEIL(CAST(SUBSTRING(c.periodo,6,2) AS UNSIGNED) / 3)"), $seg);
+                $q->where(DB::raw('CEIL(CAST(SUBSTRING(c.periodo,6,2) AS UNSIGNED) / 3)'), $seg);
             },
         };
 
@@ -254,14 +266,14 @@ class AdminDashboard extends Component
             ->get()
             ->map(function ($r) {
                 return [
-                    'id_carga'    => $r->id_carga,
-                    'id_form'     => $r->id_form,
-                    'folio'       => $r->folioUnico_carga ?: $r->id_carga,
-                    'periodo'     => $r->periodo,
-                    'ejercicio'   => $r->ejercicio,
-                    'estatus'     => $r->status_env,
-                    'formulario'  => $r->titulo_form,
-                    'fecha'       => $r->created_at ? Carbon::parse($r->created_at)->format('Y-m-d H:i') : null,
+                    'id_carga' => $r->id_carga,
+                    'id_form' => $r->id_form,
+                    'folio' => $r->folioUnico_carga ?: $r->id_carga,
+                    'periodo' => $r->periodo,
+                    'ejercicio' => $r->ejercicio,
+                    'estatus' => $r->status_env,
+                    'formulario' => $r->titulo_form,
+                    'fecha' => $r->created_at ? Carbon::parse($r->created_at)->format('Y-m-d H:i') : null,
                     'actualizado' => $r->updated_at ? Carbon::parse($r->updated_at)->format('Y-m-d H:i') : null,
                 ];
             })
@@ -281,13 +293,13 @@ class AdminDashboard extends Component
 
     public function testClick()
     {
-        session()->flash('message', 'Click OK ' . now());
+        session()->flash('message', 'Click OK '.now());
     }
 
     public function getListeners()
     {
         return [
-            "echo:dashboard.admin,DashboardUpdated" => '$refresh',
+            'echo:dashboard.admin,DashboardUpdated' => '$refresh',
         ];
     }
 
@@ -328,15 +340,15 @@ class AdminDashboard extends Component
         foreach ($metas as $id_depen => $meta) {
             $meta = (int) $meta;
             $done = (int) ($hechos[$id_depen] ?? 0);
-            $pct  = $meta > 0 ? (int) round(($done / $meta) * 100) : 0;
+            $pct = $meta > 0 ? (int) round(($done / $meta) * 100) : 0;
 
             $color = $meta === 0 ? 'secondary' : ($pct >= 80 ? 'success' : ($pct >= 40 ? 'warning' : 'danger'));
 
             $this->avancePorDep[$id_depen] = [
-                'meta'   => $meta,
+                'meta' => $meta,
                 'hechos' => $done,
-                'pct'    => $pct,
-                'color'  => $color,
+                'pct' => $pct,
+                'color' => $color,
             ];
         }
 
@@ -381,17 +393,17 @@ class AdminDashboard extends Component
         foreach ($deps as $d) {
             $id = (int) $d->id_depen;
 
-            $meta   = (int) ($metaPorDep[$id] ?? 0);
+            $meta = (int) ($metaPorDep[$id] ?? 0);
             $hechas = (int) ($hechasPorDep[$id] ?? 0);
 
-            $pct   = $meta > 0 ? (int) round(($hechas / $meta) * 100) : 0;
+            $pct = $meta > 0 ? (int) round(($hechas / $meta) * 100) : 0;
             $color = $meta === 0 ? 'secondary' : ($pct >= 80 ? 'success' : ($pct >= 40 ? 'warning' : 'danger'));
 
             $this->kardexPorDep[$id] = [
-                'meta'   => $meta,
+                'meta' => $meta,
                 'hechas' => min($hechas, $meta),
-                'pct'    => $pct,
-                'color'  => $color,
+                'pct' => $pct,
+                'color' => $color,
             ];
         }
 
@@ -399,10 +411,10 @@ class AdminDashboard extends Component
        ✅ MULTI-PERIODICIDAD: Kardex por periodo por dependencia
     ========================================================= */
         $periodosDef = [
-            'Mensual'    => 12,
+            'Mensual' => 12,
             'Trimestral' => 4,
-            'Semestral'  => 2,
-            'Anual'      => 1,
+            'Semestral' => 2,
+            'Anual' => 1,
         ];
 
         // 1) METAS: metasIdx[dep][periodicidad][seg] = meta
@@ -491,9 +503,9 @@ class AdminDashboard extends Component
 
         $this->estatusPorDepSeg = [];
         foreach ($rows as $r) {
-            $d  = (int) $r->id_depen;
-            $p  = trim((string) $r->periodicidad);
-            $s  = (int) $r->seg;
+            $d = (int) $r->id_depen;
+            $p = trim((string) $r->periodicidad);
+            $s = (int) $r->seg;
             $st = strtoupper(trim((string) $r->status_env));
             $this->estatusPorDepSeg[$d][$p][$s][$st] = (int) $r->total;
         }
@@ -505,34 +517,41 @@ class AdminDashboard extends Component
             $idDep = (int) $drow->id_depen;
 
             foreach ($periodosDef as $peri => $maxSeg) {
-                if (empty($metasIdx[$idDep][$peri] ?? [])) continue;
+                if (empty($metasIdx[$idDep][$peri] ?? [])) {
+                    continue;
+                }
 
                 $cards = [];
                 for ($seg = 1; $seg <= $maxSeg; $seg++) {
-                    $meta   = (int) ($metasIdx[$idDep][$peri][$seg] ?? 0);
+                    $meta = (int) ($metasIdx[$idDep][$peri][$seg] ?? 0);
                     $hechas = (int) ($hechasIdx[$idDep][$peri][$seg] ?? 0);
 
                     $hechasTop = $meta > 0 ? min($hechas, $meta) : 0;
 
-                    if ($meta === 0) $estado = 'secondary';
-                    elseif ($hechasTop >= $meta) $estado = 'success';
-                    elseif ($hechasTop > 0) $estado = 'warning';
-                    else $estado = 'danger';
+                    if ($meta === 0) {
+                        $estado = 'secondary';
+                    } elseif ($hechasTop >= $meta) {
+                        $estado = 'success';
+                    } elseif ($hechasTop > 0) {
+                        $estado = 'warning';
+                    } else {
+                        $estado = 'danger';
+                    }
 
                     $label = match ($peri) {
-                        'Mensual'    => 'M' . $seg,
-                        'Trimestral' => 'T' . $seg,
-                        'Semestral'  => 'S' . $seg,
-                        'Anual'      => 'A',
-                        default      => $peri . ' ' . $seg,
+                        'Mensual' => 'M'.$seg,
+                        'Trimestral' => 'T'.$seg,
+                        'Semestral' => 'S'.$seg,
+                        'Anual' => 'A',
+                        default => $peri.' '.$seg,
                     };
 
                     $cards[] = [
                         'label' => $label,
-                        'meta'  => $meta,
+                        'meta' => $meta,
                         'hechas' => $hechasTop,
                         'estado' => $estado,
-                        'seg'   => $seg,
+                        'seg' => $seg,
                         'periodicidad' => $peri,
                     ];
                 }

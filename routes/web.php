@@ -1,25 +1,22 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Livewire\Carga\CargaCreate;
-use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\AdminController;
-use App\Http\Controllers\UsuarioController;
-use App\Livewire\AdminDashboard;
-use App\Livewire\Usuario\FormularioCaptura;
-use App\Livewire\DetalleCargas;
 use App\Http\Controllers\AnexoDownloadController;
+use App\Http\Controllers\Auth\ForgotPasswordController;
+use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\ResetPasswordController;
+use App\Http\Controllers\Usuario\IndicadorController;
+use App\Http\Controllers\UsuarioAnexosController;
+use App\Http\Controllers\UsuarioController;
+use App\Http\Controllers\UsuarioEnvioController;
+use App\Livewire\Admin\ConfiguracionCaptura;
+use App\Livewire\Carga\CargaCreate;
+use App\Livewire\DetalleCargas;
 use App\Livewire\Formularios;
 use App\Livewire\IndicadorCampos;
-use App\Http\Controllers\UsuarioEnvioController;
-use App\Http\Controllers\UsuarioAnexosController;
-use App\Http\Controllers\Auth\ForgotPasswordController;
-use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Models\Indicador;
 use Illuminate\Support\Facades\DB;
-use App\Livewire\Admin\ConfiguracionCaptura;
-use App\Http\Controllers\Usuario\IndicadorController;
-
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -63,7 +60,6 @@ Route::middleware('auth')->get('/redirect-por-rol', function () {
     abort(403, 'Rol no autorizado');
 });
 
-
 /* ---------------- DASHBOARDS ---------------- */
 Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/admin/dashboard', [AdminController::class, 'dashboard'])
@@ -74,7 +70,6 @@ Route::middleware(['auth', 'role:usuario'])->group(function () {
     Route::get('/usuario/dashboard', [UsuarioController::class, 'dashboard'])
         ->name('usuario.dashboard');
 });
-
 
 /* ---------------- RUTAS SOLO ADMIN ---------------- */
 Route::middleware(['auth', 'role:admin'])->group(function () {
@@ -90,9 +85,8 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
         ->name('admin.cargas.revision');
 
     Route::get('/admin/configuracion-captura', ConfiguracionCaptura::class)
-            ->name('admin.configuracion.captura');
+        ->name('admin.configuracion.captura');
 });
-
 
 /* ---------------- RUTAS COMPARTIDAS (ADMIN + USUARIO) ---------------- */
 Route::middleware(['auth', 'role:admin'])->group(function () {
@@ -109,9 +103,9 @@ Route::get('/admin/indicadores/{id_ind}/metas', \App\Livewire\Admin\Metas\MetasI
     ->name('admin.indicadores.metas');
 
 Route::middleware(['auth', 'role:usuario'])->group(function () {
-    //Route::get('/usuario/anexos', function () {
+    // Route::get('/usuario/anexos', function () {
     //    return view('usuario.anexos.index');
-    //})->name('usuario.anexos');
+    // })->name('usuario.anexos');
 
     Route::get('/usuario/anexos', [UsuarioAnexosController::class, 'index'])
         ->name('usuario.anexos');
@@ -128,7 +122,7 @@ Route::middleware(['auth'])->group(function () {
     });
 
     Route::get('usuario/formulario/{id_form}/{id_ind}/{id_meta?}', App\Livewire\Usuario\FormularioCaptura::class)
-    ->name('usuario.formulario.captura');
+        ->name('usuario.formulario.captura');
 
     Route::get('/detallecargas/{id_carga}', DetalleCargas::class)
         ->name('detallecargas.index');
@@ -190,8 +184,8 @@ Route::middleware(['auth'])->group(function () {
             $urlCapturar = $meta->id_form
                 ? route('usuario.formulario.captura', [
                     'id_form' => $meta->id_form,
-                    'id_ind'  => $id_ind,
-                ]) . '?id_meta=' . $meta->id
+                    'id_ind' => $id_ind,
+                ]).'?id_meta='.$meta->id
                 : '#';
 
             // ✅ Ver: si hay carga real, ver esa carga; si no, cae a "ver último envío" del formulario

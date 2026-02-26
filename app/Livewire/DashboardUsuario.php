@@ -2,35 +2,43 @@
 
 namespace App\Livewire;
 
-use Livewire\Component;
-use App\Models\Formulario;
 use App\Models\Carga;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use App\Models\MetaPeriodo;
+use App\Models\Formulario;
 use App\Models\Indicador;
-
+use Illuminate\Support\Facades\Auth;
+use Livewire\Component;
 
 class DashboardUsuario extends Component
 {
     // KPI existentes
     public int $formulariosDisponibles = 0;
+
     public int $cargasRealizadas = 0;
 
     // NUEVOS (los usa tu blade)
     public ?string $dependenciaNombre = null;
-    public int $pendientes = 0;
-    public int $observaciones = 0;
-    public $ultimasCargas = [];
-    public $metaIndicadores = 0;
-    public $indicadoresCompletados = 0;
-    public $porcentajeAvance = 0;
-    public int $metaCargas = 0;      // total de metas sumadas (ej: 11)
-    public int $cargasHechas = 0;    // total hechas (ej: 5)
-    public int $porcentajeMeta = 0;  // ej: 45
-    public array $kardexMetas = [];
-    public array $kardexMetasPorIndicador = []; // NUEVO: kardex por indicador (cada uno con su periodicidad)
 
+    public int $pendientes = 0;
+
+    public int $observaciones = 0;
+
+    public $ultimasCargas = [];
+
+    public $metaIndicadores = 0;
+
+    public $indicadoresCompletados = 0;
+
+    public $porcentajeAvance = 0;
+
+    public int $metaCargas = 0;      // total de metas sumadas (ej: 11)
+
+    public int $cargasHechas = 0;    // total hechas (ej: 5)
+
+    public int $porcentajeMeta = 0;  // ej: 45
+
+    public array $kardexMetas = [];
+
+    public array $kardexMetasPorIndicador = []; // NUEVO: kardex por indicador (cada uno con su periodicidad)
 
     public function mount()
     {
@@ -88,7 +96,7 @@ class DashboardUsuario extends Component
     ========================================================= */
 
         // ✅ Pendientes reales = meta - completados
-        $this->pendientes = max(0, (int)$this->metaIndicadores - (int)$this->indicadoresCompletados);
+        $this->pendientes = max(0, (int) $this->metaIndicadores - (int) $this->indicadoresCompletados);
 
         // ⚠️ Ajusta estos status a los reales (en tu UI usas OBSERVADO)
         $this->observaciones = (clone $base)->whereIn('status_env', ['OBSERVADO', 'RECHAZADO'])->count();
@@ -127,7 +135,9 @@ class DashboardUsuario extends Component
             $pl = mb_strtolower(trim((string) $periodicidad));
 
             // si viene vacío, NO inventamos trimestral; mejor mostrar "Sin periodicidad"
-            if ($pl === '') $pl = 'sin_periodicidad';
+            if ($pl === '') {
+                $pl = 'sin_periodicidad';
+            }
 
             // meta total del indicador (suma de metas por segmento)
             $metaTotal = (int) $ind->metasPeriodo->sum('meta');
@@ -205,16 +215,16 @@ class DashboardUsuario extends Component
                 }
 
                 $label = match ($pl) {
-                    'mensual'    => 'M' . $seg,
-                    'trimestral' => 'T' . $seg,
-                    'semestral'  => 'S' . $seg,
-                    'anual'      => 'Año',
-                    default      => 'P' . $seg,
+                    'mensual' => 'M'.$seg,
+                    'trimestral' => 'T'.$seg,
+                    'semestral' => 'S'.$seg,
+                    'anual' => 'Año',
+                    default => 'P'.$seg,
                 };
 
                 $kardex[] = [
-                    'label'  => $label,
-                    'meta'   => $metaSeg,
+                    'label' => $label,
+                    'meta' => $metaSeg,
                     'hechas' => $hechasSegTop,
                     'estado' => $estado,
                 ];
@@ -229,13 +239,13 @@ class DashboardUsuario extends Component
 
             // guardar bloque para el blade
             $this->kardexMetasPorIndicador[] = [
-                'id_ind'       => $ind->id_ind,
-                'nombre'       => $ind->nombre_ind ?? ('Indicador ' . $ind->id_ind),
+                'id_ind' => $ind->id_ind,
+                'nombre' => $ind->nombre_ind ?? ('Indicador '.$ind->id_ind),
                 'periodicidad' => $periodicidad ?? 'Sin periodicidad',
-                'meta_total'   => $metaTotal,
+                'meta_total' => $metaTotal,
                 'hechas_total' => $hechasTotal,
-                'pct'          => $porcentaje,
-                'kardex'       => $kardex,
+                'pct' => $porcentaje,
+                'kardex' => $kardex,
             ];
         }
 
@@ -244,13 +254,13 @@ class DashboardUsuario extends Component
          * Si tu vista SOLO usa $kardexMetas, $metaCargas, etc.,
          * llenamos esos con el primer indicador para que no se rompa.
          */
-        if (!empty($this->kardexMetasPorIndicador)) {
+        if (! empty($this->kardexMetasPorIndicador)) {
             $primero = $this->kardexMetasPorIndicador[0];
 
-            $this->metaCargas      = (int) $primero['meta_total'];
-            $this->cargasHechas    = (int) $primero['hechas_total'];
-            $this->porcentajeMeta  = (int) $primero['pct'];
-            $this->kardexMetas     = $primero['kardex'];
+            $this->metaCargas = (int) $primero['meta_total'];
+            $this->cargasHechas = (int) $primero['hechas_total'];
+            $this->porcentajeMeta = (int) $primero['pct'];
+            $this->kardexMetas = $primero['kardex'];
         }
     }
 
@@ -264,11 +274,21 @@ class DashboardUsuario extends Component
     {
         $st = strtolower((string) $status);
 
-        if (str_contains($st, 'rech')) return 'danger';
-        if (str_contains($st, 'obs'))  return 'warning';
-        if (str_contains($st, 'pend') || str_contains($st, 'borr')) return 'secondary';
-        if (str_contains($st, 'env'))  return 'primary';
-        if (str_contains($st, 'aprob') || str_contains($st, 'final')) return 'success';
+        if (str_contains($st, 'rech')) {
+            return 'danger';
+        }
+        if (str_contains($st, 'obs')) {
+            return 'warning';
+        }
+        if (str_contains($st, 'pend') || str_contains($st, 'borr')) {
+            return 'secondary';
+        }
+        if (str_contains($st, 'env')) {
+            return 'primary';
+        }
+        if (str_contains($st, 'aprob') || str_contains($st, 'final')) {
+            return 'success';
+        }
 
         return 'primary';
     }

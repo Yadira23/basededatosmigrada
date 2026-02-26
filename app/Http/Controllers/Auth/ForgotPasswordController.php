@@ -21,6 +21,7 @@ class ForgotPasswordController extends Controller
     */
 
     use SendsPasswordResetEmails;
+
     public function showLinkRequestForm()
     {
         return view('auth.forgot-password');
@@ -35,7 +36,7 @@ class ForgotPasswordController extends Controller
         // 🔎 Buscar usuario por email_usr (tu columna real)
         $user = \App\Models\Usuario::where('email_usr', $request->email)->first();
 
-        if (!$user) {
+        if (! $user) {
             return back()->withErrors([
                 'email' => 'No existe un usuario con ese correo.',
             ]);

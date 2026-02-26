@@ -2,11 +2,11 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
+use App\Livewire\UsuarioFormularios;
 use App\Models\Carga;
 use App\Observers\CargaObserver;
+use Illuminate\Support\ServiceProvider;
 use Livewire\Livewire;
-use App\Livewire\UsuarioFormularios;
 
 class AppServiceProvider extends ServiceProvider
 {
