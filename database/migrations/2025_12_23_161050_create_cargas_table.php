@@ -28,6 +28,13 @@ return new class extends Migration
                 ->references('id_form')
                 ->on('formularios')
                 ->onDelete('cascade');
+                
+            $table->unsignedBigInteger('meta_id')->nullable()->after('id_form');
+
+            $table->foreign('meta_id')
+                ->references('id')
+                ->on('metas')
+                ->nullOnDelete();
 
             $table->timestamps();
         });
