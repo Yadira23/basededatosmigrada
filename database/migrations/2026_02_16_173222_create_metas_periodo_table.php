@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
 
             $table->unsignedBigInteger('id_ind');
+            $table->unsignedBigInteger('id_form')->nullable();
             $table->unsignedSmallInteger('ejercicio');
 
             $table->string('periodicidad', 20);
@@ -25,6 +26,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index(['id_ind', 'ejercicio', 'periodicidad']);
+            $table->index(['id_form']);
             $table->unique(
                 ['id_ind', 'ejercicio', 'periodicidad', 'segmento'],
                 'uniq_meta_periodo'
@@ -33,6 +35,11 @@ return new class extends Migration
             $table->foreign('id_ind')
                 ->references('id_ind')
                 ->on('indicadores')
+                ->onDelete('cascade');
+
+            $table->foreign('id_form')
+                ->references('id_form')
+                ->on('formularios')
                 ->onDelete('cascade');
         });
     }
