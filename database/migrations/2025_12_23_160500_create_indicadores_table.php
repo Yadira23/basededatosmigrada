@@ -26,6 +26,7 @@ return new class extends Migration
             $table->string('periodo_ind', 20);
             $table->string('etiquetas_ind', 200)->nullable();
             $table->string('fuenteverificacion_ind', 200)->nullable();
+            $table->json('config_campos')->nullable();
 
             $table->timestamps();
         });
