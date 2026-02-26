@@ -29,7 +29,7 @@ return new class extends Migration
                 ->on('formularios')
                 ->onDelete('cascade');
                 
-            $table->unsignedBigInteger('meta_id')->nullable()->after('id_form');
+            $table->unsignedBigInteger('meta_id')->nullable();
 
             $table->foreign('meta_id')
                 ->references('id')
