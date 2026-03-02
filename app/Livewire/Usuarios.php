@@ -63,7 +63,7 @@ class Usuarios extends Component
     // Filtrado de usuarios para la tabla
     public function getFilteredUsuariosProperty()
     {
-        $keyWord = '%'.$this->keyWord.'%';
+        $keyWord = '%' . $this->keyWord . '%';
 
         return Usuario::latest()
             ->where(function ($query) use ($keyWord) {
@@ -98,11 +98,11 @@ class Usuarios extends Component
     {
         // Validaciones base
         $rules = [
-            'usuario_usr' => 'required|unique:usuarios,usuario_usr,'.$this->selected_id.',id_usuario',
+            'usuario_usr' => 'required|unique:usuarios,usuario_usr,' . $this->selected_id . ',id_usuario',
             'nombre_usr' => 'required',
             'apellido_paterno' => 'required',
             'apellido_materno' => 'nullable',
-            'email_usr' => 'required|email|unique:usuarios,email_usr,'.$this->selected_id.',id_usuario',
+            'email_usr' => 'required|email|unique:usuarios,email_usr,' . $this->selected_id . ',id_usuario',
             'password' => $this->selected_id ? 'nullable|min:6' : 'required|min:6',
             'id_rol' => 'required',
             'estado_usr' => 'required',
@@ -111,7 +111,7 @@ class Usuarios extends Component
 
         // Si no es admin, dependencia obligatoria
         if ($this->id_rol != 1) {
-            $rules['id_depen'] = 'required|unique:usuarios,id_depen,'.$this->selected_id.',id_usuario';
+            $rules['id_depen'] = 'required|unique:usuarios,id_depen,' . $this->selected_id . ',id_usuario';
         }
 
         $this->validate($rules);
@@ -156,13 +156,13 @@ class Usuarios extends Component
         // Asignar rol con Spatie
         $usuario->syncRoles(Role::find($this->id_rol)->name);
 
-        $this->dispatch('closeModal');
-        $this->reset();
-
         session()->flash(
             'message',
             $this->selected_id ? 'Usuario actualizado correctamente' : 'Usuario creado correctamente'
         );
+
+        $this->reset();
+        $this->dispatch('close-modal', id: 'DataModal');
     }
 
     public function edit($id)

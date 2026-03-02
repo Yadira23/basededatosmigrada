@@ -22,7 +22,12 @@ class Usuario extends Authenticatable
 
     protected $guard_name = 'web';
 
-    protected $fillable = ['usuario_usr', 'nombre_usr', 'apellido_paterno', 'apellido_materno', 'email_usr', 'password', 'id_depen', 'estado_usr', 'telefono_usr'];
+    protected $fillable = ['usuario_usr', 'nombre_usr', 'apellido_paterno', 'apellido_materno', 'email_usr', 'password', 'id_depen', 'estado_usr', 'telefono_usr', 'password'];
+
+    protected $hidden = [
+        'password',
+        'remember_token',
+    ];
 
     public function getEmailAttribute()
     {

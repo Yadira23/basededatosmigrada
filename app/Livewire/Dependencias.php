@@ -41,7 +41,7 @@ class Dependencias extends Component
     #[Computed]
     public function filteredDependencias()
     {
-        $keyWord = '%'.$this->keyWord.'%';
+        $keyWord = '%' . $this->keyWord . '%';
 
         return Dependencia::latest()
             ->where(function ($query) use ($keyWord) {
@@ -83,7 +83,7 @@ class Dependencias extends Component
                 'min:5',
                 'max:255',
                 'regex:/^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ\s]+$/',
-                'unique:dependencias,nombre_depen,'.$this->selected_id.',id_depen',
+                'unique:dependencias,nombre_depen,' . $this->selected_id . ',id_depen',
             ],
 
             'id_sector' => [
@@ -95,7 +95,7 @@ class Dependencias extends Component
                 'required',
                 'email:rfc,dns',
                 'max:255',
-                'unique:dependencias,email_depen,'.$this->selected_id.',id_depen',
+                'unique:dependencias,email_depen,' . $this->selected_id . ',id_depen',
             ],
 
             'extension_depen' => [
@@ -151,6 +151,9 @@ class Dependencias extends Component
 
         $this->reset();
         session()->flash('message', 'Dependencia guardada correctamente');
+
+        // ✅ cerrar modal
+        $this->dispatch('close-modal', id: 'DataModal');
     }
 
     public function edit($id)

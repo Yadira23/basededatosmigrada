@@ -25,6 +25,8 @@ class DatabaseSeeder extends Seeder
             RegionSeeder::class,
             MunicipioSeeder::class,
             DependenciaSeeder::class,
+            PermissionSeeder::class,
+            ConfiguracionesSeeder::class,
         ]);
     }
 }

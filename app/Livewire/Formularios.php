@@ -62,7 +62,7 @@ class Formularios extends Component
             $this->fecha_creacion_form = now()->toDateString();
 
             // ✅ abrir modal
-            $this->dispatch('show-modal');
+            $this->dispatch('show-modal', id: 'DataModal');
         }
     }
 
@@ -93,7 +93,7 @@ class Formularios extends Component
     #[Computed]
     public function filteredFormularios()
     {
-        $keyWord = '%'.$this->keyWord.'%';
+        $keyWord = '%' . $this->keyWord . '%';
 
         $query = Formulario::query();
 
@@ -190,8 +190,8 @@ class Formularios extends Component
             ]
         );
 
-        $this->dispatch('close-modal');
         $this->resetExcept(['fecha_creacion_form', 'boton_accion_form', 'id_ind']);
+        $this->dispatch('close-modal', id: 'DataModal');
 
         session()->flash(
             'message',
@@ -312,6 +312,6 @@ class Formularios extends Component
     {
         $this->resetValidation();
         $this->reset(['selected_id', 'titulo_form', 'descripcion_form', 'fecha_creacion_form', 'id_depen', 'periodo_form', 'secciones_form']); // ajusta según los campos
-        $this->dispatch('show-modal');
+        $this->dispatch('show-modal', id: 'DataModal');
     }
 }

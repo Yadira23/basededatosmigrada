@@ -118,8 +118,8 @@
                 @endrole
 
                 <!-- =========================================================
-                                         MENÚ USUARIO (solo lo que puede ver)
-                                    ========================================================== -->
+                                                                     MENÚ USUARIO (solo lo que puede ver)
+                                                                ========================================================== -->
                 @role('usuario')
                     <hr class="sidebar-divider">
                     <div class="sidebar-heading">Captura</div>
@@ -140,8 +140,8 @@
                 @endrole
 
                 <!-- =========================================================
-                                         MENÚ ADMIN (todo lo de administración)
-                                    ========================================================== -->
+                                                                     MENÚ ADMIN (todo lo de administración)
+                                                                ========================================================== -->
                 @role('admin')
                     <hr class="sidebar-divider">
                     <div class="sidebar-heading">Formularios</div>
@@ -278,7 +278,9 @@
                                 </a>
                                 <div class="dropdown-menu dropdown-menu-right shadow animated--grow-in"
                                     aria-labelledby="userDropdown">
-                                    <a class="dropdown-item" href="#">Perfil</a>
+                                    <a class="dropdown-item" href="{{ route('admin.perfil') }}">
+                                        Perfil
+                                    </a>
                                     <div class="dropdown-divider"></div>
                                     <form method="POST" action="{{ route('logout') }}">
                                         @csrf
@@ -352,6 +354,72 @@
             // si NO usas bootstrap 5, comenta esta parte
             // var myModal = new bootstrap.Modal(document.getElementById('FormularioCreateModal'), {});
             // myModal.show();
+        });
+    </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            function forceCloseModal(el) {
+                // quitar foco
+                if (document.activeElement) document.activeElement.blur();
+
+                // ✅ Bootstrap 4 (SB Admin 2): jQuery modal
+                if (window.jQuery && typeof window.jQuery(el).modal === 'function') {
+                    window.jQuery(el).modal('hide');
+                }
+                // ✅ Bootstrap 5: bootstrap.Modal
+                else if (window.bootstrap && bootstrap.Modal) {
+                    const modal = bootstrap.Modal.getOrCreateInstance(el);
+                    modal.hide();
+                }
+
+                // Limpieza (por si queda pegado)
+                el.classList.remove('show', 'd-block');
+                el.style.display = 'none';
+                el.setAttribute('aria-hidden', 'true');
+
+                document.body.classList.remove('modal-open');
+                document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+                document.body.style.removeProperty('overflow');
+                document.body.style.removeProperty('padding-right');
+            }
+
+            function hideAnyModalById(id) {
+                const el = id ? document.getElementById(id) : null;
+                if (el) return forceCloseModal(el);
+
+                const any = document.querySelector('.modal.show') || document.querySelector('.modal.d-block');
+                if (any) forceCloseModal(any);
+            }
+
+            window.addEventListener('close-modal', (event) => hideAnyModalById(event.detail?.id));
+            document.addEventListener('close-modal', (event) => hideAnyModalById(event.detail?.id));
+        });
+    </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            function openModalById(id) {
+                const el = document.getElementById(id);
+                if (!el) return;
+
+                // Bootstrap 4 (SB Admin 2)
+                if (window.jQuery && typeof window.jQuery(el).modal === 'function') {
+                    window.jQuery(el).modal('show');
+                }
+                // Bootstrap 5
+                else if (window.bootstrap && bootstrap.Modal) {
+                    const modal = bootstrap.Modal.getOrCreateInstance(el);
+                    modal.show();
+                }
+            }
+
+            window.addEventListener('show-modal', (event) => {
+                openModalById(event.detail?.id || 'DataModal');
+            });
+
         });
     </script>
 

@@ -17,6 +17,7 @@
 
             <h1 class="auth-title">Iniciar sesión</h1>
             <p class="auth-subtitle">Sistema de Captura de Indicadores</p>
+            <h4 class="auth-title">BIENVENIDOS</h4>
         </div>
 
         {{-- FORM --}}

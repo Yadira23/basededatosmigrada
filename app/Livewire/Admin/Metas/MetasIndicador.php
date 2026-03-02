@@ -76,17 +76,17 @@ class MetasIndicador extends Component
         if (str_contains($p, 'mens')) {
             // Mensual: 1..12
             for ($i = 1; $i <= 12; $i++) {
-                $map[$i] = 'M'.str_pad((string) $i, 2, '0', STR_PAD_LEFT);
+                $map[$i] = 'M' . str_pad((string) $i, 2, '0', STR_PAD_LEFT);
             }
         } elseif (str_contains($p, 'trim')) {
             // Trimestral: 1..4
             for ($i = 1; $i <= 4; $i++) {
-                $map[$i] = 'T'.$i;
+                $map[$i] = 'T' . $i;
             }
         } elseif (str_contains($p, 'sem')) {
             // Semestral: 1..2
             for ($i = 1; $i <= 2; $i++) {
-                $map[$i] = 'S'.$i;
+                $map[$i] = 'S' . $i;
             }
         } elseif (str_contains($p, 'an')) {
             // Anual: solo 1
@@ -109,7 +109,7 @@ class MetasIndicador extends Component
         $this->cortesUsados = Meta::where('id_ind', $this->id_ind)
             ->where('ejercicio', $this->ejercicio)
             ->pluck('corte')
-            ->map(fn ($v) => (int) $v)
+            ->map(fn($v) => (int) $v)
             ->toArray();
     }
 
@@ -188,8 +188,8 @@ class MetasIndicador extends Component
         ]);
 
         session()->flash('message', 'Meta creada correctamente.');
-        $this->dispatch('close-modal');
         $this->resetInput();
+        $this->dispatch('close-modal', id: 'MetaModal');
     }
 
     public function edit($id)
@@ -241,8 +241,8 @@ class MetasIndicador extends Component
         ]);
 
         session()->flash('message', 'Meta actualizada.');
-        $this->dispatch('close-modal');
         $this->resetInput();
+        $this->dispatch('close-modal', id: 'MetaModal');
     }
 
     public function destroy($id)
@@ -314,7 +314,7 @@ class MetasIndicador extends Component
         foreach ($this->campos as $i => $c) {
             $slug = trim((string) ($c['slug'] ?? ''));
             if ($slug === '') {
-                throw new \Exception('El campo #'.($i + 1).' necesita slug.');
+                throw new \Exception('El campo #' . ($i + 1) . ' necesita slug.');
             }
             if (in_array($slug, $slugs, true)) {
                 throw new \Exception("Slug repetido: {$slug}.");
@@ -329,7 +329,7 @@ class MetasIndicador extends Component
         ]);
 
         session()->flash('message', 'Campos de la meta guardados.');
-        $this->dispatch('close-modal');
+        $this->dispatch('close-modal', id: 'CamposModal');
     }
 
     public function render()

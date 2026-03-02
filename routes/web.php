@@ -17,6 +17,7 @@ use App\Livewire\IndicadorCampos;
 use App\Models\Indicador;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Admin\PasswordController;
 
 /*
 |--------------------------------------------------------------------------
@@ -86,6 +87,17 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 
     Route::get('/admin/configuracion-captura', ConfiguracionCaptura::class)
         ->name('admin.configuracion.captura');
+
+    Route::get('/admin/perfil', function () {
+        return view('admin.perfil');
+    })
+        ->name('admin.perfil');
+
+    Route::get('/admin/password', [PasswordController::class, 'edit'])
+        ->name('admin.password');
+
+    Route::post('/admin/password', [PasswordController::class, 'update'])
+        ->name('admin.password.update');
 });
 
 /* ---------------- RUTAS COMPARTIDAS (ADMIN + USUARIO) ---------------- */
@@ -185,7 +197,7 @@ Route::middleware(['auth'])->group(function () {
                 ? route('usuario.formulario.captura', [
                     'id_form' => $meta->id_form,
                     'id_ind' => $id_ind,
-                ]).'?id_meta='.$meta->id
+                ]) . '?id_meta=' . $meta->id
                 : '#';
 
             // ✅ Ver: si hay carga real, ver esa carga; si no, cae a "ver último envío" del formulario

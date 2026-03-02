@@ -85,7 +85,7 @@ class Cargas extends Component
     #[\Livewire\Attributes\Computed]
     public function filteredCargas()
     {
-        $keyWord = '%'.$this->keyWord.'%';
+        $keyWord = '%' . $this->keyWord . '%';
 
         $query = Carga::query()
             ->with([
@@ -167,9 +167,9 @@ class Cargas extends Component
         );
 
         // 5️⃣ Reset de variables y regenerar folio
-        $this->dispatch('closeModal');
         $this->reset();
         $this->mount(); // reinicia folio, fecha y estado
+        $this->dispatch('close-modal', id: 'DataModal');
     }
 
     public function edit($id)
@@ -228,8 +228,8 @@ class Cargas extends Component
             "Carga {$carga->folioUnico_carga} marcada como OBSERVADO."
         );
 
-        $this->dispatch('closeObservationModal');
         $this->reset(['observacion_env', 'selected_id']);
+        $this->dispatch('close-modal', id: 'ObservationModal');
     }
 
     public function openObservation($id)

@@ -77,7 +77,7 @@ class DetalleCargas extends Component
     #[Computed]
     public function filteredDetalleCargas()
     {
-        $keyWord = '%'.($this->keyWord ?? '').'%';
+        $keyWord = '%' . ($this->keyWord ?? '') . '%';
 
         $query = DetalleCarga::with(['carga', 'indicador', 'region', 'municipio'])
             ->latest();
@@ -152,9 +152,9 @@ class DetalleCargas extends Component
         );
 
         $message = $this->selected_id ? 'DetalleCarga Successfully updated.' : 'DetalleCarga Successfully created.';
-        $this->dispatch('closeModal');
         $this->reset();
         session()->flash('message', $message);
+        $this->dispatch('close-modal', id: 'DataModal');
     }
 
     public function edit($id)

@@ -112,7 +112,7 @@ class Anexos extends Component
         } else {
             // si no trae extensión, se la agregamos
             if (! preg_match('/\.[a-z0-9]+$/i', $nombre)) {
-                $nombre .= '.'.$ext;
+                $nombre .= '.' . $ext;
             }
         }
 
@@ -135,7 +135,7 @@ class Anexos extends Component
 
         session()->flash('message', $this->selected_id ? 'Anexo actualizado' : 'Anexo creado');
         $this->reset(['nombre_anexo', 'tipo_anexo', 'archivo', 'guia_anexo', 'fin_proposito_anexo', 'id_form', 'id_ind', 'selected_id']);
-        $this->dispatch('closeModal');
+        $this->dispatch('close-modal', id: 'DataModal');
     }
 
     public function edit($id)
@@ -164,7 +164,7 @@ class Anexos extends Component
 
     public function render()
     {
-        $keyWord = '%'.$this->keyWord.'%';
+        $keyWord = '%' . $this->keyWord . '%';
 
         return view('livewire.anexos.view', [
             'anexos' => Anexo::with(['formulario', 'indicador'])
@@ -179,6 +179,6 @@ class Anexos extends Component
     public function cancel()
     {
         $this->reset(['nombre_anexo', 'tipo_anexo', 'archivo', 'guia_anexo', 'fin_proposito_anexo', 'id_form', 'selected_id']);
-        $this->dispatch('closeModal'); // si usas modal
+        $this->dispatch('close-modal', id: 'DataModal'); // si usas modal
     }
 }

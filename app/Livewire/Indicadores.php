@@ -57,7 +57,7 @@ class Indicadores extends Component
     #[Computed]
     public function indicadores()
     {
-        $keyWord = '%'.$this->keyWord.'%';
+        $keyWord = '%' . $this->keyWord . '%';
 
         return Indicador::withCount('metas')
             ->where(function ($query) use ($keyWord) {
@@ -247,7 +247,7 @@ class Indicadores extends Component
         );
 
         $this->reset();
-        $this->dispatch('closeModal');
+        $this->dispatch('close-modal', id: 'DataModal');
     }
 
     /* ===============================
