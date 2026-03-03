@@ -114,6 +114,9 @@ Route::middleware(['auth', 'role:usuario'])->get('/formularios', function () {
 Route::get('/admin/indicadores/{id_ind}/metas', \App\Livewire\Admin\Metas\MetasIndicador::class)
     ->name('admin.indicadores.metas');
 
+Route::get('/admin/busqueda', [\App\Http\Controllers\Admin\BuscarController::class, 'index'])
+    ->name('admin.buscar');
+
 Route::middleware(['auth', 'role:usuario'])->group(function () {
     // Route::get('/usuario/anexos', function () {
     //    return view('usuario.anexos.index');

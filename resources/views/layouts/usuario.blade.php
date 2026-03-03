@@ -15,6 +15,20 @@
     @vite(['resources/js/app.js'])
     @livewireStyles
     @stack('styles')
+
+    <style>
+        .sidebar-user .sidebar-brand-text {
+            font-size: 13px;
+            /* más pequeño */
+            font-weight: 600;
+            line-height: 1.2;
+            text-align: center;
+            white-space: normal;
+            /* permite salto automático */
+            word-break: break-word;
+        }
+    </style>
+
 </head>
 
 <body id="page-top">
@@ -23,7 +37,7 @@
 
         @auth
             <!-- ================= SIDEBAR USUARIO ================= -->
-            <ul class="navbar-nav bg-gradient-primary sidebar sidebar-dark accordion" id="accordionSidebar">
+            <ul class="navbar-nav sidebar sidebar-dark accordion sidebar-user" id="accordionSidebar">
 
                 <!-- Brand -->
                 <a class="sidebar-brand d-flex align-items-center justify-content-center"
@@ -87,12 +101,13 @@
 
                 @auth
                     <!-- ================= TOPBAR ================= -->
-                    <nav class="navbar navbar-expand navbar-light bg-white topbar mb-4 shadow">
+                    <nav class="navbar navbar-expand navbar-light topbar mb-4 shadow user-topbar">
 
                         <!-- Logos -->
                         <div class="d-flex align-items-center mr-3">
                             <img src="{{ asset('sbadmin2/img/sedeco.png') }}" style="height:40px;" class="mr-2">
                             <img src="{{ asset('sbadmin2/img/seie.png') }}" style="height:40px;">
+                            <img src="{{ asset('sbadmin2/img/Integra.png') }}" style="height:40px;" class="mr-2">
                         </div>
 
                         <!-- Sidebar Toggle -->

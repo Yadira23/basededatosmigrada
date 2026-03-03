@@ -1,0 +1,27 @@
+
+/* ==========================
+   USUARIO (azul fuerte oficial)
+   ========================== */
+.sidebar-user{
+  background: linear-gradient(180deg, var(--seie-azul) 0%, #16325f 100%) !important;
+}
+
+/* Todo lo primary en USUARIO */
+.sidebar-user ~ #content-wrapper .btn-primary{
+  background-color: var(--seie-azul) !important;
+  border-color: var(--seie-azul) !important;
+}
+.sidebar-user ~ #content-wrapper .text-primary{
+  color: var(--seie-azul) !important;
+}
+.sidebar-user ~ #content-wrapper .border-left-primary{
+  border-left: .25rem solid var(--seie-azul) !important;
+}
+
+/* ==========================
+   TOPBAR USUARIO (más elegante)
+   ========================== */
+.user-topbar{
+  background: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}

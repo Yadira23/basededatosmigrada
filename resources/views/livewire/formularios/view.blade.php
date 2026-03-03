@@ -18,9 +18,10 @@
                                 <input wire:model.live='keyWord' type="text" class="form-control" name="search"
                                     id="search" placeholder="Buscar Formularios">
                             </div>
-                            <div class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#DataModal">
+                            <button type="button" class="btn btn-seie-accent btn-sm shadow-sm" data-bs-toggle="modal"
+                                data-bs-target="#DataModal">
                                 <i class="bi-plus-lg"></i> Add Formularios
-                            </div>
+                            </button>
                         </div>
                     </div>
 
@@ -62,7 +63,6 @@
                                                         Publicar
                                                     </button>
                                                 @else
-                                                  
                                                 @endif
                                             </td>
                                             {{-- <td>{{ $row->secciones_form }}</td> --}}
@@ -124,33 +124,33 @@
     </div>
 @endrole
 <script>
-document.addEventListener('livewire:init', () => {
+    document.addEventListener('livewire:init', () => {
 
-    Livewire.on('show-modal', () => {
-        const el = document.getElementById('DataModal');
-        if (!el) return;
-        const modal = new bootstrap.Modal(el);
-        modal.show();
-    });
-
-    Livewire.on('close-modal', () => {
-        const el = document.getElementById('DataModal');
-        if (!el) return;
-        const modal = bootstrap.Modal.getInstance(el) || new bootstrap.Modal(el);
-        modal.hide();
-    });
-
-    // ✅ SweetAlert (compatible con payload directo o [payload])
-    Livewire.on('swal', (payload) => {
-        const data = Array.isArray(payload) ? payload[0] : payload;
-
-        Swal.fire({
-            icon: data?.icon ?? 'success',
-            title: data?.title ?? 'Listo',
-            text: data?.text ?? '',
-            confirmButtonColor: '#3085d6'
+        Livewire.on('show-modal', () => {
+            const el = document.getElementById('DataModal');
+            if (!el) return;
+            const modal = new bootstrap.Modal(el);
+            modal.show();
         });
-    });
 
-});
+        Livewire.on('close-modal', () => {
+            const el = document.getElementById('DataModal');
+            if (!el) return;
+            const modal = bootstrap.Modal.getInstance(el) || new bootstrap.Modal(el);
+            modal.hide();
+        });
+
+        // ✅ SweetAlert (compatible con payload directo o [payload])
+        Livewire.on('swal', (payload) => {
+            const data = Array.isArray(payload) ? payload[0] : payload;
+
+            Swal.fire({
+                icon: data?.icon ?? 'success',
+                title: data?.title ?? 'Listo',
+                text: data?.text ?? '',
+                confirmButtonColor: '#3085d6'
+            });
+        });
+
+    });
 </script>

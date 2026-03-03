@@ -28,10 +28,11 @@
                                     id="search" placeholder="Buscar Indicadores">
                             </div>
 
-                            <div class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#DataModal">
+                            <button type="button" class="btn btn-seie-accent btn-sm shadow-sm" data-bs-toggle="modal"
+                                data-bs-target="#DataModal">
                                 <i class="bi-plus-lg"></i>
                                 Add Indicadores
-                            </div>
+                            </button>
 
                         </div>
                     </div>

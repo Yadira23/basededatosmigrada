@@ -14,7 +14,7 @@
         </div>
 
         <div class="d-none d-sm-flex">
-            <a href="{{ route('usuario.indicadores') }}" class="btn btn-primary btn-sm shadow-sm mr-2">
+            <a href="{{ route('usuario.indicadores') }}" class="btn btn-seie-accent btn-sm shadow-sm mr-2">
                 <i class="fas fa-chart-line mr-1"></i> Indicadores
             </a>
         </div>
@@ -24,7 +24,7 @@
     <div class="row">
 
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card border-left-0 seie-kpi-user shadow h-100 py-2">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">

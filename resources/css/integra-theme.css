@@ -1,0 +1,45 @@
+/* Paleta oficial (SEIE) */
+:root{
+  --seie-azul: #1d3f77;         /* principal */
+  --seie-azul-claro: #6c9fdd;
+  --seie-gris-claro: #e3e3e3;
+  --seie-gris: #c6c6c6;
+  --seie-naranja: #f98800;
+  --seie-naranja-claro: #ffa543;
+  --seie-cafe: #b28d5c;
+}
+
+/* Helpers */
+.bg-seie-azul{ background: var(--seie-azul) !important; }
+.text-seie-azul{ color: var(--seie-azul) !important; }
+.bg-seie-azul-claro{ background: var(--seie-azul-claro) !important; }
+.text-seie-azul-claro{ color: var(--seie-azul-claro) !important; }
+.bg-seie-gris-claro{ background: var(--seie-gris-claro) !important; }
+.bg-seie-naranja{ background: var(--seie-naranja) !important; }
+
+/* ==========================
+   BOTÓN ACCIÓN IMPORTANTE
+   ========================== */
+.btn-seie-accent{
+  background: var(--seie-naranja) !important;
+  border: none !important;
+  color: #fff !important;
+}
+
+.btn-seie-accent:hover{
+  background: #e07c00 !important;
+}
+
+/* ==========================
+   KPI TARJETA USUARIO
+   ========================== */
+.seie-kpi-user{
+  border-left: 5px solid var(--seie-azul-claro) !important;
+  border-radius: 10px !important;
+  transition: all 0.2s ease-in-out;
+}
+
+.seie-kpi-user:hover{
+  transform: translateY(-3px);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+}

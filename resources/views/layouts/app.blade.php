@@ -118,8 +118,8 @@
                 @endrole
 
                 <!-- =========================================================
-                                                                         MENÚ USUARIO (solo lo que puede ver)
-                                                                    ========================================================== -->
+                                                                                         MENÚ USUARIO (solo lo que puede ver)
+                                                                                    ========================================================== -->
                 @role('usuario')
                     <hr class="sidebar-divider">
                     <div class="sidebar-heading">Captura</div>
@@ -140,8 +140,8 @@
                 @endrole
 
                 <!-- =========================================================
-                                                                         MENÚ ADMIN (todo lo de administración)
-                                                                    ========================================================== -->
+                                                                                         MENÚ ADMIN (todo lo de administración)
+                                                                                    ========================================================== -->
                 @role('admin')
                     <hr class="sidebar-divider">
                     <div class="sidebar-heading">Formularios</div>
@@ -252,16 +252,20 @@
                         </button>
 
                         <!-- Search -->
-                        <form class="d-none d-sm-inline-block form-inline mr-auto ml-md-3 navbar-search">
+                        <form method="GET" action="{{ route('admin.buscar') }}"
+                            class="d-none d-sm-inline-block form-inline mr-auto ml-md-3 navbar-search">
                             <div class="input-group">
-                                <input type="text" class="form-control bg-light border-0 small"
-                                    placeholder="Buscar...">
+                                <input type="text" name="q" value="{{ request('q') }}"
+                                    class="form-control bg-light border-0 small" placeholder="Buscar...">
                                 <div class="input-group-append">
-                                    <button class="btn btn-primary" type="button"><i
-                                            class="fas fa-search fa-sm"></i></button>
+                                    <button class="btn btn-primary" type="submit">
+                                        <i class="fas fa-search fa-sm"></i>
+                                    </button>
                                 </div>
                             </div>
                         </form>
+
+                        <img src="{{ asset('sbadmin2/img/Integra.png') }}" style="height:40px;" class="mr-2">
 
                         <!-- Topbar Navbar -->
                         <ul class="navbar-nav ml-auto">
