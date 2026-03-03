@@ -90,7 +90,7 @@ class AdminDashboard extends Component
             'SIN CAPTURA',
         ];
 
-        // ✅ Query normalizada (por si viene “EN REVISIÓN”, espacios, minúsculas, etc.)
+        // ✅ Query normalizada: estados reales desde CARGAS
         $raw = DB::table('cargas')
             ->selectRaw("
         UPPER(REPLACE(TRIM(status_env),'REVISIÓN','REVISION')) AS estado,
@@ -100,10 +100,23 @@ class AdminDashboard extends Component
             ->pluck('total', 'estado')
             ->toArray();
 
+        // ✅ SIN CAPTURA = formularios que NO tienen ninguna carga
+        $totalFormularios = DB::table('formularios')->count();
+
+        $formulariosConCarga = DB::table('cargas')
+            ->distinct('id_form')
+            ->count('id_form');
+
+        $sinCaptura = max(0, $totalFormularios - $formulariosConCarga);
+
         // ✅ Rellenar faltantes con 0 y respetar el orden
         $this->cargasPorEstado = [];
         foreach ($estadosOrden as $st) {
-            $this->cargasPorEstado[$st] = (int) ($raw[$st] ?? 0);
+            if ($st === 'SIN CAPTURA') {
+                $this->cargasPorEstado[$st] = (int) $sinCaptura;
+            } else {
+                $this->cargasPorEstado[$st] = (int) ($raw[$st] ?? 0);
+            }
         }
 
         // Dependencias
