@@ -26,7 +26,7 @@ class Carga extends Model
         'descripcion_env',
         'observacion_env',
         'id_form',
-        'id_meta',
+        'meta_id',
         'meta_id',
         // ✅ nuevos (cargas personalizadas)
         'ambito_geo_carga',
@@ -86,6 +86,6 @@ class Carga extends Model
 
     public function meta()
     {
-        return $this->belongsTo(\App\Models\Meta::class, 'id_meta', 'id');
+        return $this->belongsTo(\App\Models\Meta::class, 'meta_id', 'id');
     }
 }

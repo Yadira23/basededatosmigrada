@@ -110,15 +110,15 @@
             // ===========================
             // 2) ÚLTIMA CARGA por (FORM + META)
             // ===========================
-            $ultimasCargasMeta = Carga::selectRaw('id_form, id_meta, MAX(id_carga) as ultima_id')
+            $ultimasCargasMeta = Carga::selectRaw('id_form, meta_id, MAX(id_carga) as ultima_id')
                 ->whereIn('id_form', $formularios->pluck('id_form')->unique())
-                ->whereNotNull('id_meta')
-                ->groupBy('id_form', 'id_meta')
+                ->whereNotNull('meta_id')
+                ->groupBy('id_form', 'meta_id')
                 ->get();
 
             $cargasUltimasPorMeta = Carga::whereIn('id_carga', $ultimasCargasMeta->pluck('ultima_id'))
                 ->get()
-                ->keyBy(fn($c) => $c->id_form . '-' . $c->id_meta);
+                ->keyBy(fn($c) => $c->id_form . '-' . $c->meta_id);
 
         @endphp
 

@@ -193,11 +193,11 @@ class AdminDashboard extends Component
 
         // ✅ etiqueta bonita
         $label = match ($peri) {
-            'mensual' => 'M'.$seg,
-            'trimestral' => 'T'.$seg,
-            'semestral' => 'S'.$seg,
-            'anual' => 'A',
-            default => (string) $periodicidad.' '.$seg,
+            'MENSUAL' => 'M' . $seg,
+            'TRIMESTRAL' => 'T' . $seg,
+            'SEMESTRAL' => 'S' . $seg,
+            'ANUAL' => 'A',
+            default => $peri . ' ' . $seg,
         };
 
         $this->modalOpen = true;
@@ -206,17 +206,17 @@ class AdminDashboard extends Component
         // ✅ Condición de segmento según periodicidad
         // (c.periodo viene como YYYY-MM)
         $whereSegmento = match ($peri) {
-            'mensual' => function ($q) use ($seg) {
+            'MENSUAL' => function ($q) use ($seg) {
                 // mes exacto
                 $q->where(DB::raw('CAST(SUBSTRING(c.periodo,6,2) AS UNSIGNED)'), $seg);
             },
-            'trimestral' => function ($q) use ($seg) {
+            'TRIMESTRAL' => function ($q) use ($seg) {
                 $q->where(DB::raw('CEIL(CAST(SUBSTRING(c.periodo,6,2) AS UNSIGNED) / 3)'), $seg);
             },
-            'semestral' => function ($q) use ($seg) {
+            'SEMESTRAL' => function ($q) use ($seg) {
                 $q->where(DB::raw('CEIL(CAST(SUBSTRING(c.periodo,6,2) AS UNSIGNED) / 6)'), $seg);
             },
-            'anual' => function ($q) {
+            'ANUAL' => function ($q) {
                 // anual = todo el año (no filtramos por seg, siempre 1)
                 // si quieres forzar seg=1:
                 // $q->whereRaw("1=1");
@@ -229,13 +229,15 @@ class AdminDashboard extends Component
 
         $query = DB::table('cargas as c')
             ->join('formularios as f', 'f.id_form', '=', 'c.id_form')
+            ->join('indicadores as i', 'i.id_ind', '=', 'f.id_ind') // ✅
             ->join('detallecargas as dc', 'dc.id_carga', '=', 'c.id_carga')
             ->where('f.id_depen', $id_depen)
             ->where('c.ejercicio', $ejercicio)
+            ->where('i.periodo_ind', $peri) // ✅ ESTA LÍNEA evita el duplicado mensual/semestral/anual
             ->whereRaw("c.periodo REGEXP '^[0-9]{4}-[0-9]{2}$'");
 
         // aplicar filtro de segmento (excepto anual)
-        if ($peri !== 'anual') {
+        if ($peri !== 'ANUAL') {
             $whereSegmento($query);
         }
 
@@ -293,7 +295,7 @@ class AdminDashboard extends Component
 
     public function testClick()
     {
-        session()->flash('message', 'Click OK '.now());
+        session()->flash('message', 'Click OK ' . now());
     }
 
     public function getListeners()
@@ -318,18 +320,24 @@ class AdminDashboard extends Component
         $this->totalBorradores = array_sum($this->borradoresPorDep);
 
         /* =========================================================
-       ✅ AVANCE vs META por dependencia
-    ========================================================= */
+   ✅ AVANCE DE INDICADORES SIN METAS (por dependencia)
+========================================================= */
         $estatusValidos = ['ENVIADO', 'EN REVISION', 'REENVIADO', 'APROBADO'];
 
-        $metas = DB::table('formularios')
-            ->select('id_depen', DB::raw('COUNT(DISTINCT id_form) as meta'))
-            ->groupBy('id_depen')
-            ->pluck('meta', 'id_depen')
+        // ✅ META = cantidad de formularios cuyo indicador NO tiene metas (tabla metas)
+        $metas = DB::table('formularios as f')
+            ->leftJoin('metas as m', 'm.id_ind', '=', 'f.id_ind')
+            ->whereNull('m.id') // ✅ sin metas
+            ->select('f.id_depen', DB::raw('COUNT(DISTINCT f.id_form) as meta'))
+            ->groupBy('f.id_depen')
+            ->pluck('meta', 'f.id_depen')
             ->toArray();
 
+        // ✅ HECHOS = cuántos de esos formularios sin metas ya tienen cargas en estatus válido
         $hechos = DB::table('cargas as c')
             ->join('formularios as f', 'f.id_form', '=', 'c.id_form')
+            ->leftJoin('metas as m', 'm.id_ind', '=', 'f.id_ind')
+            ->whereNull('m.id') // ✅ sin metas
             ->whereIn('c.status_env', $estatusValidos)
             ->select('f.id_depen', DB::raw('COUNT(DISTINCT c.id_form) as hechos'))
             ->groupBy('f.id_depen')
@@ -411,10 +419,10 @@ class AdminDashboard extends Component
        ✅ MULTI-PERIODICIDAD: Kardex por periodo por dependencia
     ========================================================= */
         $periodosDef = [
-            'Mensual' => 12,
-            'Trimestral' => 4,
-            'Semestral' => 2,
-            'Anual' => 1,
+            'MENSUAL' => 12,
+            'TRIMESTRAL' => 4,
+            'SEMESTRAL' => 2,
+            'ANUAL' => 1,
         ];
 
         // 1) METAS: metasIdx[dep][periodicidad][seg] = meta
@@ -434,7 +442,7 @@ class AdminDashboard extends Component
         $metasIdx = [];
         foreach ($metasPorDepSeg as $r) {
             $d = (int) $r->id_depen;
-            $p = trim((string) $r->periodicidad);
+            $p = strtoupper(trim((string) $r->periodicidad));
             $s = (int) $r->segmento;
             $metasIdx[$d][$p][$s] = (int) $r->meta;
         }
@@ -526,6 +534,10 @@ class AdminDashboard extends Component
                     $meta = (int) ($metasIdx[$idDep][$peri][$seg] ?? 0);
                     $hechas = (int) ($hechasIdx[$idDep][$peri][$seg] ?? 0);
 
+                    if ($meta === 0 && $hechas === 0) {
+                        continue; // ✅ no mostrar segmentos sin meta y sin actividad
+                    }
+
                     $hechasTop = $meta > 0 ? min($hechas, $meta) : 0;
 
                     if ($meta === 0) {
@@ -539,11 +551,11 @@ class AdminDashboard extends Component
                     }
 
                     $label = match ($peri) {
-                        'Mensual' => 'M'.$seg,
-                        'Trimestral' => 'T'.$seg,
-                        'Semestral' => 'S'.$seg,
-                        'Anual' => 'A',
-                        default => $peri.' '.$seg,
+                        'MENSUAL' => 'M' . $seg,
+                        'TRIMESTRAL' => 'T' . $seg,
+                        'SEMESTRAL' => 'S' . $seg,
+                        'ANUAL' => 'A',
+                        default => $peri . ' ' . $seg,
                     };
 
                     $cards[] = [

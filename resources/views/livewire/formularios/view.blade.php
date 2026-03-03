@@ -16,7 +16,7 @@
                             @endif
                             <div>
                                 <input wire:model.live='keyWord' type="text" class="form-control" name="search"
-                                    id="search" placeholder="Search Formularios">
+                                    id="search" placeholder="Buscar Formularios">
                             </div>
                             <div class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#DataModal">
                                 <i class="bi-plus-lg"></i> Add Formularios

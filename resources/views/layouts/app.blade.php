@@ -118,8 +118,8 @@
                 @endrole
 
                 <!-- =========================================================
-                                                                     MENÚ USUARIO (solo lo que puede ver)
-                                                                ========================================================== -->
+                                                                         MENÚ USUARIO (solo lo que puede ver)
+                                                                    ========================================================== -->
                 @role('usuario')
                     <hr class="sidebar-divider">
                     <div class="sidebar-heading">Captura</div>
@@ -140,8 +140,8 @@
                 @endrole
 
                 <!-- =========================================================
-                                                                     MENÚ ADMIN (todo lo de administración)
-                                                                ========================================================== -->
+                                                                         MENÚ ADMIN (todo lo de administración)
+                                                                    ========================================================== -->
                 @role('admin')
                     <hr class="sidebar-divider">
                     <div class="sidebar-heading">Formularios</div>
@@ -335,6 +335,12 @@
     <script src="{{ asset('sbadmin2/vendor/jquery/jquery.min.js') }}"></script>
     <script src="{{ asset('sbadmin2/vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
     <script src="{{ asset('sbadmin2/vendor/jquery-easing/jquery.easing.min.js') }}"></script>
+    <script src="{{ asset('sbadmin2/vendor/jquery/jquery.min.js') }}"></script>
+    <script>
+        if (!window.jQuery) {
+            document.write('<script src="https://code.jquery.com/jquery-3.6.0.min.js"><\/script>');
+        }
+    </script>
     <script src="{{ asset('sbadmin2/js/sb-admin-2.min.js') }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 

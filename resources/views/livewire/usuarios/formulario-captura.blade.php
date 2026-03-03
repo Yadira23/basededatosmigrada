@@ -70,16 +70,16 @@
     @if (!empty($metasDisponibles) && count($metasDisponibles) > 0)
 
         @php
-            $metaSel = collect($metasDisponibles)->first(function ($m) use ($id_meta) {
-                $mid = $m['id'] ?? ($m['id_meta'] ?? null);
-                return (int) $mid === (int) $id_meta;
+            $metaSel = collect($metasDisponibles)->first(function ($m) use ($meta_id) {
+                $mid = $m['id'] ?? ($m['meta_id'] ?? null);
+                return (int) $mid === (int) $meta_id;
             });
         @endphp
 
         <div class="mb-3">
 
             {{-- ✅ Si ya viene seleccionada (por URL o por selección previa), NO mostrar select --}}
-            @if ($id_meta && $metaSel)
+            @if ($meta_id && $metaSel)
                 <div class="p-2 rounded" style="background:#eef3ff;">
                     <div class="text-muted small">Meta (parcial)</div>
                     <div class="fw-semibold" style="font-size:1.05rem;">
@@ -91,7 +91,7 @@
                 </div>
             @else
                 {{-- ✅ Si NO hay meta seleccionada, ahí sí mostrar select --}}
-                <select class="form-select" wire:model="id_meta" @disabled($metaBloqueada)>
+                <select class="form-select" wire:model="meta_id" @disabled($metaBloqueada)>
                     <option value="">— Selecciona una meta —</option>
                     @foreach ($metasDisponibles as $m)
                         <option value="{{ $m['id'] }}">

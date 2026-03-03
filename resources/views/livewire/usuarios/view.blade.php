@@ -13,7 +13,7 @@
 						<div wire:poll.4s class="btn btn-sm btn-success" style="margin-top:0px; margin-bottom:0px;"> {{ session('message') }} </div>
 						@endif
 						<div>
-							<input wire:model.live='keyWord' type="text" class="form-control" name="search" id="search" placeholder="Search Usuarios">
+							<input wire:model.live='keyWord' type="text" class="form-control" name="search" id="search" placeholder="Buscar Usuarios">
 						</div>
 						<div class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#DataModal">
 							<i class="bi-plus-lg"></i> Add Usuarios

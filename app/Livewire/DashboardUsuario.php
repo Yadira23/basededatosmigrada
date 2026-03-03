@@ -158,12 +158,12 @@ class DashboardUsuario extends Component
                 $p = trim((string) ($c->periodo ?? ''));
                 $seg = null;
 
-                if ($pl === 'mensual') {
+                if ($pl === 'MENSUAL') {
                     // YYYY-MM
                     if (preg_match('/^\d{4}\-(\d{2})$/', $p, $m)) {
                         $seg = (int) $m[1]; // 1..12
                     }
-                } elseif ($pl === 'trimestral') {
+                } elseif ($pl === 'TRIMESTRAL') {
                     // YYYY-T1 o YYYY-02
                     if (preg_match('/^\d{4}\-T(\d{1,2})$/i', $p, $m)) {
                         $seg = (int) $m[1]; // 1..4
@@ -171,7 +171,7 @@ class DashboardUsuario extends Component
                         $mes = (int) $m[1];
                         $seg = (int) ceil($mes / 3); // 1..4
                     }
-                } elseif ($pl === 'semestral') {
+                } elseif ($pl === 'SEMESTRAL') {
                     // YYYY-S1 o YYYY-S2 (si viene como mes, lo convertimos)
                     if (preg_match('/^\d{4}\-S(\d)$/i', $p, $m)) {
                         $seg = (int) $m[1]; // 1..2
@@ -179,7 +179,7 @@ class DashboardUsuario extends Component
                         $mes = (int) $m[1];
                         $seg = ($mes <= 6) ? 1 : 2; // 1..2
                     }
-                } elseif ($pl === 'anual') {
+                } elseif ($pl === 'ANUAL') {
                     // YYYY o YYYY-01..12 (cualquier mes cuenta como el año)
                     if (preg_match('/^\d{4}$/', $p)) {
                         $seg = 1;
@@ -215,10 +215,10 @@ class DashboardUsuario extends Component
                 }
 
                 $label = match ($pl) {
-                    'mensual' => 'M'.$seg,
-                    'trimestral' => 'T'.$seg,
-                    'semestral' => 'S'.$seg,
-                    'anual' => 'Año',
+                    'MENSUAL' => 'M'.$seg,
+                    'TRIMESTRAL' => 'T'.$seg,
+                    'SEMESTRAL' => 'S'.$seg,
+                    'ANUAL' => 'Año',
                     default => 'P'.$seg,
                 };
 

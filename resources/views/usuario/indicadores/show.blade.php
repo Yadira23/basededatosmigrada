@@ -87,8 +87,14 @@
                 $sinCaptura = 0;
 
                 foreach ($metas as $m) {
-                    $det = $m->detalleCargas->first();
-                    $st = $det?->estado ? mb_strtoupper(trim((string) $det->estado)) : 'SIN CAPTURA';
+                    $ultimaCargaMeta = \App\Models\Carga::where('id_form', $formulario->id_form)
+                        ->where('meta_id', $m->id)
+                        ->orderByDesc('id_carga')
+                        ->first();
+
+                    $st = $ultimaCargaMeta?->status_env
+                        ? mb_strtoupper(trim((string) $ultimaCargaMeta->status_env))
+                        : 'SIN CAPTURA';
 
                     $st = str_replace('REVISIÓN', 'REVISION', $st);
 
@@ -190,30 +196,61 @@
 
                                             {{-- Placeholder de estado/botón (en el siguiente paso lo conectamos a capturas reales) --}}
                                             @php
-                                                $det = $meta->detalleCargas->first(); // ya viene filtrado por id_form vía controller
+                                                $ultimaCargaMeta = \App\Models\Carga::where(
+                                                    'id_form',
+                                                    $formulario->id_form,
+                                                )
+                                                    ->where('meta_id', $meta->id)
+                                                    ->orderByDesc('id_carga')
+                                                    ->first();
 
-                                                $estado = $det?->estado
-                                                    ? mb_strtoupper(trim((string) $det->estado))
+                                                $estado = $ultimaCargaMeta?->status_env
+                                                    ? mb_strtoupper(trim((string) $ultimaCargaMeta->status_env))
                                                     : 'SIN CAPTURA';
 
                                                 $estado = str_replace('REVISIÓN', 'REVISION', $estado);
 
                                                 $badge = match ($estado) {
                                                     'APROBADO' => 'bg-success',
-                                                    'EN REVISION' => 'bg-info',
                                                     'OBSERVADO' => 'bg-warning text-dark',
+                                                    'EN REVISION' => 'bg-info',
                                                     'REENVIADO' => 'bg-primary',
                                                     'ENVIADO' => 'bg-secondary',
                                                     'BORRADOR' => 'bg-dark',
-                                                    default => 'bg-light text-dark border',
+                                                    default => 'bg-light text-dark',
                                                 };
 
-                                                // fecha “última”
-                                                $ultimaFecha = $det?->updated_at
-                                                    ? \Carbon\Carbon::parse($det->updated_at)->format('d M Y')
+                                                $pct = match ($estado) {
+                                                    'APROBADO' => 100,
+                                                    'ENVIADO', 'EN REVISION', 'REENVIADO' => 80,
+                                                    'BORRADOR', 'OBSERVADO' => 50,
+                                                    default => 0,
+                                                };
+
+                                                // link a captura con meta_id (lo tuyo ya lo hace, pero aquí lo dejamos consistente)
+                                                $href = route('usuario.formulario.captura', [
+                                                    'id_form' => $formulario->id_form,
+                                                    'id_ind' => $formulario->id_ind,
+                                                    'meta_id' => $meta->id, // como tu ruta lo trae opcional, aquí ya lo mandamos directo
+                                                ]);
+
+                                                // Si quieres que al dar clic abra el envío ya existente, pásale id_carga
+                                                if ($ultimaCargaMeta) {
+                                                    $href .=
+                                                        (str_contains($href, '?') ? '&' : '?') .
+                                                        'id_carga=' .
+                                                        $ultimaCargaMeta->id_carga;
+                                                }
+
+                                                $ultima = $ultimaCargaMeta?->updated_at
+                                                    ? \Carbon\Carbon::parse($ultimaCargaMeta->updated_at)->format(
+                                                        'd M Y',
+                                                    )
                                                     : null;
 
-                                                // botón
+                                                $btnText = 'Capturar';
+                                                $btnClass = 'btn-primary';
+
                                                 if ($estado === 'BORRADOR') {
                                                     $btnText = 'Continuar';
                                                     $btnClass = 'btn-warning text-dark';
@@ -223,49 +260,23 @@
                                                 } elseif (
                                                     in_array(
                                                         $estado,
-                                                        ['ENVIADO', 'EN REVISION', 'APROBADO', 'REENVIADO'],
+                                                        ['ENVIADO', 'EN REVISION', 'REENVIADO', 'APROBADO'],
                                                         true,
                                                     )
                                                 ) {
                                                     $btnText = 'Ver';
                                                     $btnClass = 'btn-outline-secondary';
-                                                } else {
-                                                    $btnText = 'Capturar';
-                                                    $btnClass = 'btn-primary';
                                                 }
-
-                                                // link (ya con id_meta por ruta opcional que agregamos)
-                                                $href = route('usuario.formulario.captura', [
-                                                    'id_form' => $formulario->id_form,
-                                                    'id_ind' => $formulario->id_ind,
-                                                    'id_meta' => $meta->id,
-                                                ]);
-
-                                                // si ya existe una carga ligada (si tu detalle tiene id_carga, lo pasamos)
-                                                if (!empty($det?->id_carga)) {
-                                                    if ($estado === 'OBSERVADO') {
-                                                        $href .= '?id_carga=' . $det->id_carga . '&modo=correccion';
-                                                    } else {
-                                                        $href .= '?id_carga=' . $det->id_carga;
-                                                    }
-                                                }
-
-                                                $progreso = match ($estado) {
-                                                    'APROBADO' => 100,
-                                                    'ENVIADO', 'EN REVISION', 'REENVIADO' => 80,
-                                                    'BORRADOR', 'OBSERVADO' => 50,
-                                                    default => 0,
-                                                };
                                             @endphp
 
                                             <div class="mt-2">
                                                 <div class="d-flex justify-content-between small text-muted">
                                                     <span>Progreso</span>
-                                                    <span><b>{{ $progreso }}%</b></span>
+                                                    <span><b>{{ $pct }}%</b></span>
                                                 </div>
                                                 <div class="progress" style="height:8px;">
                                                     <div class="progress-bar" role="progressbar"
-                                                        style="width: {{ $progreso }}%;"></div>
+                                                        style="width: {{ $pct }}%;"></div>
                                                 </div>
                                             </div>
 
@@ -285,9 +296,9 @@
                                                         @endif
                                                         {{ $estado }}
                                                     </span>
-                                                    @if ($ultimaFecha)
+                                                    @if ($ultima)
                                                         <div class="text-muted small mt-1">Última:
-                                                            <b>{{ $ultimaFecha }}</b>
+                                                            <b>{{ $ultima }}</b>
                                                         </div>
                                                     @else
                                                         <div class="text-muted small mt-1">Sin registros aún</div>
@@ -328,8 +339,8 @@
                                     Aquí mostraremos el comportamiento del indicador en el tiempo.
                                 </div>
 
-                                <div class="mt-3 border rounded-3 p-2" style="height:200px; background:white;">
-                                    <canvas id="chartAvanceMetas" style="width:100%; height:180px;"></canvas>
+                                <div class="mt-3 border rounded-3 p-2" style="height:220px; background:white;" wire:ignore>
+                                    <canvas id="chartAvanceMetas"></canvas>
                                 </div>
                             </div>
                         </div>
@@ -348,8 +359,8 @@
                                         : 'Aquí se comparan periodos (ej. S1 vs S2 / meses / trimestres).' }}
                                 </div>
 
-                                <div class="mt-3 border rounded-3 p-2" style="height:200px; background:white;">
-                                    <canvas id="chartEstadosMetas" style="width:100%; height:180px;"></canvas>
+                                <div class="mt-3 border rounded-3 p-2" style="height:220px; background:white;" wire:ignore>
+                                    <canvas id="chartEstadosMetas"></canvas>
                                 </div>
                             </div>
                         </div>
@@ -502,8 +513,9 @@
                                     Avance estimado (0/50/80/100) según el estado de cada carga.
                                 </div>
 
-                                <div class="mt-3 border rounded-3 p-2" style="height:220px; background:white;">
-                                    <canvas id="chartHistSinMetas" style="width:100%; height:200px;"></canvas>
+                                <div class="mt-3 border rounded-3 p-2" style="height:240px; background:white;"
+                                    wire:ignore>
+                                    <canvas id="chartHistSinMetas"></canvas>
                                 </div>
                             </div>
                         </div>
@@ -519,8 +531,9 @@
                                     Conteo de cargas por estado (SIN CAPTURA / BORRADOR / ENVIADO / REVISION / APROBADO).
                                 </div>
 
-                                <div class="mt-3 border rounded-3 p-2" style="height:220px; background:white;">
-                                    <canvas id="chartEstadosSinMetas" style="width:100%; height:200px;"></canvas>
+                                <div class="mt-3 border rounded-3 p-2" style="height:240px; background:white;"
+                                    wire:ignore>
+                                    <canvas id="chartEstadosSinMetas"></canvas>
                                 </div>
                             </div>
                         </div>
@@ -542,132 +555,143 @@
                 APROBADO: '#22c55e'
             };
         </script>
+
         @if ($tieneMetas)
             <script>
-                const labelsMetas = @json($chartMetasLabels ?? []);
-                const valuesMetas = @json($chartMetasValues ?? []);
+                document.addEventListener('DOMContentLoaded', () => {
 
-                const ctx = document.getElementById('chartAvanceMetas');
-                if (ctx) {
-                    new Chart(ctx, {
-                        type: 'bar',
-                        data: {
-                            labels: labelsMetas,
-                            datasets: [{
-                                label: 'Avance (%)',
-                                data: valuesMetas,
-                                backgroundColor: STATE_COLORS.ENVIADO_REVISION
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            scales: {
-                                y: {
-                                    beginAtZero: true,
-                                    max: 100
+                    const labelsMetas = @json($chartMetasLabels ?? []);
+                    const valuesMetas = @json($chartMetasValues ?? []);
+
+                    const el1 = document.getElementById('chartAvanceMetas');
+                    if (el1 && labelsMetas.length) {
+                        if (window.__chartAvanceMetas) window.__chartAvanceMetas.destroy();
+                        window.__chartAvanceMetas = new Chart(el1.getContext('2d'), {
+                            type: 'bar',
+                            data: {
+                                labels: labelsMetas,
+                                datasets: [{
+                                    label: 'Avance (%)',
+                                    data: valuesMetas,
+                                    backgroundColor: STATE_COLORS.ENVIADO_REVISION
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        max: 100
+                                    }
                                 }
                             }
-                        }
-                    });
-                }
+                        });
+                    }
 
-                const labelsEstados = @json($chartEstadosLabels ?? []);
-                const valuesEstados = @json($chartEstadosValues ?? []);
+                    const labelsEstados = @json($chartEstadosLabels ?? []);
+                    const valuesEstados = @json($chartEstadosValues ?? []);
 
-                const ctx2 = document.getElementById('chartEstadosMetas');
-                if (ctx2) {
-                    new Chart(ctx2, {
-                        type: 'doughnut',
-                        data: {
-                            labels: labelsEstados,
-                            datasets: [{
-                                label: 'Metas',
-                                data: valuesEstados,
-                                backgroundColor: [
-                                    STATE_COLORS.SIN_CAPTURA,
-                                    STATE_COLORS.BORRADOR,
-                                    STATE_COLORS.ENVIADO_REVISION,
-                                    STATE_COLORS.OBSERVADO,
-                                    STATE_COLORS.APROBADO
-                                ]
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {
-                                legend: {
-                                    position: 'bottom'
+                    const el2 = document.getElementById('chartEstadosMetas');
+                    if (el2 && labelsEstados.length) {
+                        if (window.__chartEstadosMetas) window.__chartEstadosMetas.destroy();
+                        window.__chartEstadosMetas = new Chart(el2.getContext('2d'), {
+                            type: 'doughnut',
+                            data: {
+                                labels: labelsEstados,
+                                datasets: [{
+                                    data: valuesEstados,
+                                    backgroundColor: [STATE_COLORS.SIN_CAPTURA, STATE_COLORS.BORRADOR,
+                                        STATE_COLORS.ENVIADO_REVISION, STATE_COLORS.OBSERVADO,
+                                        STATE_COLORS.APROBADO
+                                    ]
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: {
+                                        position: 'bottom'
+                                    }
                                 }
                             }
-                        }
-                    });
-                }
+                        });
+                    }
+
+                });
             </script>
         @endif
 
         @if (!$tieneMetas)
             <script>
-                const labelsHist = @json($chartHistLabels ?? []);
-                const valuesHist = @json($chartHistValues ?? []);
+                document.addEventListener('DOMContentLoaded', () => {
 
-                const ctxH = document.getElementById('chartHistSinMetas');
-                if (ctxH) {
-                    new Chart(ctxH, {
-                        type: 'bar',
-                        data: {
-                            labels: labelsHist,
-                            datasets: [{
-                                label: 'Avance (%)',
-                                data: valuesHist,
-                                backgroundColor: STATE_COLORS.ENVIADO_REVISION
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            scales: {
-                                y: {
-                                    beginAtZero: true,
-                                    max: 100
+                    const labelsHist = @json($chartHistLabels ?? []);
+                    const valuesHist = @json($chartHistValues ?? []);
+
+                    const elH = document.getElementById('chartHistSinMetas');
+                    if (elH && labelsHist.length) {
+                        if (window.__chartHistSinMetas) window.__chartHistSinMetas.destroy();
+
+                        window.__chartHistSinMetas = new Chart(elH.getContext('2d'), {
+                            type: 'bar',
+                            data: {
+                                labels: labelsHist,
+                                datasets: [{
+                                    label: 'Avance (%)',
+                                    data: valuesHist,
+                                    backgroundColor: STATE_COLORS.ENVIADO_REVISION
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        max: 100
+                                    }
                                 }
                             }
-                        }
-                    });
-                }
+                        });
+                    }
 
-                const labelsEstadosSM = @json($chartEstadosSinMetasLabels ?? []);
-                const valuesEstadosSM = @json($chartEstadosSinMetasValues ?? []);
+                    const labelsEstadosSM = @json($chartEstadosSinMetasLabels ?? []);
+                    const valuesEstadosSM = @json($chartEstadosSinMetasValues ?? []);
 
-                const ctxSM = document.getElementById('chartEstadosSinMetas');
-                if (ctxSM) {
-                    new Chart(ctxSM, {
-                        type: 'doughnut',
-                        data: {
-                            labels: labelsEstadosSM,
-                            datasets: [{
-                                data: valuesEstadosSM,
-                                backgroundColor: [
-                                    STATE_COLORS.SIN_CAPTURA,
-                                    STATE_COLORS.BORRADOR,
-                                    STATE_COLORS.ENVIADO_REVISION,
-                                    STATE_COLORS.OBSERVADO,
-                                    STATE_COLORS.APROBADO
-                                ]
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {
-                                legend: {
-                                    position: 'bottom'
+                    const elSM = document.getElementById('chartEstadosSinMetas');
+                    if (elSM && labelsEstadosSM.length) {
+                        if (window.__chartEstadosSinMetas) window.__chartEstadosSinMetas.destroy();
+
+                        window.__chartEstadosSinMetas = new Chart(elSM.getContext('2d'), {
+                            type: 'doughnut',
+                            data: {
+                                labels: labelsEstadosSM,
+                                datasets: [{
+                                    data: valuesEstadosSM,
+                                    backgroundColor: [
+                                        STATE_COLORS.SIN_CAPTURA,
+                                        STATE_COLORS.BORRADOR,
+                                        STATE_COLORS.ENVIADO_REVISION,
+                                        STATE_COLORS.OBSERVADO,
+                                        STATE_COLORS.APROBADO
+                                    ]
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: {
+                                        position: 'bottom'
+                                    }
                                 }
                             }
-                        }
-                    });
-                }
+                        });
+                    }
+
+                });
             </script>
         @endif
     @endpush

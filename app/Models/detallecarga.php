@@ -15,7 +15,7 @@ class DetalleCarga extends Model
 
     protected $primaryKey = 'id_detalle';
 
-    protected $fillable = ['id_carga', 'id_ind', 'ambito_geo', 'id_region', 'id_mun', 'fila_det', 'periodo_det', 'ejercicio_det', 'fecha_registro_det', 'fuente_det', 'valor_det', 'payload_det'];
+    protected $fillable = ['id_carga', 'id_ind', 'meta_id', 'ambito_geo', 'id_region', 'id_mun', 'fila_det', 'periodo_det', 'ejercicio_det', 'fecha_registro_det', 'fuente_det', 'valor_det', 'payload_det'];
 
     protected $casts = [
         'payload_det' => 'array',
@@ -54,5 +54,10 @@ class DetalleCarga extends Model
     public function region()
     {
         return $this->belongsTo('App\Models\Region', 'id_region', 'id_region');
+    }
+
+    public function meta()
+    {
+        return $this->belongsTo(\App\Models\Meta::class, 'meta_id', 'id');
     }
 }

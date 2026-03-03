@@ -133,7 +133,7 @@ Route::middleware(['auth'])->group(function () {
         return redirect()->route('usuario.indicadores');
     });
 
-    Route::get('usuario/formulario/{id_form}/{id_ind}/{id_meta?}', App\Livewire\Usuario\FormularioCaptura::class)
+    Route::get('usuario/formulario/{id_form}/{id_ind}/{meta_id?}', App\Livewire\Usuario\FormularioCaptura::class)
         ->name('usuario.formulario.captura');
 
     Route::get('/detallecargas/{id_carga}', DetalleCargas::class)
@@ -174,15 +174,15 @@ Route::middleware(['auth'])->group(function () {
 
         $indicador = Indicador::with('metas')->findOrFail($id_ind);
 
-        // ✅ Última carga por META (usando detallecargas.id_meta + cargas.status_env)
+        // ✅ Última carga por META (usando detallecargas.meta_id + cargas.status_env)
         $ultimaCargaPorMeta = DB::table('detallecargas as d')
             ->join('cargas as c', 'c.id_carga', '=', 'd.id_carga')
-            ->select('d.id_meta', 'c.status_env', 'c.created_at', 'c.id_carga', 'c.id_form')
+            ->select('d.meta_id', 'c.status_env', 'c.created_at', 'c.id_carga', 'c.id_form')
             ->where('d.id_ind', $id_ind)
-            ->whereNotNull('d.id_meta')
+            ->whereNotNull('d.meta_id')
             ->orderByDesc('c.created_at')
             ->get()
-            ->groupBy('id_meta');
+            ->groupBy('meta_id');
 
         $metas = $indicador->metas->map(function ($meta) use ($ultimaCargaPorMeta, $id_ind) {
 
@@ -192,12 +192,12 @@ Route::middleware(['auth'])->group(function () {
                 ? strtoupper($ultima->status_env ?? 'ENVIADO')
                 : 'SIN_CAPTURA';
 
-            // ✅ Capturar: manda id_meta
+            // ✅ Capturar: manda meta_id
             $urlCapturar = $meta->id_form
                 ? route('usuario.formulario.captura', [
                     'id_form' => $meta->id_form,
                     'id_ind' => $id_ind,
-                ]) . '?id_meta=' . $meta->id
+                ]) . '?meta_id=' . $meta->id
                 : '#';
 
             // ✅ Ver: si hay carga real, ver esa carga; si no, cae a "ver último envío" del formulario

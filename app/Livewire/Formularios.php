@@ -271,16 +271,16 @@ class Formularios extends Component
         $hoy = \Carbon\Carbon::now();
 
         switch ($formulario->periodo_form) {
-            case 'Mensual':
+            case 'MENSUAL':
                 $fechaFin = $fechaCreacion->copy()->addMonth();
                 break;
-            case 'Trimestral':
+            case 'TRIMESTRAL':
                 $fechaFin = $fechaCreacion->copy()->addMonths(3);
                 break;
-            case 'Semestral':
+            case 'SEMESTRAL':
                 $fechaFin = $fechaCreacion->copy()->addMonths(6);
                 break;
-            case 'Anual':
+            case 'ANUAL':
                 $fechaFin = $fechaCreacion->copy()->addYear();
                 break;
             default:

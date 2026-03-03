@@ -83,7 +83,7 @@ class FormularioCaptura extends Component
 
     public $archivoData = [];
 
-    public ?int $id_meta = null;
+    public ?int $meta_id = null;
 
     public $metasDisponibles = [];
 
@@ -126,12 +126,15 @@ class FormularioCaptura extends Component
 
     public bool $ambitoElegido = false;
 
-    public function mount($id_form, $id_ind, $id_meta = null)
+    public function mount($id_form, $id_ind, $meta_id = null)
     {
-        $this->id_carga = request('id_carga');
+        // query string
+        $this->id_carga = request()->filled('id_carga') ? (int) request('id_carga') : null;
         $this->modoCorreccion = request('modo') === 'correccion';
+
+        // params de ruta
         $this->id_form = $id_form;
-        $this->id_ind = $id_ind;
+        $this->id_ind  = $id_ind;
 
         $this->formulario = Formulario::with('indicador')
             ->where('id_form', $this->id_form)
@@ -144,26 +147,22 @@ class FormularioCaptura extends Component
         $this->indicador = $this->formulario->indicador;
 
         /* =========================================================
-        ✅ 0) NORMALIZAR ESTADO PUBLICACIÓN
+            ✅ 0) NORMALIZAR ESTADO PUBLICACIÓN
         ========================================================= */
         $estadoRaw = trim((string) $this->formulario->boton_accion_form);
         $estado = mb_strtoupper($estadoRaw);
 
-        // Permitidos para entrar a la pantalla
-        $permitidos = ['PUBLICADO', 'VER']; // VER solo por compatibilidad
+        $permitidos = ['PUBLICADO', 'VER'];
 
-        if (! in_array($estado, $permitidos, true)) {
+        if (!in_array($estado, $permitidos, true)) {
             abort(403, 'Este formulario aún no ha sido publicado.');
         }
 
-        // Reglas de edición
-        // PUBLICADO => puede editar (si policy lo permite)
-        // VER => solo lectura siempre
         $this->soloLectura = ($estado === 'VER');
 
         /* =========================================================
-       ✅ 1) METAS DISPONIBLES (POR INDICADOR Y FORM)
-       ========================================================= */
+            ✅ 1) METAS DISPONIBLES (POR INDICADOR Y FORM)
+        ========================================================= */
         $this->metasDisponibles = Meta::where('id_ind', $this->id_ind)
             ->where(function ($q) {
                 $q->whereNull('id_form')->orWhere('id_form', $this->id_form);
@@ -172,50 +171,53 @@ class FormularioCaptura extends Component
             ->get()
             ->toArray();
 
-        // ✅ Si hay metas disponibles, entonces SÍ se requiere meta
-        $this->requiereMeta = ! empty($this->metasDisponibles);
+        $this->requiereMeta = !empty($this->metasDisponibles);
 
-        // ✅ Si NO requiere meta, forzar null (para que no estorbe)
-        if (! $this->requiereMeta) {
-            $this->id_meta = null;
-        }
+        // ✅ meta_id (ruta primero; si no viene, toma el querystring ?meta_id=)
+        $metaFromQuery = request()->filled('meta_id') ? (int) request('meta_id') : null;
 
-        // id_meta desde URL (si viene)  ✅ (recuerda: es metas.id)
-        $this->id_meta = ($this->requiereMeta && ($id_meta ?? request('id_meta')))
-            ? (int) ($id_meta ?? request('id_meta'))
+        $this->meta_id = ($this->requiereMeta)
+            ? ($meta_id ?? $metaFromQuery)  // ya es int|null
             : null;
+
         $this->metaTitulo = null;
 
-        if (! empty($this->metasDisponibles) && ! empty($this->id_meta)) {
-            $ids = collect($this->metasDisponibles)->pluck('id')->map(fn ($v) => (int) $v)->all();
+        // validar que meta_id pertenezca a metasDisponibles
+        if ($this->requiereMeta && $this->meta_id) {
+            $ids = collect($this->metasDisponibles)
+                ->pluck('id')
+                ->map(fn($v) => (int) $v)
+                ->all();
 
-            if (! in_array((int) $this->id_meta, $ids, true)) {
-                $this->id_meta = null;
+            if (!in_array((int) $this->meta_id, $ids, true)) {
+                $this->meta_id = null;
                 session()->flash('error', 'La meta seleccionada no pertenece a este formulario. Selecciona una meta válida.');
             }
         }
 
-        if ($this->requiereMeta && $this->id_meta) {
-            $meta = Meta::where('id', $this->id_meta)
+        if ($this->requiereMeta && $this->meta_id) {
+            $meta = Meta::where('id', $this->meta_id)
                 ->where('id_ind', $this->id_ind)
                 ->first();
 
-            $this->metaTitulo = $meta ? ('Meta '.($meta->orden ?? '').' – '.($meta->titulo ?? '')) : null;
+            $this->metaTitulo = $meta
+                ? ('Meta ' . ($meta->orden ?? '') . ' – ' . ($meta->titulo ?? ''))
+                : null;
         }
-        // ✅ Si viene id_meta en la URL, no permitir cambiarla en esta pantalla
-        $this->metaBloqueada = $this->requiereMeta && ! empty($this->id_meta);
+
+        $this->metaBloqueada = $this->requiereMeta && !empty($this->meta_id);
 
         /* =========================================================
-       ✅ 2) SCHEMA (por meta si existe, si no por indicador)
-       ========================================================= */
+            ✅ 2) SCHEMA (por meta si existe, si no por indicador)
+        ========================================================= */
         $raw = null;
 
-        if ($this->id_meta) {
-            $meta = Meta::where('id', $this->id_meta)
+        if ($this->meta_id) {
+            $meta = Meta::where('id', $this->meta_id)
                 ->where('id_ind', $this->id_ind)
                 ->first();
 
-            if ($meta && ! empty($meta->config_campos)) {
+            if ($meta && !empty($meta->config_campos)) {
                 $raw = $meta->config_campos;
             }
         }
@@ -229,43 +231,37 @@ class FormularioCaptura extends Component
 
         $this->schema = $this->normalizarSchema(is_array($raw) ? $raw : []);
 
-        // inicializa inputs manuales
         $this->manualCampos = [];
         foreach ($this->schema as $c) {
             $this->manualCampos[$c['slug']] = null;
         }
 
         /* =========================================================
-       ✅ 3) SEGURIDAD DEPENDENCIA
-       ========================================================= */
+            ✅ 3) SEGURIDAD DEPENDENCIA
+        ========================================================= */
         $user = Auth::user();
         if ((int) $this->formulario->id_depen !== (int) $user->id_depen) {
             abort(403, 'Este formulario no pertenece a tu dependencia.');
         }
 
         /* =========================================================
-        ✅ 4) VENTANA DE CAPTURA (inicio / cierre por periodicidad)
+            ✅ 4) VENTANA DE CAPTURA
         ========================================================= */
-
-        // Primero respeta VER / FINALIZADO
-        // $this->soloLectura = ($estado !== 'EDITABLE');
-
-        // Luego aplica política de ventana (puede forzar soloLectura=true)
         $this->aplicarVentanaCaptura();
 
         /* =========================================================
-       ✅ 5) CATALOGOS / FLAGS
-       ========================================================= */
+            ✅ 5) CATALOGOS / FLAGS
+        ========================================================= */
         $this->regiones = Region::orderBy('nombre_region')->get();
         $this->municipiosFiltrados = collect();
 
-        $this->hayPlantilla = ! empty($this->schema);
+        $this->hayPlantilla = !empty($this->schema);
 
         $this->id_carga_actual = $this->id_carga;
 
         /* =========================================================
-       ✅ CASO A: CONTINUAR BORRADOR NORMAL
-       ========================================================= */
+            ✅ CASO A: CONTINUAR BORRADOR NORMAL
+        ========================================================= */
         if (! $this->modoCorreccion && $this->id_carga_actual) {
 
             $carga = Carga::find($this->id_carga_actual);
@@ -279,18 +275,18 @@ class FormularioCaptura extends Component
                 abort(403, 'Esta carga no pertenece a este formulario.');
             }
 
-            // ✅ Si la URL no trae id_meta pero la carga ya tiene detalles, detecta la meta usada
-            if (empty($this->id_meta)) {
+            // ✅ Si la URL no trae meta_id pero la carga ya tiene detalles, detecta la meta usada
+            if (empty($this->meta_id)) {
                 $metaDetectada = DetalleCarga::where('id_carga', $carga->id_carga)
                     ->where('id_ind', $this->id_ind)
-                    ->whereNotNull('id_meta')
-                    ->value('id_meta');
+                    ->whereNotNull('meta_id')
+                    ->value('meta_id');
 
                 if ($metaDetectada) {
-                    $this->id_meta = (int) $metaDetectada;
+                    $this->meta_id = (int) $metaDetectada;
 
                     // ✅ IMPORTANTÍSIMO: al detectar meta, recalcula schema con campos de ESA meta
-                    $meta = Meta::where('id', $this->id_meta)
+                    $meta = Meta::where('id', $this->meta_id)
                         ->where('id_ind', $this->id_ind)
                         ->first();
 
@@ -474,28 +470,28 @@ class FormularioCaptura extends Component
         if ($this->metaBloqueada) {
             return;
         }
-        $this->id_meta = $value ? (int) $value : null;
+        $this->meta_id = $value ? (int) $value : null;
 
         // reset UI / datos
         $this->manualData = [];
         $this->manualCampos = [];
         $this->schema = [];
 
-        if (! $this->id_meta) {
+        if (! $this->meta_id) {
             $this->hayPlantilla = false;
 
             return;
         }
 
         // ✅ Si ya existe borrador, amarra la meta en BD
-        if ($this->id_carga_actual && $this->id_meta) {
+        if ($this->id_carga_actual && $this->meta_id) {
             Carga::where('id_carga', $this->id_carga_actual)->update([
-                'id_meta' => $this->id_meta,
+                'meta_id' => $this->meta_id,
             ]);
         }
 
         // Cargar campos desde la meta seleccionada
-        $meta = \App\Models\Meta::where('id', $this->id_meta)
+        $meta = \App\Models\Meta::where('id', $this->meta_id)
             ->where('id_ind', $this->id_ind)
             ->first();
 
@@ -521,7 +517,7 @@ class FormularioCaptura extends Component
 
     public function seleccionar($metodo)
     {
-        if (! empty($this->metasDisponibles) && empty($this->id_meta)) {
+        if (! empty($this->metasDisponibles) && empty($this->meta_id)) {
             session()->flash('error', 'Primero selecciona una meta.');
 
             return;
@@ -551,7 +547,7 @@ class FormularioCaptura extends Component
                     if ($hayDetalles) {
                         session()->flash(
                             'error',
-                            "No puedes cambiar a {$metodo} porque esta carga ya tiene información capturada en {$metodoBD}. ".
+                            "No puedes cambiar a {$metodo} porque esta carga ya tiene información capturada en {$metodoBD}. " .
                                 'Si deseas cambiar, debes eliminar el avance y reiniciar la captura.'
                         );
 
@@ -573,13 +569,13 @@ class FormularioCaptura extends Component
             }
         }
 
-        if ($this->id_carga_actual && $this->id_meta) {
+        if ($this->id_carga_actual && $this->meta_id) {
             $metaEnBorrador = DetalleCarga::where('id_carga', $this->id_carga_actual)
                 ->where('id_ind', $this->id_ind)
-                ->whereNotNull('id_meta')
-                ->value('id_meta');
+                ->whereNotNull('meta_id')
+                ->value('meta_id');
 
-            if ($metaEnBorrador && (int) $metaEnBorrador !== (int) $this->id_meta) {
+            if ($metaEnBorrador && (int) $metaEnBorrador !== (int) $this->meta_id) {
                 session()->flash('error', 'Este borrador pertenece a otra meta. Reinicia la captura para cambiar de meta.');
 
                 return;
@@ -588,10 +584,10 @@ class FormularioCaptura extends Component
 
         $this->metodo = $metodo;
 
-        // ✅ asegurar que la carga borrador tenga id_meta
-        if ($this->id_meta && $this->id_carga_actual) {
+        // ✅ asegurar que la carga borrador tenga meta_id
+        if ($this->meta_id && $this->id_carga_actual) {
             Carga::where('id_carga', $this->id_carga_actual)
-                ->update(['id_meta' => $this->id_meta]);
+                ->update(['meta_id' => $this->meta_id]);
         }
 
         if ($metodo === 'archivo') {
@@ -620,10 +616,10 @@ class FormularioCaptura extends Component
             ->where('ejercicio', $ejercicio);
 
         // ✅ meta (si aplica) — importante manejar NULL correctamente
-        if (! empty($this->id_meta)) {
-            $q->where('id_meta', $this->id_meta);
+        if (! empty($this->meta_id)) {
+            $q->where('meta_id', $this->meta_id);
         } else {
-            $q->whereNull('id_meta');
+            $q->whereNull('meta_id');
         }
 
         $borrador = $q->orderByDesc('id_carga')->first();
@@ -652,7 +648,7 @@ class FormularioCaptura extends Component
             'descripcion_env' => $metodo === 'archivo' ? 'Borrador (archivo)' : 'Borrador (manual)',
             'observacion_env' => '',
             'id_form' => $this->id_form,
-            'id_meta' => $this->id_meta,
+            'meta_id' => $this->meta_id,
         ]);
     }
 
@@ -662,7 +658,7 @@ class FormularioCaptura extends Component
             return;
         }
 
-        if (! empty($this->metasDisponibles) && empty($this->id_meta)) {
+        if (! empty($this->metasDisponibles) && empty($this->meta_id)) {
             session()->flash('error', 'Primero selecciona una meta.');
 
             return;
@@ -693,7 +689,7 @@ class FormularioCaptura extends Component
             return;
         }
 
-        if (! empty($this->metasDisponibles) && empty($this->id_meta)) {
+        if (! empty($this->metasDisponibles) && empty($this->meta_id)) {
             session()->flash('error', 'Primero selecciona una meta.');
 
             return;
@@ -896,7 +892,7 @@ class FormularioCaptura extends Component
 
     public function agregarManual()
     {
-        if ($this->requiereMeta && empty($this->id_meta)) {
+        if ($this->requiereMeta && empty($this->meta_id)) {
             session()->flash('error', 'Selecciona una meta antes de capturar.');
 
             return;
@@ -1097,7 +1093,7 @@ class FormularioCaptura extends Component
             \App\Models\DetalleCarga::create([
                 'id_carga' => $idCarga,
                 'id_ind' => $this->id_ind,
-                'id_meta' => $this->id_meta,
+                'meta_id' => $this->meta_id,
 
                 'ambito_geo' => $ambito,
                 'id_region' => ($ambito === 'REGION' || $ambito === 'MUNICIPIO') ? $idRegion : null,
@@ -1149,7 +1145,7 @@ class FormularioCaptura extends Component
             DetalleCarga::create([
                 'id_carga' => $carga->id_carga,
                 'id_ind' => $this->id_ind,
-                'id_meta' => $this->id_meta,
+                'meta_id' => $this->meta_id,
                 'ambito_geo' => $ambito,
                 'id_region' => $item['id_region'] ?? null,
                 'id_mun' => $item['id_mun'] ?? null,
@@ -1202,7 +1198,7 @@ class FormularioCaptura extends Component
     public function descargarPlantilla()
     {
         // ✅ si hay metas, obligar selección
-        if ($this->requiereMeta && empty($this->id_meta)) {
+        if ($this->requiereMeta && empty($this->meta_id)) {
             session()->flash('error', 'Primero selecciona una meta antes de descargar/procesar.');
 
             return;
@@ -1222,8 +1218,8 @@ class FormularioCaptura extends Component
         // ✅ 1) CAMPOS: siempre desde META (si existe)
         $raw = null;
 
-        if (! empty($this->id_meta)) {
-            $meta = Meta::where('id', (int) $this->id_meta)
+        if (! empty($this->meta_id)) {
+            $meta = Meta::where('id', (int) $this->meta_id)
                 ->where('id_ind', $this->id_ind)
                 ->first();
 
@@ -1272,13 +1268,13 @@ class FormularioCaptura extends Component
         $sheet->setTitle('Plantilla');
 
         $sheet->setCellValue('A1', mb_strtoupper((string) $indicador->nombre_ind));
-        $sheet->setCellValue('A2', 'Periodo: '.(string) ($carga->periodo ?? $indicador->periodo_ind ?? '—'));
-        $sheet->setCellValue('A3', 'Folio: '.(string) $carga->folioUnico_carga);
-        $sheet->setCellValue('A4', 'Ámbito: '.(string) $ambito);
+        $sheet->setCellValue('A2', 'Periodo: ' . (string) ($carga->periodo ?? $indicador->periodo_ind ?? '—'));
+        $sheet->setCellValue('A3', 'Folio: ' . (string) $carga->folioUnico_carga);
+        $sheet->setCellValue('A4', 'Ámbito: ' . (string) $ambito);
 
         // ✅ opcional: escribir qué META es (para que el usuario lo vea)
-        if (! empty($this->id_meta) && isset($meta)) {
-            $sheet->setCellValue('A5', 'Meta: '.(string) $meta->titulo);
+        if (! empty($this->meta_id) && isset($meta)) {
+            $sheet->setCellValue('A5', 'Meta: ' . (string) $meta->titulo);
         }
 
         $sheet->setCellValue("A{$headerRow}", $colAHeader);
@@ -1327,13 +1323,13 @@ class FormularioCaptura extends Component
         $spreadsheet->setActiveSheetIndex(1);
 
         $ayuda->setCellValue('A1', 'GUÍA DE CAPTURA');
-        $ayuda->setCellValue('A2', 'Indicador: '.(string) $indicador->nombre_ind);
-        $ayuda->setCellValue('A3', 'Periodo: '.(string) ($carga->periodo ?? $indicador->periodo_ind ?? '—'));
-        $ayuda->setCellValue('A4', 'Ámbito: '.(string) $ambito);
+        $ayuda->setCellValue('A2', 'Indicador: ' . (string) $indicador->nombre_ind);
+        $ayuda->setCellValue('A3', 'Periodo: ' . (string) ($carga->periodo ?? $indicador->periodo_ind ?? '—'));
+        $ayuda->setCellValue('A4', 'Ámbito: ' . (string) $ambito);
 
-        if (! empty($this->id_meta) && isset($meta)) {
-            $ayuda->setCellValue('A5', 'Meta: '.(string) $meta->titulo);
-            $ayuda->setCellValue('A6', 'Periodo Meta: '.(string) ($meta->periodo ?? '—'));
+        if (! empty($this->meta_id) && isset($meta)) {
+            $ayuda->setCellValue('A5', 'Meta: ' . (string) $meta->titulo);
+            $ayuda->setCellValue('A6', 'Periodo Meta: ' . (string) ($meta->periodo ?? '—'));
         }
 
         $row = 9;
@@ -1348,7 +1344,7 @@ class FormularioCaptura extends Component
         ];
 
         foreach ($reglas as $txt) {
-            $ayuda->setCellValue("A{$row}", '• '.$txt);
+            $ayuda->setCellValue("A{$row}", '• ' . $txt);
             $row++;
         }
 
@@ -1373,7 +1369,7 @@ class FormularioCaptura extends Component
 
             $rango = '';
             if ($min !== '' || $max !== '') {
-                $rango = ($min === '' ? '—' : $min).' a '.($max === '' ? '—' : $max);
+                $rango = ($min === '' ? '—' : $min) . ' a ' . ($max === '' ? '—' : $max);
             }
 
             $ayuda->setCellValue("A{$row}", $label);
@@ -1397,7 +1393,7 @@ class FormularioCaptura extends Component
         $this->ambito_plantilla_descargada = $ambito;
         $this->motivoResetPlantilla = '';
 
-        $filename = 'Plantilla_'.($indicador->id_ind ?? 'ind').'_'.$ambito.'_'.$carga->folioUnico_carga.'.xlsx';
+        $filename = 'Plantilla_' . ($indicador->id_ind ?? 'ind') . '_' . $ambito . '_' . $carga->folioUnico_carga . '.xlsx';
 
         $spreadsheet->setActiveSheetIndex(0);
 
@@ -1414,7 +1410,7 @@ class FormularioCaptura extends Component
 
     public function procesarArchivo()
     {
-        if ($this->requiereMeta && empty($this->id_meta)) {
+        if ($this->requiereMeta && empty($this->meta_id)) {
             session()->flash('error', 'Selecciona una meta antes de procesar el archivo.');
 
             return;
@@ -1635,7 +1631,7 @@ class FormularioCaptura extends Component
                     DetalleCarga::create([
                         'id_carga' => $carga->id_carga,
                         'id_ind' => $indicador->id_ind,
-                        'id_meta' => $this->id_meta,
+                        'meta_id' => $this->meta_id,
                         'ambito_geo' => $ambito,
                         'id_region' => $id_region,
                         'id_mun' => $id_mun,
@@ -1659,7 +1655,7 @@ class FormularioCaptura extends Component
             });
 
             if (! empty($errores)) {
-                session()->flash('error', "Se detectaron errores. Insertados: {$insertados}. Primeros: ".implode(' | ', array_slice($errores, 0, 6)));
+                session()->flash('error', "Se detectaron errores. Insertados: {$insertados}. Primeros: " . implode(' | ', array_slice($errores, 0, 6)));
                 $this->archivoProcesado = false;
                 $this->detallesInsertados = $insertados;
 
@@ -1679,9 +1675,9 @@ class FormularioCaptura extends Component
                 $peso = $archivo->getSize(); // bytes
 
                 // nombre seguro para storage (evita espacios, colisiones, etc.)
-                $nombreSeguro = 'EVIDENCIA_'.($indicador->id_ind ?? 'ind').'_'
-                    .($carga->folioUnico_carga ?? 'folio').'_'
-                    .now()->format('Ymd_His').'_'.Str::random(6).'.'.$extOriginal;
+                $nombreSeguro = 'EVIDENCIA_' . ($indicador->id_ind ?? 'ind') . '_'
+                    . ($carga->folioUnico_carga ?? 'folio') . '_'
+                    . now()->format('Ymd_His') . '_' . Str::random(6) . '.' . $extOriginal;
 
                 $ruta = $archivo->storeAs('anexos/evidencias', $nombreSeguro, 'public');
 
@@ -1706,7 +1702,7 @@ class FormularioCaptura extends Component
                 ]);
             } catch (\Throwable $e) {
                 // no tumba el proceso de datos, solo avisa
-                Log::warning('No se pudo guardar evidencia en anexos: '.$e->getMessage());
+                Log::warning('No se pudo guardar evidencia en anexos: ' . $e->getMessage());
             }
 
             // 🔹 marcar actividad
@@ -1717,7 +1713,7 @@ class FormularioCaptura extends Component
 
             session()->flash('success', "Archivo procesado correctamente. Filas insertadas: {$insertados}");
         } catch (\Throwable $e) {
-            session()->flash('error', 'No se pudo procesar el archivo: '.$e->getMessage());
+            session()->flash('error', 'No se pudo procesar el archivo: ' . $e->getMessage());
             $this->archivoProcesado = false;
         }
     }
@@ -1727,7 +1723,7 @@ class FormularioCaptura extends Component
         $col = '';
         while ($colIndex > 0) {
             $colIndex--;
-            $col = chr($colIndex % 26 + 65).$col;
+            $col = chr($colIndex % 26 + 65) . $col;
             $colIndex = intdiv($colIndex, 26);
         }
 
@@ -1750,18 +1746,18 @@ class FormularioCaptura extends Component
         $periodicidad = $this->indicador->periodo_ind ?? $this->formulario->periodo_form ?? 'MENSUAL';
         $p = mb_strtolower(trim($periodicidad));
 
-        if ($p === 'mensual') {
+        if ($p === 'MENSUAL') {
             $periodoValor = $ym;
-        } elseif ($p === 'trimestral') {
+        } elseif ($p === 'TRIMESTRAL') {
             $q = (int) ceil(((int) substr($ym, 5, 2)) / 3);
-            $periodoValor = substr($ym, 0, 4)."-T{$q}";
-        } elseif ($p === 'semestral') {
+            $periodoValor = substr($ym, 0, 4) . "-T{$q}";
+        } elseif ($p === 'SEMESTRAL') {
             $m = (int) substr($ym, 5, 2);
             $s = ($m <= 6) ? 1 : 2;
-            $periodoValor = substr($ym, 0, 4)."-S{$s}";
+            $periodoValor = substr($ym, 0, 4) . "-S{$s}";
         } else {
             $periodoValor = substr($ym, 0, 4);
-            $p = 'anual';
+            $p = 'ANUAL';
         }
 
         [$permitido, $msg] = \App\Support\CapturaPolicy::permite($p, $periodoValor);
@@ -1792,13 +1788,13 @@ class FormularioCaptura extends Component
         try {
             $this->validate([
                 'metodo' => 'required|in:manual,archivo',
-                'id_meta' => $this->requiereMeta ? 'required|integer' : 'nullable',
+                'meta_id' => $this->requiereMeta ? 'required|integer' : 'nullable',
                 'fuente_dato' => 'nullable|string|max:255',
                 'descripcion_env' => 'nullable|string|max:255',
             ]);
 
             if ($this->requiereMeta) {
-                $metaOk = Meta::where('id', $this->id_meta)
+                $metaOk = Meta::where('id', $this->meta_id)
                     ->where('id_ind', $this->id_ind)
                     ->exists();
 
@@ -1855,7 +1851,7 @@ class FormularioCaptura extends Component
                         DetalleCarga::create([
                             'id_carga' => $carga->id_carga,
                             'id_ind' => $this->id_ind,
-                            'id_meta' => $this->id_meta,
+                            'meta_id' => $this->meta_id,
                             'ambito_geo' => $ambito,
                             'id_region' => $item['id_region'] ?? null,
                             'id_mun' => $item['id_mun'] ?? null,
@@ -1879,7 +1875,7 @@ class FormularioCaptura extends Component
                         'ambito_geo_carga' => $this->ambito_geo,
                         'status_env' => 'ENVIADO',
                         'observacion_env' => '',
-                        'id_meta' => $this->id_meta,
+                        'meta_id' => $this->meta_id,
 
                     ]);
                 });
@@ -1937,7 +1933,7 @@ class FormularioCaptura extends Component
                 'ambito_geo_carga' => $this->ambito_geo,
                 'metodo_captura' => 'ARCHIVO',
                 'fecha_carga' => now(),
-                'id_meta' => $this->id_meta,
+                'meta_id' => $this->meta_id,
                 'periodo' => $permitido,
                 'ejercicio' => $ejercicioPermitido,
 
@@ -1955,7 +1951,7 @@ class FormularioCaptura extends Component
 
             return;
         } catch (\Throwable $e) {
-            session()->flash('error', 'Error: '.$e->getMessage());
+            session()->flash('error', 'Error: ' . $e->getMessage());
         } finally {
             $this->guardando = false;
         }
@@ -1997,7 +1993,7 @@ class FormularioCaptura extends Component
             $startMonth = (($q - 1) * 3) + 1;
             $start = $ref->copy()->setMonth($startMonth)->startOfMonth();
             $end = $start->copy()->addMonths(2)->endOfMonth();
-            $label = "T{$q} ".$start->format('Y');
+            $label = "T{$q} " . $start->format('Y');
 
             return compact('start', 'end', 'label');
         }
@@ -2007,7 +2003,7 @@ class FormularioCaptura extends Component
             $startMonth = ($s === 1) ? 1 : 7;
             $start = $ref->copy()->setMonth($startMonth)->startOfMonth();
             $end = $start->copy()->addMonths(5)->endOfMonth();
-            $label = "S{$s} ".$start->format('Y');
+            $label = "S{$s} " . $start->format('Y');
 
             return compact('start', 'end', 'label');
         }
@@ -2027,46 +2023,42 @@ class FormularioCaptura extends Component
 
         // 2) Periodicidad (del indicador si existe, si no del formulario)
         $periodicidad = $this->indicador->periodo_ind ?? $this->formulario->periodo_form ?? 'MENSUAL';
-        $p = mb_strtolower(trim($periodicidad)); // mensual|trimestral|semestral|anual
+        $tipo = mb_strtolower(trim($periodicidad)); // mensual|trimestral|semestral|anual
 
-        // 3) Etiqueta visible (la de tu UI: "Febrero 2026", "T1 2026", "S1 2026", "2026")
+        // 3) Etiqueta visible (UI)
         $r = $this->rangoPeriodoDesdeYM($ym, $periodicidad);
         $this->periodoLabel = $r['label'];
 
         // 4) Convertir a "periodoValor" compatible con CapturaPolicy
-        // mensual: 2026-02
-        // trimestral: 2026-T1
-        // semestral: 2026-S1
-        // anual: 2026
         $periodoValor = null;
 
-        if ($p === 'mensual') {
-            $periodoValor = $ym; // ya viene YYYY-MM
-        } elseif ($p === 'trimestral') {
+        if ($tipo === 'mensual') {
+            $periodoValor = $ym; // YYYY-MM
+        } elseif ($tipo === 'trimestral') {
             $q = (int) ceil(((int) substr($ym, 5, 2)) / 3);
-            $periodoValor = substr($ym, 0, 4)."-T{$q}";
-        } elseif ($p === 'semestral') {
+            $periodoValor = substr($ym, 0, 4) . "-T{$q}";
+        } elseif ($tipo === 'semestral') {
             $m = (int) substr($ym, 5, 2);
             $s = ($m <= 6) ? 1 : 2;
-            $periodoValor = substr($ym, 0, 4)."-S{$s}";
+            $periodoValor = substr($ym, 0, 4) . "-S{$s}";
         } else { // anual
-            $periodoValor = substr($ym, 0, 4);
-            $p = 'anual';
+            $tipo = 'anual';
+            $periodoValor = substr($ym, 0, 4); // YYYY
         }
 
-        // 5) Aplicar policy (usa BD: modo pruebas + días de apertura + gracia)
-        [$permitido, $msg] = CapturaPolicy::permite($p, $periodoValor);
+        // 5) Aplicar policy (lee BD: modo pruebas + días apertura + gracia)
+        [$permitido, $msg] = CapturaPolicy::permite($tipo, $periodoValor);
 
-        // 6) Para UI: calculamos fechas aproximadas de ventana según policy
-        // (Solo para mostrar; la decisión real es $permitido)
+        // 6) Para UI: calculamos fechas aproximadas de ventana según config
         $inicioPeriodo = $r['start']->copy()->startOfDay();
 
-        $diasApertura = match ($p) {
+        $diasApertura = match ($tipo) {
             'mensual' => config_int('CAPTURA_DIAS_APERTURA_MENSUAL', 60),
             'trimestral' => config_int('CAPTURA_DIAS_APERTURA_TRIMESTRAL', 120),
             'semestral' => config_int('CAPTURA_DIAS_APERTURA_SEMESTRAL', 180),
             default => config_int('CAPTURA_DIAS_APERTURA_ANUAL', 365),
         };
+
         $diasGracia = config_int('CAPTURA_DIAS_GRACIA', 0);
 
         $open = $inicioPeriodo->copy();
@@ -2076,12 +2068,10 @@ class FormularioCaptura extends Component
         $this->capturaCloseAt = $close->format('d/m/Y');
 
         // 7) Setear bloqueo / mensaje
-        // OJO: NO forzamos soloLectura=false si está permitido, porque otros factores pueden bloquear (corrección, no publicado, etc.)
         if (! $permitido) {
             $this->soloLectura = true;
             $this->mensajeBloqueo = $msg;
             $this->diasRestantes = null;
-
             return;
         }
 

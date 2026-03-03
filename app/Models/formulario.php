@@ -112,25 +112,25 @@ class Formulario extends Model
 
             // ✅ Mensual: formularios creados dentro del mes actual
             $w->where(function ($m) use ($iniMes, $finMes) {
-                $m->where('periodo_form', 'Mensual')
+                $m->where('periodo_form', 'MENSUAL')
                     ->whereBetween('fecha_creacion_form', [$iniMes->toDateString(), $finMes->toDateString()]);
             })
 
                 // ✅ Trimestral: formularios creados dentro del trimestre actual
                 ->orWhere(function ($t) use ($iniTri, $finTri) {
-                    $t->where('periodo_form', 'Trimestral')
+                    $t->where('periodo_form', 'TRIMESTRAL')
                         ->whereBetween('fecha_creacion_form', [$iniTri->toDateString(), $finTri->toDateString()]);
                 })
 
                 // ✅ Semestral: formularios creados dentro del semestre actual
                 ->orWhere(function ($s) use ($iniSem, $finSem) {
-                    $s->where('periodo_form', 'Semestral')
+                    $s->where('periodo_form', 'SEMESTRAL')
                         ->whereBetween('fecha_creacion_form', [$iniSem->toDateString(), $finSem->toDateString()]);
                 })
 
                 // ✅ Anual: formularios creados dentro del año actual
                 ->orWhere(function ($a) use ($iniAnio, $finAnio) {
-                    $a->where('periodo_form', 'Anual')
+                    $a->where('periodo_form', 'ANUAL')
                         ->whereBetween('fecha_creacion_form', [$iniAnio->toDateString(), $finAnio->toDateString()]);
                 });
         });
@@ -144,10 +144,10 @@ class Formulario extends Model
         $mes = $hoy->month;
 
         return match (mb_strtolower($periodicidad)) {
-            'mensual' => $hoy->format('Y-m'),                 // 2026-02
-            'trimestral' => $year.'-T'.(int) ceil($mes / 3), // 2026-T1
-            'semestral' => $year.'-S'.($mes <= 6 ? 1 : 2),  // 2026-S1
-            'anual' => (string) $year,                      // 2026
+            'MENSUAL' => $hoy->format('Y-m'),                 // 2026-02
+            'TRIMESTRAL' => $year.'-T'.(int) ceil($mes / 3), // 2026-T1
+            'SEMESTRAL' => $year.'-S'.($mes <= 6 ? 1 : 2),  // 2026-S1
+            'ANUAL' => (string) $year,                      // 2026
             default => $hoy->format('Y-m'),
         };
     }
@@ -160,10 +160,10 @@ class Formulario extends Model
         $m = (int) $hoy->month;
 
         $mesInicio = match (mb_strtolower(trim($periodicidad))) {
-            'mensual' => $m,
-            'trimestral' => (int) (floor(($m - 1) / 3) * 3 + 1), // 1,4,7,10
-            'semestral' => $m <= 6 ? 1 : 7,                   // 1 o 7
-            'anual' => 1,
+            'MENSUAL' => $m,
+            'TRIMESTRAL' => (int) (floor(($m - 1) / 3) * 3 + 1), // 1,4,7,10
+            'SEMESTRAL' => $m <= 6 ? 1 : 7,                   // 1 o 7
+            'ANUAL' => 1,
             default => $m,
         };
 

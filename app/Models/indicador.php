@@ -36,7 +36,7 @@ class Indicador extends Model
     // Constantes
     const FORMATOS = ['porcentaje', 'entero', 'decimal'];
 
-    const PERIODOS = ['mensual', 'trimestral', 'semestral', 'anual'];
+    const PERIODOS = ['MENSUAL', 'TRIMESTRAL', 'SEMESTRAL', 'ANUAL'];
 
     const TENDENCIAS = ['ascendente', 'descendente'];
 

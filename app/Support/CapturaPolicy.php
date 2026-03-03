@@ -3,6 +3,8 @@
 namespace App\Support;
 
 use Carbon\Carbon;
+use App\Models\Configuracion;
+use Illuminate\Support\Str;
 
 class CapturaPolicy
 {
@@ -14,8 +16,11 @@ class CapturaPolicy
     {
         $hoy = $hoy ?: now();
 
-        // 1) Modo pruebas (override global)
-        if (config_bool('CAPTURA_MODO_PRUEBAS', false)) {
+        // 1) Modo pruebas (override global) - ✅ leído desde BD (tabla configuraciones)
+        $modoPruebasRaw = Configuracion::where('clave', 'CAPTURA_MODO_PRUEBAS')->value('valor');
+        $modoPruebas = in_array(Str::lower(trim((string)$modoPruebasRaw)), ['1', 'true', 'si', 'sí', 'on'], true);
+
+        if ($modoPruebas) {
             return [true, 'Modo pruebas habilitado por el administrador.'];
         }
 

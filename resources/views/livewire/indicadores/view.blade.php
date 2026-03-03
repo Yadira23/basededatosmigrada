@@ -13,7 +13,7 @@
                             <div class="float-left">
                                 <h4>
                                     <i class="bi-house-check-fill text-info"></i>
-                                    Indicadore Listing
+                                    Listado de indicadores
                                 </h4>
                             </div>
 
@@ -25,7 +25,7 @@
 
                             <div>
                                 <input wire:model.live="keyWord" type="text" class="form-control" name="search"
-                                    id="search" placeholder="Search Indicadores">
+                                    id="search" placeholder="Buscar Indicadores">
                             </div>
 
                             <div class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#DataModal">

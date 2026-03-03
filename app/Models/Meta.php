@@ -34,7 +34,7 @@ class Meta extends Model
 
     public function detalleCargas()
     {
-        return $this->hasMany(DetalleCarga::class, 'id_meta', 'id');
+        return $this->hasMany(DetalleCarga::class, 'meta_id', 'id');
     }
 
     /**
