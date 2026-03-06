@@ -42,9 +42,9 @@ class ForgotPasswordController extends Controller
             ]);
         }
 
-        // 📩 Enviar enlace de recuperación
+        // 📩 Enviar enlace de recuperación usando email_usr
         $status = \Illuminate\Support\Facades\Password::sendResetLink([
-            'email' => $user->email_usr,
+            'email_usr' => $user->email_usr,
         ]);
 
         return $status === \Illuminate\Support\Facades\Password::RESET_LINK_SENT

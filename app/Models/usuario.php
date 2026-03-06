@@ -5,10 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Spatie\Permission\Traits\HasRoles;
+use Illuminate\Notifications\Notifiable;
+use App\Notifications\ResetPasswordUsuario;
 
 class Usuario extends Authenticatable
 {
-    use HasFactory, HasRoles;
+    use HasFactory, HasRoles, Notifiable;
 
     public $timestamps = true;
 
@@ -47,6 +49,16 @@ class Usuario extends Authenticatable
     public function getAuthIdentifierName()
     {
         return 'email_usr';
+    }
+
+    public function routeNotificationForMail($notification)
+    {
+        return $this->email_usr;
+    }
+
+    public function sendPasswordResetNotification($token)
+    {
+        $this->notify(new ResetPasswordUsuario($token));
     }
 
     /**

@@ -49,7 +49,7 @@ class ResetPasswordController extends Controller
 
         $status = Password::reset(
             [
-                'email' => $request->email,
+                'email_usr' => $request->email,
                 'password' => $request->password,
                 'password_confirmation' => $request->password_confirmation,
                 'token' => $request->token,
