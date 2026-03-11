@@ -124,6 +124,8 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 
     Route::view('/anexos', 'livewire.anexos.index');
     Route::view('/indicadores', 'livewire.indicadores.index');
+
+    Route::view('/documentacion-admin', 'admin.documentacion')->name('documentacion.admin');
 });
 
 /* ---------------- RUTAS SOLO USUARIO ---------------- */
@@ -211,4 +213,8 @@ Route::middleware(['auth', 'role:usuario'])->group(function () {
 
     Route::get('/usuario/indicadores/{formulario}', [IndicadorController::class, 'show'])
         ->name('usuario.indicadores.show');
+
+    Route::view('/documentacion', 'usuario.documentacion')->name('documentacion');
+
+    Route::view('/contacto', 'usuario.contacto')->name('contacto');
 });

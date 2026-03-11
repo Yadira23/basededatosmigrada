@@ -118,8 +118,8 @@
                 @endrole
 
                 <!-- =========================================================
-                                                                                         MENÚ USUARIO (solo lo que puede ver)
-                                                                                    ========================================================== -->
+                                                                                             MENÚ USUARIO (solo lo que puede ver)
+                                                                                        ========================================================== -->
                 @role('usuario')
                     <hr class="sidebar-divider">
                     <div class="sidebar-heading">Captura</div>
@@ -140,8 +140,8 @@
                 @endrole
 
                 <!-- =========================================================
-                                                                                         MENÚ ADMIN (todo lo de administración)
-                                                                                    ========================================================== -->
+                                                                                             MENÚ ADMIN (todo lo de administración)
+                                                                                        ========================================================== -->
                 @role('admin')
                     <hr class="sidebar-divider">
                     <div class="sidebar-heading">Formularios</div>
@@ -321,8 +321,9 @@
                             style="font-size: 14px; padding: 8px 15px;">
                             <div class="text-secondary">
                                 <a href="#" class="text-secondary mx-2">Aviso de Privacidad</a> |
-                                <a href="#" class="text-secondary mx-2">Contacto</a> |
-                                <a href="#" class="text-secondary mx-2">Documentación</a>
+                                <a href="{{ route('documentacion.admin') }}" class="mx-2">
+                                    Documentación
+                                </a>
                             </div>
                             <div class="text-secondary">Versión <strong>1.0.0</strong></div>
                         </div>

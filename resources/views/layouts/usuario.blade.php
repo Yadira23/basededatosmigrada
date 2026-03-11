@@ -176,8 +176,8 @@
 
                             <div class="text-secondary">
                                 <a href="#" class="text-secondary mx-2">Aviso de Privacidad</a> |
-                                <a href="#" class="text-secondary mx-2">Contacto</a> |
-                                <a href="#" class="text-secondary mx-2">Documentación</a>
+                                <a href="{{ route('contacto') }}">Contacto</a> |
+                                <a href="{{ route('documentacion') }}">Documentación</a>
                             </div>
 
                             <div class="text-secondary">
