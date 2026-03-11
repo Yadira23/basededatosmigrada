@@ -85,7 +85,8 @@
 									<td>{{ $row->formulario ? $row->formulario->titulo_form : '-' }}</td>
 									<td>{{ $row->indicador ? $row->indicador->nombre_ind : 'Sin indicador' }}</td>
 									<td width="90">
-										<div class="dropdown">
+									<a class="dropdown-item" onclick="confirm('Confirm Delete Anexo id {{$row->id_anexo}}? \nDeleted Anexos cannot be recovered!')||event.stopImmediatePropagation()" wire:click="destroy({{$row->id_anexo}})"><i class="bi-trash3-fill"></i> Delete </a>
+										{{--<div class="dropdown">
 											<a class="btn btn-sm btn-secondary dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
 												Actions
 											</a>
@@ -93,7 +94,7 @@
 												<li><a data-bs-toggle="modal" data-bs-target="#DataModal" class="dropdown-item" wire:click="edit({{$row->id_anexo}})"><i class="bi-pencil-square"></i> Edit </a></li>
 												<li><a class="dropdown-item" onclick="confirm('Confirm Delete Anexo id {{$row->id_anexo}}? \nDeleted Anexos cannot be recovered!')||event.stopImmediatePropagation()" wire:click="destroy({{$row->id_anexo}})"><i class="bi-trash3-fill"></i> Delete </a></li>
 											</ul>
-										</div>
+										</div>--}}
 									</td>
 								</tr>
 								@empty

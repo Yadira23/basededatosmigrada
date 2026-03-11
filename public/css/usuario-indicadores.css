@@ -22,7 +22,177 @@
 }
 
 /* Color suave para diferenciar las tarjetas del fondo blanco */
-.ind-card .card-body{
-  background-color: #f3f6fb !important;
+.ind-card .card-body {
+    background-color: #f3f6fb !important;
 }
 
+.indicador-card {
+    position: relative;
+    background: #ffffff;
+    border: 1px solid #e6edf5;
+    border-radius: 18px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+    transition: all 0.22s ease;
+    overflow: hidden;
+    height: 100%;
+}
+
+.indicador-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, #1d4ed8, #60a5fa);
+}
+
+.indicador-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 34px rgba(15, 23, 42, 0.10);
+}
+
+.indicador-card__body {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    min-height: 185px;
+    height: 100%;
+}
+
+.indicador-card__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: .75rem;
+    margin-bottom: .75rem;
+}
+
+.indicador-card__title-wrap {
+    min-width: 0;
+    flex: 1;
+}
+
+.indicador-card__title {
+    margin: 0 0 0.30rem 0;
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.25;
+    color: #1f2937;
+}
+
+.indicador-card__subtitle {
+    font-size: 0.88rem;
+    color: #6b7280;
+}
+
+.indicador-card__status {
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.estado-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    padding: 0.32rem 0.68rem;
+    font-size: 0.70rem;
+    font-weight: 700;
+    letter-spacing: 0.1px;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+.estado-badge.bg-success {
+    background: #dcfce7 !important;
+    color: #166534 !important;
+}
+
+.estado-badge.bg-info {
+    background: #e0f2fe !important;
+    color: #075985 !important;
+}
+
+.estado-badge.bg-warning {
+    background: #fff7ed !important;
+    color: #c2410c !important;
+}
+
+.estado-badge.bg-primary {
+    background: #dbeafe !important;
+    color: #1d4ed8 !important;
+}
+
+.estado-badge.bg-secondary {
+    background: #eef2f7 !important;
+    color: #475569 !important;
+}
+
+.estado-badge.bg-dark {
+    background: #111827 !important;
+    color: #ffffff !important;
+}
+
+.indicador-card__date {
+    margin-top: 0.35rem;
+    font-size: 0.80rem;
+    color: #6b7280;
+    line-height: 1.25;
+}
+
+.indicador-card__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin-bottom: 0.85rem;
+}
+
+.meta-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    background: #f8fafc;
+    color: #334155;
+    border: 1px solid #e5e7eb;
+    border-radius: 999px;
+    padding: 0.32rem 0.60rem;
+    font-size: 0.76rem;
+    font-weight: 600;
+}
+
+.meta-chip__label {
+    color: #111827;
+    font-weight: 700;
+}
+
+.indicador-card__footer {
+    margin-top: auto;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    padding-top: 0.15rem;
+}
+
+.btn-indicador {
+    border-radius: 10px;
+    padding: 0.45rem 0.80rem;
+    font-size: 0.88rem;
+    font-weight: 600;
+    box-shadow: none !important;
+}
+
+@media (max-width: 768px) {
+    .indicador-card__header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .indicador-card__status {
+        text-align: left;
+    }
+
+    .indicador-card__footer {
+        justify-content: flex-start;
+    }
+}

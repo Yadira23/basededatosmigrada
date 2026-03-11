@@ -177,11 +177,11 @@
                                                         Actions
                                                     </a>
                                                     <ul class="dropdown-menu">
-                                                        <li><a data-bs-toggle="modal" data-bs-target="#DataModal"
+                                                        {{--<li><a data-bs-toggle="modal" data-bs-target="#DataModal"
                                                                 class="dropdown-item"
                                                                 wire:click="edit({{ $row->id_carga }})"><i
                                                                     class="bi-pencil-square"></i> Edit </a></li>
-                                                        <li>
+                                                        <li>--}}
                                                             <a class="dropdown-item"
                                                                 href="{{ route('detallecargas.index', ['id_carga' => $row->id_carga]) }}">
                                                                 <i class="bi-list-ul"></i> Ver detalles

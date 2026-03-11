@@ -50,7 +50,7 @@
                     break;
 
                 case 'observados':
-                    $query->whereHas('ultimaCarga', fn($c) => $c->where('status_env', 'OBSERVADO'));
+                    $query->whereHas('cargas', fn($c) => $c->where('status_env', 'OBSERVADO'));
                     break;
 
                 case 'enviados':
@@ -74,7 +74,7 @@
                     ->whereHas('ultimaCarga', fn($c) => $c->where('status_env', 'APROBADO'))
                     ->count(),
                 'observados' => (clone $base)
-                    ->whereHas('ultimaCarga', fn($c) => $c->where('status_env', 'OBSERVADO'))
+                    ->whereHas('cargas', fn($c) => $c->where('status_env', 'OBSERVADO'))
                     ->count(),
                 'enviados' => (clone $base)
                     ->whereHas('ultimaCarga', fn($c) => $c->where('status_env', 'ENVIADO'))
@@ -232,7 +232,7 @@
             </div>
         @endif
 
-        <div class="row">
+        <div class="row g-3">
             @forelse($formularios as $form)
                 @php
                     $hoy = now()->toDateString();
@@ -262,9 +262,9 @@
                     $habilitadoHoy = !empty($periodoPermitido);
                 @endphp
 
-                <div class="col-12 col-md-6 col-xl-4 mb-3">
-                    <div class="card shadow-sm border-0 h-100" style="border-radius:14px;">
-                        <div class="card-body" style="background:#dde7f8 !important;">
+                <div class="col-12 col-md-6 col-xl-4 col-xxl-3">
+                    <div class="indicador-card h-100">
+                        <div class="indicador-card__body">
 
                             @php
                                 $ultima = $form->ultimaCarga ?? null;
@@ -281,21 +281,24 @@
                                 };
                             @endphp
 
-                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                <div class="pe-2">
-                                    <h5 class="mb-1">
+                            <div class="indicador-card__header">
+                                <div class="indicador-card__title-wrap">
+                                    <h5 class="indicador-card__title">
                                         {{ $form->indicador->nombre_ind ?? 'Indicador sin asignar' }}
                                     </h5>
-                                    <div class="text-muted small">
+
+                                    <div class="indicador-card__subtitle">
                                         Formulario #{{ $form->id_form }}
                                     </div>
                                 </div>
 
-                                <div class="text-end">
-                                    <span class="badge {{ $badge }}">{{ $estado }}</span>
+                                <div class="indicador-card__status">
+                                    <span class="estado-badge {{ $badge }}">
+                                        {{ $estado }}
+                                    </span>
 
                                     @if ($ultima && !empty($ultima->fecha_carga))
-                                        <div class="text-muted small mt-1">
+                                        <div class="indicador-card__date">
                                             Última: {{ \Carbon\Carbon::parse($ultima->fecha_carga)->format('d M Y') }}
                                         </div>
                                     @endif
@@ -307,25 +310,26 @@
                                     $totalMetas = $form->indicador?->metas?->count() ?? 0;
                                 @endphp
 
-                                <div class="d-flex flex-wrap gap-2 mt-2">
-                                    <span class="badge bg-light text-dark border">
-                                        Periodo:
-                                        <b>{{ strtolower($form->indicador->periodo_ind ?? $form->periodo_form) }}</b>
+                                <div class="indicador-card__chips">
+                                    <span class="meta-chip">
+                                        <span class="meta-chip__label">Periodo:</span>
+                                        <span>{{ strtolower($form->indicador->periodo_ind ?? $form->periodo_form) }}</span>
                                     </span>
 
-                                    <span class="badge bg-light text-dark border">
-                                        Reporte: <b>{{ $periodoReportarTexto }}</b>
+                                    <span class="meta-chip">
+                                        <span class="meta-chip__label">Reporte:</span>
+                                        <span>{{ $periodoReportarTexto }}</span>
                                     </span>
                                 </div>
 
-                                <div class="d-flex justify-content-end mb-2">
-                                    <a class="btn btn-sm btn-primary shadow-sm"
+                                <div class="indicador-card__footer">
+                                    <a class="btn btn-primary btn-indicador shadow-sm"
                                         href="{{ route('usuario.indicadores.show', $form->id_form) }}">
                                         Ver indicador
                                     </a>
                                 </div>
                             @else
-                                <div class="text-muted">
+                                <div class="text-muted mt-2">
                                     Este registro no tiene indicador asignado.
                                 </div>
                             @endif
