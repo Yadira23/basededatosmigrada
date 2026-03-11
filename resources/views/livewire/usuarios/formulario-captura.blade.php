@@ -226,11 +226,9 @@
         </div>
 
         <div class="cap-grid">
+            {{-- COLUMNA IZQUIERDA --}}
             <div class="cap-left">
-
                 <fieldset @disabled($soloLectura) style="border:0; padding:0; margin:0;">
-                    {{-- ÁMBITO --}}
-                    {{-- ÁMBITO --}}
                     <div class="cap-field">
                         <label class="cap-label">Capturar por:</label>
 
@@ -256,13 +254,11 @@
                     </div>
 
                     <form id="formManual" wire:submit.prevent="agregarManual">
-                        {{-- REGIÓN --}}
                         @if ($ambito_geo === 'REGION')
                             <div style="flex:1 1 100%; margin-bottom:10px;">
                                 <label class="cap-label">Región</label>
                                 <select class="cap-input" wire:model.live="region">
                                     <option value="">Selecciona una región</option>
-
                                     @foreach ($regiones as $r)
                                         @php
                                             $regionUsada = collect($manualData)->contains(function ($row) use ($r) {
@@ -281,7 +277,6 @@
                             </div>
                         @endif
 
-                        {{-- MUNICIPIO --}}
                         @if ($ambito_geo === 'MUNICIPIO')
                             <div style="flex:1 1 100%; margin-bottom:10px;">
                                 <label class="cap-label">Región (para filtrar municipios)</label>
@@ -295,7 +290,6 @@
                                 <label class="cap-label" style="margin-top:10px;">Municipio</label>
                                 <select class="cap-input" wire:model.live="municipio" @disabled(empty($regionFiltro))>
                                     <option value="">Selecciona un municipio</option>
-
                                     @foreach ($municipiosFiltrados as $m)
                                         @php
                                             $munUsado = collect($manualData)->contains(function ($row) use ($m) {
@@ -314,7 +308,6 @@
                             </div>
                         @endif
 
-                        {{-- CAMPOS DINÁMICOS --}}
                         <div style="flex:1 1 100%; margin-bottom:10px;">
                             <div class="cap-card">
                                 <h4 class="cap-card-title">Campos del indicador</h4>
@@ -322,46 +315,47 @@
                                 @if (empty($schema))
                                     <div class="alert alert-warning">
                                         Este indicador aún no tiene campos a capturar.
-                                    @else
-                                        <div class="cap-fields-grid">
-                                            @foreach ($schema as $campo)
-                                                @php
-                                                    $slug = $campo['slug'] ?? '';
-                                                    $label = $campo['label'] ?? $slug;
-                                                    $required = !empty($campo['required']);
-                                                    $step = ($campo['type'] ?? '') === 'porcentaje' ? 0.01 : 1;
-                                                @endphp
+                                    </div>
+                                @else
+                                    <div class="cap-fields-grid">
+                                        @foreach ($schema as $campo)
+                                            @php
+                                                $slug = $campo['slug'] ?? '';
+                                                $label = $campo['label'] ?? $slug;
+                                                $required = !empty($campo['required']);
+                                                $step = ($campo['type'] ?? '') === 'porcentaje' ? 0.01 : 1;
+                                            @endphp
 
-                                                <div class="cap-field">
-                                                    <label class="cap-label">
-                                                        {{ $label }}
-                                                        @if ($required)
-                                                            <span class="cap-req">*</span>
-                                                        @endif
-                                                    </label>
+                                            <div class="cap-field">
+                                                <label class="cap-label">
+                                                    {{ $label }}
+                                                    @if ($required)
+                                                        <span class="cap-req">*</span>
+                                                    @endif
+                                                </label>
 
-                                                    <input class="cap-input" type="number"
-                                                        wire:model.live="manualCampos.{{ $slug }}"
-                                                        step="{{ $step }}"
-                                                        @if (isset($campo['min'])) min="{{ $campo['min'] }}" @endif
-                                                        @if (isset($campo['max'])) max="{{ $campo['max'] }}" @endif>
-                                                </div>
-                                            @endforeach
-                                        </div>
+                                                <input class="cap-input" type="number"
+                                                    wire:model.live="manualCampos.{{ $slug }}"
+                                                    step="{{ $step }}"
+                                                    @if (isset($campo['min'])) min="{{ $campo['min'] }}" @endif
+                                                    @if (isset($campo['max'])) max="{{ $campo['max'] }}" @endif>
+                                            </div>
+                                        @endforeach
                                     </div>
                                 @endif
                             </div>
+                        </div>
 
-                            <button type="submit"
-                                class="cap-btn {{ isset($editManualIndex) && $editManualIndex !== null ? 'cap-btn-warning' : 'cap-btn-primary' }}">
-                                {{ isset($editManualIndex) && $editManualIndex !== null ? 'Guardar edición' : 'Agregar fila' }}
-                            </button>
+                        <button type="submit"
+                            class="cap-btn {{ isset($editManualIndex) && $editManualIndex !== null ? 'cap-btn-warning' : 'cap-btn-primary' }}">
+                            {{ isset($editManualIndex) && $editManualIndex !== null ? 'Guardar edición' : 'Agregar fila' }}
+                        </button>
                     </form>
-
+                </fieldset>
             </div>
-            <div class="cap-right">
 
-                {{-- TABLA MANUAL --}}
+            {{-- COLUMNA DERECHA --}}
+            <div class="cap-right">
                 <div class="cap-card">
                     <h4 class="cap-card-title">
                         Filas capturadas ({{ count($manualData ?? []) }})
@@ -430,6 +424,7 @@
                             </tbody>
                         </table>
                     </div>
+
                     <div class="cap-sticky">
                         <div class="cap-sticky-info">
                             Estado:
@@ -441,18 +436,11 @@
                         <div class="cap-sticky-actions">
                             <button type="button" class="cap-btn cap-btn-primary" wire:click="guardarTodo"
                                 @disabled($soloLectura || $guardando || $modoCorreccion) wire:loading.attr="disabled" wire:target="guardarTodo">
-
-                                <span wire:loading.remove wire:target="guardarTodo">
-                                    Enviar
-                                </span>
-
-                                <span wire:loading wire:target="guardarTodo">
-                                    Guardando...
-                                </span>
+                                <span wire:loading.remove wire:target="guardarTodo">Enviar</span>
+                                <span wire:loading wire:target="guardarTodo">Guardando...</span>
                             </button>
                         </div>
                     </div>
-                    </fieldset>
                 </div>
             </div>
         </div>
@@ -900,8 +888,8 @@
         }
 
         /* =========================
-                                                                                                                                                                                                                               ✅ CARD FOLIO (PASO 2)
-                                                                                                                                                                                                                               ========================= */
+                                                                                                                                                                                                                                   ✅ CARD FOLIO (PASO 2)
+                                                                                                                                                                                                                                   ========================= */
         .cap-folio-card {
             display: flex;
             justify-content: space-between;
@@ -969,8 +957,8 @@
         }
 
         /* =========================
-                                                                                                                                                                                               ✅ MANUAL PRO (PASO 3)
-                                                                                                                                                                                               ========================= */
+                                                                                                                                                                                                   ✅ MANUAL PRO (PASO 3)
+                                                                                                                                                                                                   ========================= */
         .cap-section-head {
             display: flex;
             justify-content: space-between;
@@ -1258,8 +1246,8 @@
         }
 
         /* =========================
-                                                                                                   ✅ ARCHIVO UI (PASO 1)
-                                                                                                   ========================= */
+                                                                                                       ✅ ARCHIVO UI (PASO 1)
+                                                                                                       ========================= */
         .cap-archivo-card {
             background: #fff;
             border: 1px solid #e5e7eb;
@@ -1292,8 +1280,8 @@
         }
 
         /* =========================
-                                                                                           ✅ ÁMBITO estilo pills (PASO 2)
-                                                                                           ========================= */
+                                                                                               ✅ ÁMBITO estilo pills (PASO 2)
+                                                                                               ========================= */
         .cap-ambito {
             margin-bottom: 12px;
         }
@@ -1365,8 +1353,8 @@
         }
 
         /* =========================
-                                                                                   ✅ Steps archivo (PASO 3)
-                                                                                   ========================= */
+                                                                                       ✅ Steps archivo (PASO 3)
+                                                                                       ========================= */
         .cap-step {
             border: 1px solid #e5e7eb;
             border-radius: 14px;
@@ -1445,8 +1433,8 @@
         }
 
         /* =========================
-                                                                           ✅ Dropzone visual (PASO 4)
-                                                                           ========================= */
+                                                                               ✅ Dropzone visual (PASO 4)
+                                                                               ========================= */
         .cap-drop {
             display: block;
             border: 2px dashed #cbd5e1;
@@ -1507,8 +1495,8 @@
         }
 
         /* =========================
-                                                                   ✅ Métricas (PASO 5)
-                                                                   ========================= */
+                                                                       ✅ Métricas (PASO 5)
+                                                                       ========================= */
         .cap-step-actions-split {
             justify-content: space-between;
             align-items: center;
@@ -1545,8 +1533,8 @@
         }
 
         /* =========================
-                                                           ✅ Acción final (PASO 6)
-                                                           ========================= */
+                                                               ✅ Acción final (PASO 6)
+                                                               ========================= */
         .cap-final {
             margin-top: 12px;
             padding: 14px;
@@ -1601,8 +1589,8 @@
         }
 
         /* =========================
-                                               ✅ Grid campos manual (PASO 2)
-                                               ========================= */
+                                                   ✅ Grid campos manual (PASO 2)
+                                                   ========================= */
         .cap-fields-grid {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1616,8 +1604,8 @@
         }
 
         /* =========================
-                                       ✅ Empty state tabla (PASO 3)
-                                       ========================= */
+                                           ✅ Empty state tabla (PASO 3)
+                                           ========================= */
         .cap-empty {
             margin: 10px 0;
             padding: 14px;
@@ -1641,8 +1629,8 @@
         }
 
         /* =========================
-                               ✅ Header card (PASO 4)
-                               ========================= */
+                                   ✅ Header card (PASO 4)
+                                   ========================= */
         .cap-topcard {
             margin-bottom: 14px;
             padding: 14px 16px;
