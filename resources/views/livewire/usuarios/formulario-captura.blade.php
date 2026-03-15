@@ -77,11 +77,11 @@
         @endphp
 
         <div class="mb-3">
-
-            {{-- ✅ Si ya viene seleccionada (por URL o por selección previa), NO mostrar select --}}
             @if ($meta_id && $metaSel)
                 <div class="p-2 rounded" style="background:#eef3ff;">
-                    <div class="text-muted small">Meta (parcial)</div>
+                    <div class="text-muted small">
+                        {{ $modoCorreccion ? 'Meta de la corrección' : 'Meta (parcial)' }}
+                    </div>
                     <div class="fw-semibold" style="font-size:1.05rem;">
                         {{ $metaSel['orden'] ?? '' }}. {{ $metaSel['titulo'] ?? 'Meta' }}
                     </div>
@@ -90,7 +90,6 @@
                     </div>
                 </div>
             @else
-                {{-- ✅ Si NO hay meta seleccionada, ahí sí mostrar select --}}
                 <select class="form-select" wire:model="meta_id" @disabled($metaBloqueada)>
                     <option value="">— Selecciona una meta —</option>
                     @foreach ($metasDisponibles as $m)
@@ -233,24 +232,123 @@
                         <label class="cap-label">Capturar por:</label>
 
                         <div class="cap-ambito-grid">
-                            <label class="cap-ambito-pill">
-                                <input class="cap-ambito-radio" type="radio" wire:model.live="ambito_geo"
-                                    value="SIN_AMBITO">
+
+                            <label
+                                class="cap-ambito-pill 
+    {{ $ambito_geo === 'SIN_AMBITO' ? 'selected' : '' }}
+    {{ !empty($manualData) && $ambito_geo !== 'SIN_AMBITO' ? 'cap-ambito-locked' : '' }}">
+
+                                <input class="cap-ambito-radio" type="radio"
+                                    wire:click="seleccionarAmbito('SIN_AMBITO')" @checked($ambito_geo === 'SIN_AMBITO')>
+
                                 <span class="cap-ambito-text">ESTATAL</span>
+
                             </label>
 
-                            <label class="cap-ambito-pill">
-                                <input class="cap-ambito-radio" type="radio" wire:model.live="ambito_geo"
-                                    value="REGION">
+
+                            <label
+                                class="cap-ambito-pill 
+    {{ $ambito_geo === 'REGION' ? 'selected' : '' }}
+    {{ !empty($manualData) && $ambito_geo !== 'REGION' ? 'cap-ambito-locked' : '' }}">
+
+                                <input class="cap-ambito-radio" type="radio" wire:click="seleccionarAmbito('REGION')"
+                                    @checked($ambito_geo === 'REGION')>
+
                                 <span class="cap-ambito-text">REGIÓN</span>
+
                             </label>
 
-                            <label class="cap-ambito-pill">
-                                <input class="cap-ambito-radio" type="radio" wire:model.live="ambito_geo"
-                                    value="MUNICIPIO">
+
+                            <label
+                                class="cap-ambito-pill 
+    {{ $ambito_geo === 'MUNICIPIO' ? 'selected' : '' }}
+    {{ !empty($manualData) && $ambito_geo !== 'MUNICIPIO' ? 'cap-ambito-locked' : '' }}">
+
+                                <input class="cap-ambito-radio" type="radio"
+                                    wire:click="seleccionarAmbito('MUNICIPIO')" @checked($ambito_geo === 'MUNICIPIO')>
+
                                 <span class="cap-ambito-text">MUNICIPIO</span>
+
                             </label>
+
                         </div>
+
+                        @if (!empty($manualData))
+                            <div class="cap-warning-box mt-2">
+                                <div class="cap-warning-icon">⚠️</div>
+
+                                <div class="cap-warning-content">
+                                    <div class="cap-warning-title">Captura protegida</div>
+
+                                    <div class="cap-warning-text">
+                                        Ya existen <strong>{{ count($manualData) }}</strong> registro(s) capturados en
+                                        <strong>
+                                            @if ($ambito_geo === 'SIN_AMBITO')
+                                                ESTATAL
+                                            @elseif($ambito_geo === 'REGION')
+                                                REGIÓN
+                                            @elseif($ambito_geo === 'MUNICIPIO')
+                                                MUNICIPIO
+                                            @endif
+                                        </strong>.
+                                        Si cambias el tipo de captura, se eliminarán los registros ingresados.
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
+
+                        @if ($mostrarConfirmacionCambioAmbito && $ambitoPendiente)
+                            <div class="cap-confirm-box mt-2">
+                                <div class="cap-confirm-head">
+                                    <div class="cap-confirm-icon">🛑</div>
+                                    <div>
+                                        <div class="cap-confirm-title">Confirmar cambio de tipo de captura</div>
+                                        <div class="cap-confirm-sub">
+                                            Esta acción eliminará los registros previamente ingresados.
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="cap-confirm-body">
+                                    Vas a cambiar de
+                                    <strong>
+                                        @if ($ambito_geo === 'SIN_AMBITO')
+                                            ESTATAL
+                                        @elseif($ambito_geo === 'REGION')
+                                            REGIÓN
+                                        @elseif($ambito_geo === 'MUNICIPIO')
+                                            MUNICIPIO
+                                        @endif
+                                    </strong>
+                                    a
+                                    <strong>
+                                        @if ($ambitoPendiente === 'SIN_AMBITO')
+                                            ESTATAL
+                                        @elseif($ambitoPendiente === 'REGION')
+                                            REGIÓN
+                                        @elseif($ambitoPendiente === 'MUNICIPIO')
+                                            MUNICIPIO
+                                        @endif
+                                    </strong>.
+                                </div>
+
+                                <div class="cap-confirm-note">
+                                    Se borrarán <strong>{{ count($manualData) }}</strong> registro(s) capturados.
+                                </div>
+
+                                <div class="cap-confirm-actions">
+                                    <button type="button" class="cap-btn cap-btn-danger-solid"
+                                        wire:click="confirmarCambioAmbito">
+                                        Sí, cambiar y borrar
+                                    </button>
+
+                                    <button type="button" class="cap-btn cap-btn-ghost"
+                                        wire:click="cancelarCambioAmbito">
+                                        Cancelar
+                                    </button>
+                                </div>
+                            </div>
+                        @endif
                     </div>
 
                     <form id="formManual" wire:submit.prevent="agregarManual">
@@ -434,11 +532,22 @@
                         </div>
 
                         <div class="cap-sticky-actions">
-                            <button type="button" class="cap-btn cap-btn-primary" wire:click="guardarTodo"
-                                @disabled($soloLectura || $guardando || $modoCorreccion) wire:loading.attr="disabled" wire:target="guardarTodo">
-                                <span wire:loading.remove wire:target="guardarTodo">Enviar</span>
-                                <span wire:loading wire:target="guardarTodo">Guardando...</span>
-                            </button>
+                            @if ($modoCorreccion)
+                                <button type="button" class="cap-btn cap-btn-primary"
+                                    wire:click="reenviarCorreccion" @disabled($soloLectura || $guardando)
+                                    wire:loading.attr="disabled" wire:target="reenviarCorreccion">
+                                    <span wire:loading.remove wire:target="reenviarCorreccion">Reenviar
+                                        corrección</span>
+                                    <span wire:loading wire:target="reenviarCorreccion">Reenviando...</span>
+                                </button>
+                            @else
+                                <button type="button" class="cap-btn cap-btn-primary" wire:click="guardarTodo"
+                                    @disabled($soloLectura || $guardando) wire:loading.attr="disabled"
+                                    wire:target="guardarTodo">
+                                    <span wire:loading.remove wire:target="guardarTodo">Enviar</span>
+                                    <span wire:loading wire:target="guardarTodo">Guardando...</span>
+                                </button>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -625,32 +734,28 @@
                     </div>
 
                     <div class="cap-final-right">
-                        <button type="button" wire:click="guardarTodo" class="btn btn-success cap-final-btn"
-                            @disabled($soloLectura || $guardando || !$archivoProcesado || $modoCorreccion) wire:loading.attr="disabled" wire:target="guardarTodo">
+                        @if ($modoCorreccion)
+                            <button type="button" wire:click="reenviarCorreccion"
+                                class="btn btn-success cap-final-btn" @disabled($soloLectura || $guardando || !$archivoProcesado)
+                                wire:loading.attr="disabled" wire:target="reenviarCorreccion">
 
-                            <span wire:loading.remove wire:target="guardarTodo">Enviar</span>
-                            <span wire:loading wire:target="guardarTodo">Enviando...</span>
-                        </button>
+                                <span wire:loading.remove wire:target="reenviarCorreccion">Reenviar corrección</span>
+                                <span wire:loading wire:target="reenviarCorreccion">Reenviando...</span>
+                            </button>
+                        @else
+                            <button type="button" wire:click="guardarTodo" class="btn btn-success cap-final-btn"
+                                @disabled($soloLectura || $guardando || !$archivoProcesado) wire:loading.attr="disabled" wire:target="guardarTodo">
+
+                                <span wire:loading.remove wire:target="guardarTodo">Enviar</span>
+                                <span wire:loading wire:target="guardarTodo">Enviando...</span>
+                            </button>
+                        @endif
                     </div>
                 </div>
 
             @endif
         </div>
-        {{-- =========================
-         🔁 REENVIAR CORRECCIÓN
-        ========================= --}}
-        @if ($modoCorreccion)
-            <div class="mt-4">
-                <button type="button" class="btn btn-primary" wire:click="reenviarCorreccion"
-                    wire:loading.attr="disabled">
-                    🔁 Reenviar corrección
-                </button>
-
-                <small class="text-muted d-block mt-1">
-                    Al reenviar se reemplazan los datos anteriores de esta carga.
-                </small>
-            </div>
-        @endif
+        
     </div>
 </div>
 
@@ -888,8 +993,8 @@
         }
 
         /* =========================
-                                                                                                                                                                                                                                   ✅ CARD FOLIO (PASO 2)
-                                                                                                                                                                                                                                   ========================= */
+                                                                                                                                                                                                                                                                               ✅ CARD FOLIO (PASO 2)
+                                                                                                                                                                                                                                                                               ========================= */
         .cap-folio-card {
             display: flex;
             justify-content: space-between;
@@ -957,8 +1062,8 @@
         }
 
         /* =========================
-                                                                                                                                                                                                   ✅ MANUAL PRO (PASO 3)
-                                                                                                                                                                                                   ========================= */
+                                                                                                                                                                                                                                               ✅ MANUAL PRO (PASO 3)
+                                                                                                                                                                                                                                               ========================= */
         .cap-section-head {
             display: flex;
             justify-content: space-between;
@@ -1246,8 +1351,8 @@
         }
 
         /* =========================
-                                                                                                       ✅ ARCHIVO UI (PASO 1)
-                                                                                                       ========================= */
+                                                                                                                                                   ✅ ARCHIVO UI (PASO 1)
+                                                                                                                                                   ========================= */
         .cap-archivo-card {
             background: #fff;
             border: 1px solid #e5e7eb;
@@ -1280,8 +1385,8 @@
         }
 
         /* =========================
-                                                                                               ✅ ÁMBITO estilo pills (PASO 2)
-                                                                                               ========================= */
+                                                                                                                                           ✅ ÁMBITO estilo pills (PASO 2)
+                                                                                                                                           ========================= */
         .cap-ambito {
             margin-bottom: 12px;
         }
@@ -1322,6 +1427,20 @@
             transition: .15s ease;
         }
 
+        /* =========================
+                       COLOR CUANDO ESTÁ SELECCIONADO
+                       ========================= */
+        .cap-ambito-pill.selected {
+            background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
+            border: 2px solid #2563eb;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, .18);
+        }
+
+        .cap-ambito-pill.selected .cap-ambito-text {
+            color: #1d4ed8;
+            font-weight: 900;
+        }
+
         .cap-ambito-pill:hover {
             transform: translateY(-1px);
             box-shadow: 0 10px 18px rgba(0, 0, 0, .08);
@@ -1353,8 +1472,8 @@
         }
 
         /* =========================
-                                                                                       ✅ Steps archivo (PASO 3)
-                                                                                       ========================= */
+                                                                                                                                   ✅ Steps archivo (PASO 3)
+                                                                                                                                   ========================= */
         .cap-step {
             border: 1px solid #e5e7eb;
             border-radius: 14px;
@@ -1433,8 +1552,8 @@
         }
 
         /* =========================
-                                                                               ✅ Dropzone visual (PASO 4)
-                                                                               ========================= */
+                                                                                                                           ✅ Dropzone visual (PASO 4)
+                                                                                                                           ========================= */
         .cap-drop {
             display: block;
             border: 2px dashed #cbd5e1;
@@ -1495,8 +1614,8 @@
         }
 
         /* =========================
-                                                                       ✅ Métricas (PASO 5)
-                                                                       ========================= */
+                                                                                                                   ✅ Métricas (PASO 5)
+                                                                                                                   ========================= */
         .cap-step-actions-split {
             justify-content: space-between;
             align-items: center;
@@ -1533,8 +1652,8 @@
         }
 
         /* =========================
-                                                               ✅ Acción final (PASO 6)
-                                                               ========================= */
+                                                                                                           ✅ Acción final (PASO 6)
+                                                                                                           ========================= */
         .cap-final {
             margin-top: 12px;
             padding: 14px;
@@ -1589,8 +1708,8 @@
         }
 
         /* =========================
-                                                   ✅ Grid campos manual (PASO 2)
-                                                   ========================= */
+                                                                                               ✅ Grid campos manual (PASO 2)
+                                                                                               ========================= */
         .cap-fields-grid {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1604,8 +1723,8 @@
         }
 
         /* =========================
-                                           ✅ Empty state tabla (PASO 3)
-                                           ========================= */
+                                                                                       ✅ Empty state tabla (PASO 3)
+                                                                                       ========================= */
         .cap-empty {
             margin: 10px 0;
             padding: 14px;
@@ -1629,8 +1748,8 @@
         }
 
         /* =========================
-                                   ✅ Header card (PASO 4)
-                                   ========================= */
+                                                                               ✅ Header card (PASO 4)
+                                                                               ========================= */
         .cap-topcard {
             margin-bottom: 14px;
             padding: 14px 16px;
@@ -1734,6 +1853,136 @@
                 text-align: left;
                 max-width: 100%;
             }
+        }
+
+        /* =========================
+                                   ✅ AVISO DE PROTECCIÓN DE CAPTURA
+                                   ========================= */
+        .cap-warning-box {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 14px 16px;
+            border-radius: 14px;
+            border: 1px solid #fde68a;
+            background: linear-gradient(180deg, #fffdf5 0%, #fffbeb 100%);
+            box-shadow: 0 8px 20px rgba(245, 158, 11, .08);
+        }
+
+        .cap-warning-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 999px;
+            display: grid;
+            place-items: center;
+            background: #fef3c7;
+            font-size: 18px;
+            flex: 0 0 36px;
+        }
+
+        .cap-warning-content {
+            flex: 1 1 auto;
+        }
+
+        .cap-warning-title {
+            font-size: 14px;
+            font-weight: 900;
+            color: #92400e;
+            margin-bottom: 4px;
+        }
+
+        .cap-warning-text {
+            font-size: 13px;
+            line-height: 1.45;
+            color: #78350f;
+            font-weight: 700;
+        }
+
+        /* =========================
+                                   ✅ CONFIRMACIÓN DE CAMBIO DE ÁMBITO
+                                   ========================= */
+        .cap-confirm-box {
+            margin-top: 10px;
+            padding: 16px;
+            border-radius: 16px;
+            border: 1px solid #fecaca;
+            background: linear-gradient(180deg, #fff 0%, #fff5f5 100%);
+            box-shadow: 0 12px 26px rgba(239, 68, 68, .10);
+        }
+
+        .cap-confirm-head {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .cap-confirm-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 999px;
+            display: grid;
+            place-items: center;
+            background: #fee2e2;
+            font-size: 18px;
+            flex: 0 0 40px;
+        }
+
+        .cap-confirm-title {
+            font-size: 15px;
+            font-weight: 900;
+            color: #991b1b;
+        }
+
+        .cap-confirm-sub {
+            margin-top: 3px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #7f1d1d;
+        }
+
+        .cap-confirm-body {
+            font-size: 13px;
+            font-weight: 700;
+            color: #374151;
+            line-height: 1.45;
+            margin-bottom: 10px;
+        }
+
+        .cap-confirm-note {
+            display: inline-block;
+            padding: 8px 10px;
+            border-radius: 10px;
+            background: #fff;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+            font-size: 12px;
+            font-weight: 800;
+            margin-bottom: 12px;
+        }
+
+        .cap-confirm-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .cap-btn-danger-solid {
+            background: #dc2626;
+            border-color: #dc2626;
+            color: #fff;
+        }
+
+        .cap-btn-danger-solid:hover {
+            background: #b91c1c;
+            border-color: #b91c1c;
+        }
+
+        .cap-ambito-locked {
+            border-color: #f59e0b !important;
+            background: #fffaf0 !important;
+            box-shadow: inset 0 0 0 1px rgba(245, 158, 11, .20);
+            position: relative;
         }
     </style>
 @endpush

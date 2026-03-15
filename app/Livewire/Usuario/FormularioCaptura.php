@@ -126,6 +126,9 @@ class FormularioCaptura extends Component
 
     public bool $ambitoElegido = false;
 
+    public ?string $ambitoPendiente = null;
+    public bool $mostrarConfirmacionCambioAmbito = false;
+
     public function mount($id_form, $id_ind, $meta_id = null)
     {
         // query string
@@ -347,6 +350,7 @@ class FormularioCaptura extends Component
 
                 if ($hayDetalles) {
                     $this->cargarDatosDeCarga($carga);
+                    $this->restaurarAmbitoDesdeDetalles($carga);
                 }
             }
         }
@@ -365,6 +369,17 @@ class FormularioCaptura extends Component
             if ((int) $carga->id_form !== (int) $this->id_form) {
                 abort(403, 'Esta carga no pertenece a este formulario.');
             }
+
+            $estadoCorreccion = mb_strtoupper(trim((string) ($carga->status_env ?? '')));
+            $estadoCorreccion = str_replace('REVISIÓN', 'REVISION', $estadoCorreccion);
+
+            if ($estadoCorreccion !== 'OBSERVADO') {
+                abort(403, 'Solo se puede corregir una carga en estado OBSERVADO.');
+            }
+
+            // ✅ En corrección NO debe quedar en solo lectura
+            $this->soloLectura = false;
+            $this->mensajeBloqueo = null;
 
             $this->metodo = (strtoupper((string) $carga->metodo_captura) === 'ARCHIVO') ? 'archivo' : 'manual';
             $this->metodoBloqueado = true;
@@ -421,6 +436,7 @@ class FormularioCaptura extends Component
             $this->metaBloqueada = $this->requiereMeta && !empty($this->meta_id);
 
             $this->cargarDatosDeCarga($carga);
+            $this->restaurarAmbitoDesdeDetalles($carga);
 
             if ($this->metodo === 'archivo') {
                 $this->plantillaDescargada = ! is_null($carga->plantilla_descargada_at);
@@ -481,6 +497,31 @@ class FormularioCaptura extends Component
             // opcional preview para archivo
             $this->archivoData = $detalles->take(10)->toArray();
         }
+    }
+
+    private function restaurarAmbitoDesdeDetalles(\App\Models\Carga $carga): void
+    {
+        $primerDetalle = \App\Models\DetalleCarga::where('id_carga', $carga->id_carga)
+            ->where('id_ind', $this->id_ind)
+            ->orderBy('id_detalle')
+            ->first();
+
+        if ($primerDetalle && !empty($primerDetalle->ambito_geo)) {
+            $this->ambito_geo = $primerDetalle->ambito_geo;
+        } elseif (!empty($carga->ambito_geo_carga)) {
+            $this->ambito_geo = $carga->ambito_geo_carga;
+        } else {
+            $this->ambito_geo = 'SIN_AMBITO';
+        }
+
+        // ✅ marcar que ya hay ámbito elegido
+        $this->ambitoElegido = true;
+
+        // ✅ limpiar selectores dependientes al restaurar
+        $this->region = '';
+        $this->municipio = '';
+        $this->regionFiltro = '';
+        $this->municipiosFiltrados = collect();
     }
 
     /* =========================
@@ -849,23 +890,92 @@ class FormularioCaptura extends Component
     ========================== */
     public function updatedAmbitoGeo($value)
     {
+
+        // Si ya había plantilla descargada y cambió el ámbito => forzar re-descarga
+        if ($this->plantillaDescargada && $this->ambito_plantilla_descargada !== $this->ambito_geo) {
+            $this->resetArchivoState();
+            $this->plantillaDescargada = false;
+
+            $this->motivoResetPlantilla = "Cambiaste el ámbito. Debes descargar una nueva plantilla para {$this->ambito_geo}.";
+            session()->flash('warning', $this->motivoResetPlantilla);
+        }
+    }
+
+    public function seleccionarAmbito(string $nuevoAmbito): void
+    {
+        if ($this->soloLectura) {
+            return;
+        }
+
+        if ($this->ambito_geo === $nuevoAmbito) {
+            return;
+        }
+
+        // Si ya hay filas capturadas, pedir confirmación antes de borrar
+        if (!empty($this->manualData)) {
+            $this->ambitoPendiente = $nuevoAmbito;
+            $this->mostrarConfirmacionCambioAmbito = true;
+            return;
+        }
+
+        $this->aplicarCambioAmbito($nuevoAmbito);
+    }
+
+    public function confirmarCambioAmbito(): void
+    {
+        if (!$this->ambitoPendiente) {
+            return;
+        }
+
+        $nuevoAmbito = $this->ambitoPendiente;
+
+        // Borrar filas previas
+        $this->manualData = [];
+        $this->editManualIndex = null;
+
+        // Limpiar detalles guardados en BD si ya existe borrador manual
+        if ($this->id_carga_actual && $this->metodo === 'manual') {
+            DetalleCarga::where('id_carga', $this->id_carga_actual)
+                ->where('id_ind', $this->id_ind)
+                ->delete();
+        }
+
+        $this->aplicarCambioAmbito($nuevoAmbito);
+
+        $this->mostrarConfirmacionCambioAmbito = false;
+        $this->ambitoPendiente = null;
+
+        session()->flash('success', 'Se cambió el tipo de captura y se eliminaron los registros anteriores.');
+    }
+
+    public function cancelarCambioAmbito(): void
+    {
+        $this->mostrarConfirmacionCambioAmbito = false;
+        $this->ambitoPendiente = null;
+    }
+
+    private function aplicarCambioAmbito(string $value): void
+    {
+        $this->ambito_geo = $value;
+
         $this->region = '';
         $this->municipio = '';
         $this->regionFiltro = '';
         $this->municipiosFiltrados = collect();
         $this->ambitoElegido = true;
-
-        // si no quieres mezclar ámbitos: limpia filas manuales
-        $this->manualData = [];
         $this->editManualIndex = null;
 
-        // si ya estaba en archivo, actualiza borrador (si existe)
-        if ($this->metodo === 'archivo' && $this->id_carga_actual) {
+        foreach ($this->schema as $c) {
+            $this->manualCampos[$c['slug']] = null;
+        }
+
+        // Si ya estaba en archivo, actualizar el ámbito en la carga
+        if ($this->id_carga_actual) {
             Carga::where('id_carga', $this->id_carga_actual)
                 ->update(['ambito_geo_carga' => $this->ambito_geo]);
         }
 
-        // Si ya había plantilla descargada y cambió el ámbito => forzar re-descarga
+        // Si ya había plantilla descargada y cambió el ámbito, forzar nueva plantilla
         if ($this->plantillaDescargada && $this->ambito_plantilla_descargada !== $this->ambito_geo) {
             $this->resetArchivoState();
             $this->plantillaDescargada = false;
@@ -1084,27 +1194,35 @@ class FormularioCaptura extends Component
 
     public function reenviarCorreccion()
     {
-        if ($this->soloLectura) {
-            session()->flash('error', 'Solo lectura.');
+        $carga = \App\Models\Carga::findOrFail($this->id_carga_actual);
 
+        $estado = mb_strtoupper(trim((string) ($carga->status_env ?? '')));
+        $estado = str_replace('REVISIÓN', 'REVISION', $estado);
+
+        if ($estado !== 'OBSERVADO') {
+            session()->flash('error', 'Solo puedes reenviar cargas en estado OBSERVADO.');
             return;
         }
 
-        $carga = \App\Models\Carga::findOrFail($this->id_carga_actual);
+        if ($this->soloLectura) {
+            session()->flash('error', 'La carga está bloqueada en modo solo lectura.');
+            return;
+        }
 
         DB::transaction(function () use ($carga) {
-            $this->asegurarPeriodoPermitidoEnCarga($carga);
             $metodo = strtoupper((string) $carga->metodo_captura);
 
             if ($metodo === 'MANUAL') {
-                // ✅ MANUAL: reemplaza reinsertando desde lo capturado en pantalla
+                if (empty($this->manualData)) {
+                    throw new \Exception('Agrega al menos una fila antes de reenviar la corrección.');
+                }
+
                 \App\Models\DetalleCarga::where('id_carga', $carga->id_carga)
                     ->where('id_ind', $this->id_ind)
                     ->delete();
 
                 $this->guardarManualEnDetalle($carga->id_carga);
             } else {
-                // ✅ ARCHIVO: NO borres aquí. Solo valida que ya se procesó archivo.
                 $hay = \App\Models\DetalleCarga::where('id_carga', $carga->id_carga)
                     ->where('id_ind', $this->id_ind)
                     ->exists();
@@ -1115,6 +1233,8 @@ class FormularioCaptura extends Component
             }
 
             $carga->status_env = 'REENVIADO';
+            $carga->observacion_env = '';
+            $carga->fecha_carga = now();
             $carga->save();
         });
 
@@ -2114,6 +2234,23 @@ class FormularioCaptura extends Component
 
         // 7) Setear bloqueo / mensaje
         if (! $permitido) {
+            // ✅ Si está en modo corrección, permitir editar y reenviar
+            if ($this->modoCorreccion && $this->id_carga_actual) {
+                $carga = Carga::find($this->id_carga_actual);
+
+                if ($carga) {
+                    $estado = mb_strtoupper(trim((string) ($carga->status_env ?? '')));
+                    $estado = str_replace('REVISIÓN', 'REVISION', $estado);
+
+                    if ($estado === 'OBSERVADO') {
+                        $this->soloLectura = false;
+                        $this->mensajeBloqueo = null;
+                        $this->diasRestantes = null;
+                        return;
+                    }
+                }
+            }
+
             $this->soloLectura = true;
             $this->mensajeBloqueo = $msg;
             $this->diasRestantes = null;
@@ -2129,6 +2266,8 @@ class FormularioCaptura extends Component
     public function render()
     {
         $this->cargaActual = $this->id_carga_actual ? Carga::find($this->id_carga_actual) : null;
+
+        $metaSel = collect($this->metasDisponibles)->firstWhere('id', $this->meta_id);
 
         return view('livewire.usuarios.formulario-captura', [
             'regiones' => $this->regiones,
@@ -2158,6 +2297,9 @@ class FormularioCaptura extends Component
             'capturaOpenAt' => $this->capturaOpenAt,
             'capturaCloseAt' => $this->capturaCloseAt,
             'diasRestantes' => $this->diasRestantes,
+            'metaSel' => $metaSel,
+            'ambitoPendiente' => $this->ambitoPendiente,
+            'mostrarConfirmacionCambioAmbito' => $this->mostrarConfirmacionCambioAmbito,
         ])->extends('layouts.usuario')->section('content');
     }
 }

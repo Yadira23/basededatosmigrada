@@ -383,99 +383,124 @@
     @endphp
 
     <div class="card pro-card mb-3">
-        <div class="card-header d-flex align-items-center justify-content-between">
+        <div class="card-header d-flex align-items-center justify-content-between flex-wrap" style="gap:10px;">
             <span>Dependencias</span>
-            <span class="text-muted small">Indicadores asignados</span>
+
+            <div class="d-flex align-items-center" style="gap:10px;">
+                <span class="text-muted small">
+                    <i class="fas fa-arrows-alt-h mr-1"></i> Desliza o usa las flechas
+                </span>
+
+                <button type="button" id="depPrevBtn" class="btn btn-sm btn-outline-secondary dep-nav-btn"
+                    onclick="scrollDependencias(-1)">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+
+                <button type="button" id="depNextBtn" class="btn btn-sm btn-outline-secondary dep-nav-btn"
+                    onclick="scrollDependencias(1)">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
         </div>
+
         <div class="card-body">
-            <div class="row">
-                @foreach ($depIndicadores as $row)
-                    <div class="col-lg-4 col-md-6 mb-3">
-                        <div class="dep-card">
-                            <div class="dep-card-top">
-                                <div class="dep-name text-truncate" title="{{ $row->nombre_depen }}">
-                                    {{ $row->nombre_depen }}
-                                </div>
-                                <span class="badge-soft">Meta:
-                                    {{ (int) ($avancePorDep[$row->id_depen]['meta'] ?? 0) }}</span>
-                            </div>
+            <div class="dep-scroll-shell">
+                <div class="dep-fade dep-fade-left" id="depFadeLeft"></div>
+                <div class="dep-fade dep-fade-right" id="depFadeRight"></div>
 
-                            <div class="dep-metrics">
-                                <div class="dep-metric">
-                                    <div class="dep-metric-label">Indicadores</div>
-                                    <div class="dep-metric-value">{{ (int) $row->indicadores_asignados }}</div>
-                                </div>
-                            </div>
+                <div class="dep-scroll-wrap" id="depScrollWrap">
+                    <div class="dep-scroll-track">
+                        @foreach ($depIndicadores as $row)
+                            <div class="dep-scroll-item">
+                                <div class="dep-card h-100">
+                                    <div class="dep-card-top">
+                                        <div class="dep-name text-truncate" title="{{ $row->nombre_depen }}">
+                                            {{ $row->nombre_depen }}
+                                        </div>
+                                        <span class="badge-soft">
+                                            Meta: {{ (int) ($avancePorDep[$row->id_depen]['meta'] ?? 0) }}
+                                        </span>
+                                    </div>
 
-                            @php
-                                $borr = (int) ($borradoresPorDep[$row->id_depen] ?? 0);
-                            @endphp
+                                    <div class="dep-metrics">
+                                        <div class="dep-metric">
+                                            <div class="dep-metric-label">Indicadores</div>
+                                            <div class="dep-metric-value">{{ (int) $row->indicadores_asignados }}
+                                            </div>
+                                        </div>
+                                    </div>
 
-                            <div class="d-flex align-items-center justify-content-between mt-2">
-                                <div class="text-muted small">
-                                    <i class="fas fa-pencil-alt mr-1"></i> Borradores:
-                                    <strong>{{ $borr }}</strong>
-                                </div>
+                                    @php
+                                        $borr = (int) ($borradoresPorDep[$row->id_depen] ?? 0);
+                                    @endphp
 
-                                @if ($borr > 0)
-                                    <button type="button" class="btn btn-sm btn-outline-primary"
-                                        wire:click="recordarBorradoresDependencia({{ (int) $row->id_depen }})">
-                                        <i class="fas fa-bell mr-1"></i> Recordar
-                                    </button>
-                                @endif
-                            </div>
+                                    <div class="d-flex align-items-center justify-content-between mt-2">
+                                        <div class="text-muted small">
+                                            <i class="fas fa-pencil-alt mr-1"></i>
+                                            Borradores: <strong>{{ $borr }}</strong>
+                                        </div>
 
-                            <div class="dep-mini">
-                                <div class="dep-mini-label">Avance de indicadores sin metas</div>
-
-                                @php
-                                    $adv = $avancePorDep[$row->id_depen] ?? [
-                                        'meta' => 0,
-                                        'hechos' => 0,
-                                        'pct' => 0,
-                                        'color' => 'secondary',
-                                    ];
-                                    $pct = (int) ($adv['pct'] ?? 0);
-                                    $meta = (int) ($adv['meta'] ?? 0);
-                                    $hechos = (int) ($adv['hechos'] ?? 0);
-
-                                    // clase para pintar tu fill (usa tu CSS actual o bootstrap)
-                                    $fillClass =
-                                        ($adv['color'] ?? 'secondary') === 'success'
-                                            ? 'fill-success'
-                                            : (($adv['color'] ?? 'secondary') === 'warning'
-                                                ? 'fill-warning'
-                                                : (($adv['color'] ?? 'secondary') === 'danger'
-                                                    ? 'fill-danger'
-                                                    : 'fill-secondary'));
-                                @endphp
-
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <div class="text-muted small">
-                                        {{ $hechos }} / {{ $meta }} completados
-
-                                        @if ($pct >= 100 && $meta > 0)
-                                            <span class="badge badge-success ml-2">Meta cumplida</span>
+                                        @if ($borr > 0)
+                                            <button type="button" class="btn btn-sm btn-outline-primary"
+                                                wire:click="recordarBorradoresDependencia({{ (int) $row->id_depen }})">
+                                                <i class="fas fa-bell mr-1"></i> Recordar
+                                            </button>
                                         @endif
                                     </div>
 
-                                    <div class="font-weight-bold">
-                                        {{ $pct }}%
+                                    <div class="dep-mini">
+                                        <div class="dep-mini-label">Avance de indicadores sin metas</div>
+
+                                        @php
+                                            $adv = $avancePorDep[$row->id_depen] ?? [
+                                                'meta' => 0,
+                                                'hechos' => 0,
+                                                'pct' => 0,
+                                                'color' => 'secondary',
+                                            ];
+
+                                            $pct = (int) ($adv['pct'] ?? 0);
+                                            $meta = (int) ($adv['meta'] ?? 0);
+                                            $hechos = (int) ($adv['hechos'] ?? 0);
+
+                                            $fillClass =
+                                                ($adv['color'] ?? 'secondary') === 'success'
+                                                    ? 'fill-success'
+                                                    : (($adv['color'] ?? 'secondary') === 'warning'
+                                                        ? 'fill-warning'
+                                                        : (($adv['color'] ?? 'secondary') === 'danger'
+                                                            ? 'fill-danger'
+                                                            : 'fill-secondary'));
+                                        @endphp
+
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <div class="text-muted small">
+                                                {{ $hechos }} / {{ $meta }} completados
+
+                                                @if ($pct >= 100 && $meta > 0)
+                                                    <span class="badge badge-success ml-2">Meta cumplida</span>
+                                                @endif
+                                            </div>
+
+                                            <div class="font-weight-bold">
+                                                {{ $pct }}%
+                                            </div>
+                                        </div>
+
+                                        <div class="dep-bar">
+                                            <div class="dep-bar-fill {{ $fillClass }}"
+                                                style="width: {{ $pct }}%"></div>
+                                        </div>
+
+                                        <div class="text-muted small mt-2">
+                                            Meta: {{ $meta }} · Hechos: {{ $hechos }}
+                                        </div>
                                     </div>
                                 </div>
-
-                                <div class="dep-bar">
-                                    <div class="dep-bar-fill {{ $fillClass }}"
-                                        style="width: {{ $pct }}%"></div>
-                                </div>
-
-                                <div class="text-muted small mt-2">
-                                    Meta: {{ $meta }} · Hechos: {{ $hechos }}
-                                </div>
                             </div>
-                        </div>
+                        @endforeach
                     </div>
-                @endforeach
+                </div>
             </div>
         </div>
     </div>
@@ -686,6 +711,7 @@
     @endif
 
 </div>
+
 
 @once
     @push('scripts')
@@ -1065,6 +1091,77 @@
                 document.addEventListener("DOMContentLoaded", initAdminCharts);
             })
             ();
+        </script>
+        <script>
+            function getDepScrollStep() {
+                const wrap = document.getElementById('depScrollWrap');
+                if (!wrap) return 420;
+
+                const item = wrap.querySelector('.dep-scroll-item');
+                const style = window.getComputedStyle(wrap.querySelector('.dep-scroll-track'));
+                const gap = parseInt(style.columnGap || style.gap || 16, 10) || 16;
+                const itemWidth = item ? item.offsetWidth : 420;
+
+                return itemWidth + gap;
+            }
+
+            function updateDependenciasControls() {
+                const wrap = document.getElementById('depScrollWrap');
+                const prevBtn = document.getElementById('depPrevBtn');
+                const nextBtn = document.getElementById('depNextBtn');
+                const fadeLeft = document.getElementById('depFadeLeft');
+                const fadeRight = document.getElementById('depFadeRight');
+
+                if (!wrap || !prevBtn || !nextBtn) return;
+
+                const maxScrollLeft = wrap.scrollWidth - wrap.clientWidth;
+                const current = Math.round(wrap.scrollLeft);
+
+                const atStart = current <= 2;
+                const atEnd = current >= maxScrollLeft - 2;
+
+                prevBtn.disabled = atStart;
+                nextBtn.disabled = atEnd;
+
+                if (fadeLeft) fadeLeft.classList.toggle('show', !atStart);
+                if (fadeRight) fadeRight.classList.toggle('show', !atEnd);
+            }
+
+            function scrollDependencias(direction) {
+                const wrap = document.getElementById('depScrollWrap');
+                if (!wrap) return;
+
+                const move = getDepScrollStep();
+
+                wrap.scrollBy({
+                    left: direction * move,
+                    behavior: 'smooth'
+                });
+
+                setTimeout(updateDependenciasControls, 250);
+            }
+
+            function initDependenciasScroller() {
+                const wrap = document.getElementById('depScrollWrap');
+                if (!wrap) return;
+
+                wrap.addEventListener('scroll', updateDependenciasControls, {
+                    passive: true
+                });
+                window.addEventListener('resize', updateDependenciasControls);
+
+                updateDependenciasControls();
+            }
+
+            document.addEventListener('DOMContentLoaded', initDependenciasScroller);
+
+            document.addEventListener('livewire:initialized', () => {
+                if (!window.Livewire) return;
+
+                Livewire.hook('message.processed', () => {
+                    setTimeout(initDependenciasScroller, 50);
+                });
+            });
         </script>
     @endpush
 @endonce

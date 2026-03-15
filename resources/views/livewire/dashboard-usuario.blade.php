@@ -114,10 +114,6 @@
                         </div>
                     </div>
 
-                    <div class="mt-2 small text-muted">
-                        Cargas devueltas para corrección.
-                    </div>
-
                     <div class="mt-3">
                         <a href="{{ route('usuario.indicadores', ['f' => 'observados']) }}"
                             class="font-weight-medium text-danger text-decoration-none">
