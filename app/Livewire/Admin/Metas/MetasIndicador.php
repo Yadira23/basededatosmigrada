@@ -4,6 +4,7 @@ namespace App\Livewire\Admin\Metas;
 
 use App\Models\Indicador;
 use App\Models\Meta;
+use App\Models\MetaPeriodo;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -187,6 +188,18 @@ class MetasIndicador extends Component
             'config_campos' => [], // arranca vacío
         ]);
 
+        MetaPeriodo::updateOrCreate(
+            [
+                'id_ind' => $this->id_ind,
+                'ejercicio' => $this->ejercicio,
+                'segmento' => $this->corte,
+            ],
+            [
+                'periodicidad' => $this->indicador->periodo_ind,
+                'meta' => 1,
+            ]
+        );
+
         session()->flash('message', 'Meta creada correctamente.');
         $this->resetInput();
         $this->dispatch('close-modal', id: 'MetaModal');
@@ -234,11 +247,39 @@ class MetasIndicador extends Component
 
         $m = Meta::where('id_ind', $this->id_ind)->findOrFail($this->selectedId);
 
+        $ejercicioAnterior = $m->ejercicio;
+        $corteAnterior = $m->corte;
+
         $m->update([
             'titulo' => $this->titulo,
             'ejercicio' => $this->ejercicio,
             'corte' => $this->corte,
         ]);
+
+        $metaPeriodo = MetaPeriodo::where('id_ind', $this->id_ind)
+            ->where('ejercicio', $ejercicioAnterior)
+            ->where('segmento', $corteAnterior)
+            ->first();
+
+        if ($metaPeriodo) {
+            $metaPeriodo->update([
+                'ejercicio' => $this->ejercicio,
+                'periodicidad' => $this->indicador->periodo_ind,
+                'segmento' => $this->corte,
+            ]);
+        } else {
+            MetaPeriodo::updateOrCreate(
+                [
+                    'id_ind' => $this->id_ind,
+                    'ejercicio' => $this->ejercicio,
+                    'segmento' => $this->corte,
+                ],
+                [
+                    'periodicidad' => $this->indicador->periodo_ind,
+                    'meta' => 1,
+                ]
+            );
+        }
 
         session()->flash('message', 'Meta actualizada.');
         $this->resetInput();
@@ -248,6 +289,12 @@ class MetasIndicador extends Component
     public function destroy($id)
     {
         $m = Meta::where('id_ind', $this->id_ind)->findOrFail($id);
+
+        MetaPeriodo::where('id_ind', $this->id_ind)
+            ->where('ejercicio', $m->ejercicio)
+            ->where('segmento', $m->corte)
+            ->delete();
+
         $m->delete();
 
         session()->flash('message', 'Meta eliminada.');

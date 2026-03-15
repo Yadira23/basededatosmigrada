@@ -42,74 +42,67 @@ class DashboardUsuario extends Component
 
     public function mount()
     {
+        $this->cargarDashboard();
+    }
+
+    public function refrescarDashboard()
+    {
+        $this->cargarDashboard();
+    }
+
+    public function cargarDashboard()
+    {
         $user = Auth::user();
         $idDepen = $user->id_depen;
 
-        // Nombre de dependencia
         $this->dependenciaNombre = $user->dependencia->nombre_depen ?? null;
 
-        // Formularios disponibles
         $this->formulariosDisponibles = Formulario::whereIn('boton_accion_form', ['Publicado', 'Ver'])
             ->where('id_depen', $idDepen)
             ->count();
 
-        // Base: cargas de la dependencia
         $base = Carga::whereHas('formulario', function ($q) use ($idDepen) {
             $q->where('id_depen', $idDepen);
         });
 
         $this->cargasRealizadas = (clone $base)->count();
 
-        // Últimas cargas
         $this->ultimasCargas = (clone $base)
-            ->with(['formulario.indicador']) // ✅ trae el nombre del indicador
-            ->latest('cargas.created_at')
+            ->with(['formulario.indicador'])
+            ->latest('cargas.updated_at')
             ->take(5)
             ->get();
 
-        /* =========================================================
-       ✅ AVANCE vs META (por formularios)
-    ========================================================= */
-
-        // 1) META
         $this->metaIndicadores = Formulario::publicados()
             ->where('id_depen', $idDepen)
             ->distinct('id_form')
             ->count('id_form');
 
-        // 2) COMPLETADOS (sin contar BORRADOR)
         $estatusValidos = ['ENVIADO', 'EN REVISION', 'REENVIADO', 'APROBADO'];
 
         $this->indicadoresCompletados = (clone $base)
             ->whereIn('cargas.status_env', $estatusValidos)
-            ->whereNotNull('cargas.id_form') // por seguridad
+            ->whereNotNull('cargas.id_form')
             ->distinct('cargas.id_form')
             ->count('cargas.id_form');
 
-        // 3) %
         $this->porcentajeAvance = $this->metaIndicadores > 0
             ? (int) round(($this->indicadoresCompletados / $this->metaIndicadores) * 100)
             : 0;
 
-        /* =========================================================
-       ✅ Pendientes / Observaciones (ya con meta/completados listos)
-    ========================================================= */
-
-        // ✅ Pendientes reales = meta - completados
         $this->pendientes = max(0, (int) $this->metaIndicadores - (int) $this->indicadoresCompletados);
 
-        // ⚠️ Ajusta estos status a los reales (en tu UI usas OBSERVADO)
-        $this->observaciones = (clone $base)->whereIn('status_env', ['OBSERVADO', 'RECHAZADO'])->count();
+        $this->observaciones = (clone $base)
+            ->whereIn('status_env', ['OBSERVADO', 'RECHAZADO'])
+            ->count();
 
-        /* =========================================================
-✅ INDICADORES CON METAS (KARDEX) — MULTI (MENSUAL/TRIM/SEM/ANUAL)
-========================================================= */
+        $this->cargarKardexMetas($idDepen);
+    }
 
+    protected function cargarKardexMetas($idDepen)
+    {
         $ejercicio = now()->year;
 
-        // Traer TODOS los indicadores que:
-        // - tienen metasPeriodo del ejercicio
-        // - están asignados a la dependencia (por formularios)
         $indicadoresConMetas = Indicador::whereHas('metasPeriodo', function ($q) use ($ejercicio) {
             $q->where('ejercicio', $ejercicio);
         })
@@ -122,27 +115,20 @@ class DashboardUsuario extends Component
             }])
             ->get();
 
-        // limpiar (por si Livewire rehidrata)
         $this->kardexMetasPorIndicador = [];
 
-        // estatus válidos (sin BORRADOR)
         $estatusValidos = ['ENVIADO', 'EN REVISION', 'REENVIADO', 'APROBADO'];
 
         foreach ($indicadoresConMetas as $ind) {
-
-            // periodicidad (tomamos la primera meta del indicador; todas deben ser iguales)
             $periodicidad = $ind->metasPeriodo->first()->periodicidad ?? null;
             $pl = mb_strtolower(trim((string) $periodicidad));
 
-            // si viene vacío, NO inventamos trimestral; mejor mostrar "Sin periodicidad"
             if ($pl === '') {
                 $pl = 'sin_periodicidad';
             }
 
-            // meta total del indicador (suma de metas por segmento)
             $metaTotal = (int) $ind->metasPeriodo->sum('meta');
 
-            // Traer cargas válidas del indicador con su periodo
             $cargasValidas = Carga::query()
                 ->join('detallecargas as dc', 'dc.id_carga', '=', 'cargas.id_carga')
                 ->where('dc.id_ind', $ind->id_ind)
@@ -151,39 +137,32 @@ class DashboardUsuario extends Component
                 ->distinct()
                 ->get();
 
-            // hechas por segmento
-            $hechasPorSegmento = []; // [segmento => count]
+            $hechasPorSegmento = [];
 
             foreach ($cargasValidas as $c) {
                 $p = trim((string) ($c->periodo ?? ''));
                 $seg = null;
 
-                if ($pl === 'MENSUAL') {
-                    // YYYY-MM
+                if ($pl === 'mensual') {
                     if (preg_match('/^\d{4}\-(\d{2})$/', $p, $m)) {
-                        $seg = (int) $m[1]; // 1..12
+                        $seg = (int) $m[1];
                     }
-                } elseif ($pl === 'TRIMESTRAL') {
-                    // YYYY-T1 o YYYY-02
+                } elseif ($pl === 'trimestral') {
                     if (preg_match('/^\d{4}\-T(\d{1,2})$/i', $p, $m)) {
-                        $seg = (int) $m[1]; // 1..4
+                        $seg = (int) $m[1];
                     } elseif (preg_match('/^\d{4}\-(\d{2})$/', $p, $m)) {
                         $mes = (int) $m[1];
-                        $seg = (int) ceil($mes / 3); // 1..4
+                        $seg = (int) ceil($mes / 3);
                     }
-                } elseif ($pl === 'SEMESTRAL') {
-                    // YYYY-S1 o YYYY-S2 (si viene como mes, lo convertimos)
+                } elseif ($pl === 'semestral') {
                     if (preg_match('/^\d{4}\-S(\d)$/i', $p, $m)) {
-                        $seg = (int) $m[1]; // 1..2
+                        $seg = (int) $m[1];
                     } elseif (preg_match('/^\d{4}\-(\d{2})$/', $p, $m)) {
                         $mes = (int) $m[1];
-                        $seg = ($mes <= 6) ? 1 : 2; // 1..2
+                        $seg = ($mes <= 6) ? 1 : 2;
                     }
-                } elseif ($pl === 'ANUAL') {
-                    // YYYY o YYYY-01..12 (cualquier mes cuenta como el año)
-                    if (preg_match('/^\d{4}$/', $p)) {
-                        $seg = 1;
-                    } elseif (preg_match('/^\d{4}\-(\d{2})$/', $p)) {
+                } elseif ($pl === 'anual') {
+                    if (preg_match('/^\d{4}$/', $p) || preg_match('/^\d{4}\-(\d{2})$/', $p)) {
                         $seg = 1;
                     }
                 }
@@ -193,7 +172,6 @@ class DashboardUsuario extends Component
                 }
             }
 
-            // construir kardex de este indicador
             $kardex = [];
             $hechasTotal = 0;
 
@@ -215,11 +193,11 @@ class DashboardUsuario extends Component
                 }
 
                 $label = match ($pl) {
-                    'MENSUAL' => 'M'.$seg,
-                    'TRIMESTRAL' => 'T'.$seg,
-                    'SEMESTRAL' => 'S'.$seg,
-                    'ANUAL' => 'Año',
-                    default => 'P'.$seg,
+                    'mensual' => 'M' . $seg,
+                    'trimestral' => 'T' . $seg,
+                    'semestral' => 'S' . $seg,
+                    'anual' => 'Año',
+                    default => 'P' . $seg,
                 };
 
                 $kardex[] = [
@@ -230,17 +208,15 @@ class DashboardUsuario extends Component
                 ];
             }
 
-            // tope global a meta total
             $hechasTotal = min($hechasTotal, $metaTotal);
 
             $porcentaje = $metaTotal > 0
                 ? (int) round(($hechasTotal / $metaTotal) * 100)
                 : 0;
 
-            // guardar bloque para el blade
             $this->kardexMetasPorIndicador[] = [
                 'id_ind' => $ind->id_ind,
-                'nombre' => $ind->nombre_ind ?? ('Indicador '.$ind->id_ind),
+                'nombre' => $ind->nombre_ind ?? ('Indicador ' . $ind->id_ind),
                 'periodicidad' => $periodicidad ?? 'Sin periodicidad',
                 'meta_total' => $metaTotal,
                 'hechas_total' => $hechasTotal,
@@ -249,18 +225,18 @@ class DashboardUsuario extends Component
             ];
         }
 
-        /**
-         * Compatibilidad con tu blade actual:
-         * Si tu vista SOLO usa $kardexMetas, $metaCargas, etc.,
-         * llenamos esos con el primer indicador para que no se rompa.
-         */
-        if (! empty($this->kardexMetasPorIndicador)) {
+        if (!empty($this->kardexMetasPorIndicador)) {
             $primero = $this->kardexMetasPorIndicador[0];
 
             $this->metaCargas = (int) $primero['meta_total'];
             $this->cargasHechas = (int) $primero['hechas_total'];
             $this->porcentajeMeta = (int) $primero['pct'];
             $this->kardexMetas = $primero['kardex'];
+        } else {
+            $this->metaCargas = 0;
+            $this->cargasHechas = 0;
+            $this->porcentajeMeta = 0;
+            $this->kardexMetas = [];
         }
     }
 
@@ -298,7 +274,7 @@ class DashboardUsuario extends Component
         $idDepen = auth()->user()->id_depen;
 
         return [
-            "echo:dashboard.dependencia.{$idDepen},DashboardUpdated" => '$refresh',
+            "echo:dashboard.dependencia.{$idDepen},DashboardUpdated" => 'refrescarDashboard',
         ];
     }
 }

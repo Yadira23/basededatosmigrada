@@ -90,10 +90,10 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/admin/dashboard', [AdminController::class, 'dashboard'])
         ->name('admin.dashboard');
 
-    Route::view('/usuarios', 'livewire.usuarios.index');
-    Route::view('/dependencias', 'livewire.dependencias.index');
-    Route::view('/cargas', 'livewire.carga.index');
-    Route::view('/DetalleCargas', 'livewire.DetalleCargas.index');
+    Route::view('/usuarios', 'livewire.usuarios.index')->name('usuarios.index');
+    Route::view('/dependencias', 'livewire.dependencias.index')->name('dependencias.index');
+    Route::view('/cargas', 'livewire.carga.index')->name('cargas.index');
+    Route::view('/DetalleCargas', 'livewire.DetalleCargas.index')->name('detallecargas.admin');
 
     Route::get('/carga/crear', CargaCreate::class)->name('carga.create');
 
@@ -119,13 +119,15 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/admin/busqueda', [\App\Http\Controllers\Admin\BuscarController::class, 'index'])
         ->name('admin.buscar');
 
+    // IMPORTANTE: /formularios solo para admin
     Route::get('/formularios', Formularios::class)
         ->name('formularios.index');
 
-    Route::view('/anexos', 'livewire.anexos.index');
-    Route::view('/indicadores', 'livewire.indicadores.index');
+    Route::view('/anexos', 'livewire.anexos.index')->name('anexos.index');
+    Route::view('/indicadores', 'livewire.indicadores.index')->name('indicadores.index');
 
-    Route::view('/documentacion-admin', 'admin.documentacion')->name('documentacion.admin');
+    Route::view('/documentacion-admin', 'admin.documentacion')
+        ->name('documentacion.admin');
 });
 
 /* ---------------- RUTAS SOLO USUARIO ---------------- */
@@ -134,17 +136,14 @@ Route::middleware(['auth', 'role:usuario'])->group(function () {
     Route::get('/usuario/dashboard', [UsuarioController::class, 'dashboard'])
         ->name('usuario.dashboard');
 
-    Route::get('/formularios', function () {
-        return redirect()->route('usuario.indicadores');
-    });
-
     Route::get('/usuario/indicadores', function () {
         return view('usuario.formularios.index');
     })->name('usuario.indicadores');
 
+    // Usuario usa /usuario/formularios, NO /formularios
     Route::get('/usuario/formularios', function () {
         return redirect()->route('usuario.indicadores');
-    });
+    })->name('usuario.formularios');
 
     Route::get('/usuario/anexos', [UsuarioAnexosController::class, 'index'])
         ->name('usuario.anexos');
@@ -215,6 +214,5 @@ Route::middleware(['auth', 'role:usuario'])->group(function () {
         ->name('usuario.indicadores.show');
 
     Route::view('/documentacion', 'usuario.documentacion')->name('documentacion');
-
     Route::view('/contacto', 'usuario.contacto')->name('contacto');
 });

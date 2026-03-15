@@ -1,4 +1,4 @@
-<div wire:poll.60s>
+<div wire:poll.60s="refrescarDashboard">
 
     {{-- HEADER --}}
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
@@ -29,7 +29,7 @@
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                Lista de Indicadores 
+                                Lista de Indicadores
                             </div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
                                 {{ $formulariosDisponibles ?? 0 }}
@@ -99,7 +99,7 @@
         {{-- Observaciones --}}
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card border-left-danger shadow h-100 py-2">
-                <div class="card-body">
+                <div class="card-body d-flex flex-column">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
@@ -113,8 +113,16 @@
                             <i class="fas fa-comment-dots fa-2x text-gray-300"></i>
                         </div>
                     </div>
+
                     <div class="mt-2 small text-muted">
                         Cargas devueltas para corrección.
+                    </div>
+
+                    <div class="mt-3">
+                        <a href="{{ route('usuario.indicadores', ['f' => 'observados']) }}"
+                            class="font-weight-medium text-danger text-decoration-none">
+                            Ver observaciones <i class="fas fa-arrow-right ml-1"></i>
+                        </a>
                     </div>
                 </div>
             </div>
@@ -202,13 +210,15 @@
                                     $metaTotal = (int) ($bloque['meta_total'] ?? 0);
                                     $hechasTotal = (int) ($bloque['hechas_total'] ?? 0);
                                     $kardex = $bloque['kardex'] ?? [];
+                                    $collapseId = 'kardexIndicador' . ($bloque['id_ind'] ?? uniqid());
                                 @endphp
 
                                 <div class="card border-left-primary shadow-sm">
                                     <div class="card-body">
 
-                                        <div class="d-flex justify-content-between align-items-start">
-                                            <div>
+                                        {{-- Encabezado resumen --}}
+                                        <div class="d-flex justify-content-between align-items-start flex-wrap">
+                                            <div class="mb-2">
                                                 <div class="font-weight-bold text-gray-800">
                                                     {{ $nombreInd }}
                                                 </div>
@@ -217,7 +227,7 @@
                                                 </div>
                                             </div>
 
-                                            <div class="text-right">
+                                            <div class="text-right mb-2">
                                                 <div class="h5 mb-0 font-weight-bold text-gray-800">
                                                     {{ $pm }}%
                                                 </div>
@@ -225,6 +235,7 @@
                                             </div>
                                         </div>
 
+                                        {{-- Barra --}}
                                         <div class="progress mt-2" style="height: 10px; border-radius: 999px;">
                                             <div class="progress-bar {{ $barClassMeta }}" role="progressbar"
                                                 style="width: {{ $pm }}%;"
@@ -233,13 +244,24 @@
                                             </div>
                                         </div>
 
-                                        <div class="d-flex justify-content-between small text-muted mt-2">
+                                        {{-- Resumen --}}
+                                        <div class="d-flex justify-content-between small text-muted mt-2 flex-wrap">
                                             <span>Meta total: <strong>{{ $metaTotal }}</strong></span>
                                             <span>Hechas: <strong>{{ $hechasTotal }}</strong></span>
                                         </div>
 
-                                        {{-- Kardex por periodo (del indicador) --}}
+                                        {{-- Botón desplegable --}}
                                         <div class="mt-3">
+                                            <button class="btn btn-sm btn-outline-primary" type="button"
+                                                data-toggle="collapse" data-target="#{{ $collapseId }}"
+                                                aria-expanded="false" aria-controls="{{ $collapseId }}">
+                                                <i class="fas fa-chevron-down mr-1"></i>
+                                                Ver kardex
+                                            </button>
+                                        </div>
+
+                                        {{-- Kardex oculto --}}
+                                        <div class="collapse mt-3" id="{{ $collapseId }}">
                                             <div class="small text-muted mb-2">Kardex por periodo</div>
 
                                             @if (!empty($kardex) && count($kardex))
@@ -307,7 +329,7 @@
     {{-- Acciones + Actividad --}}
     <div class="row">
 
-      {{--  <div class="col-lg-4 mb-4">
+        {{--  <div class="col-lg-4 mb-4">
             <div class="card shadow">
                 <div class="card-header py-3">
                     <h6 class="m-0 font-weight-bold text-primary">Acciones rápidas</h6>

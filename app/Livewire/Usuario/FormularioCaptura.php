@@ -375,6 +375,51 @@ class FormularioCaptura extends Component
                 $this->ambito_geo = $carga->ambito_geo_carga;
             }
 
+            // ✅ Detectar meta de la carga observada
+            if ($this->requiereMeta && empty($this->meta_id)) {
+                $metaDetectada = $carga->meta_id;
+
+                if (empty($metaDetectada)) {
+                    $metaDetectada = DetalleCarga::where('id_carga', $carga->id_carga)
+                        ->where('id_ind', $this->id_ind)
+                        ->whereNotNull('meta_id')
+                        ->value('meta_id');
+                }
+
+                if ($metaDetectada) {
+                    $this->meta_id = (int) $metaDetectada;
+
+                    $meta = Meta::where('id', $this->meta_id)
+                        ->where('id_ind', $this->id_ind)
+                        ->first();
+
+                    if ($meta) {
+                        $this->metaTitulo = 'Meta ' . ($meta->orden ?? '') . ' – ' . ($meta->titulo ?? '');
+
+                        // ✅ recalcular schema con la configuración de ESA meta
+                        if (!empty($meta->config_campos)) {
+                            $raw = $meta->config_campos;
+
+                            if (is_string($raw)) {
+                                $raw = json_decode($raw, true) ?: [];
+                            }
+
+                            $this->schema = $this->normalizarSchema(is_array($raw) ? $raw : []);
+                            $this->manualCampos = [];
+
+                            foreach ($this->schema as $c) {
+                                $this->manualCampos[$c['slug']] = null;
+                            }
+
+                            $this->hayPlantilla = !empty($this->schema);
+                        }
+                    }
+                }
+            }
+
+            // ✅ En corrección la meta debe quedar fija
+            $this->metaBloqueada = $this->requiereMeta && !empty($this->meta_id);
+
             $this->cargarDatosDeCarga($carga);
 
             if ($this->metodo === 'archivo') {
