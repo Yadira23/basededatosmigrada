@@ -128,6 +128,9 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 
     Route::view('/documentacion-admin', 'admin.documentacion')
         ->name('documentacion.admin');
+
+    Route::get('/admin/seguimiento-general', [AdminController::class, 'seguimientoGeneral'])
+        ->name('admin.seguimiento.general');
 });
 
 /* ---------------- RUTAS SOLO USUARIO ---------------- */
