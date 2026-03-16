@@ -131,6 +131,9 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 
     Route::get('/admin/seguimiento-general', [AdminController::class, 'seguimientoGeneral'])
         ->name('admin.seguimiento.general');
+
+    Route::get('/admin/seguimiento-general/{id_depen}/pdf', [AdminController::class, 'pdfDependencia'])
+        ->name('admin.seguimiento.general.pdf');
 });
 
 /* ---------------- RUTAS SOLO USUARIO ---------------- */

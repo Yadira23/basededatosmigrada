@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Carga;
 use App\Models\Dependencia;
+use Barryvdh\DomPDF\Facade\Pdf;
+
 
 class AdminController extends Controller
 {
@@ -189,5 +192,217 @@ class AdminController extends Controller
             'dependenciaSeleccionada' => $dependenciaSeleccionada,
             'detalleDependencia' => $detalleDependencia,
         ]);
+    }
+
+    public function pdfDependencia($id_depen)
+    {
+        $dependencia = Dependencia::with([
+            'formularios.indicador.metas',
+            'formularios.cargas.detallecargas.indicador',
+            'formularios.cargas.detallecargas.region',
+            'formularios.cargas.detallecargas.municipio',
+            'formularios.cargas.detallecargas.meta',
+            'formularios.ultimaCarga',
+        ])->findOrFail($id_depen);
+
+        $detalle = collect();
+
+        $totalUnidades = 0;
+        $capturados = 0;
+        $observados = 0;
+        $aprobados = 0;
+        $enviados = 0;
+
+        foreach ($dependencia->formularios as $formulario) {
+            $indicador = $formulario->indicador;
+            if (!$indicador) {
+                continue;
+            }
+
+            $metas = $indicador->metas ?? collect();
+
+            // =========================================================
+            // INDICADOR CON METAS
+            // =========================================================
+            if ($metas->count() > 0) {
+                $totalUnidades += $metas->count();
+
+                foreach ($metas as $meta) {
+                    $ultimaCargaMeta = $formulario->cargas
+                        ->where('meta_id', $meta->id)
+                        ->sortByDesc('created_at')
+                        ->first();
+
+                    $status = $ultimaCargaMeta
+                        ? strtoupper(trim((string) $ultimaCargaMeta->status_env))
+                        : 'PENDIENTE';
+
+                    if ($ultimaCargaMeta) {
+                        $capturados++;
+
+                        if ($status === 'OBSERVADO') {
+                            $observados++;
+                        } elseif ($status === 'APROBADO') {
+                            $aprobados++;
+                        } else {
+                            $enviados++;
+                        }
+                    }
+
+                    $detallesCapturados = collect();
+
+                    if ($ultimaCargaMeta && $status === 'APROBADO') {
+                        $detallesCapturados = $ultimaCargaMeta->detallecargas
+                            ->where('meta_id', $meta->id)
+                            ->values()
+                            ->map(function ($row) {
+                                $payload = $row->payload_det ?? [];
+                                $campos = data_get($payload, 'campos', []);
+                                $raw = data_get($payload, 'raw', '');
+                                $csvInfo = data_get($payload, 'csv', []);
+                                $origen = data_get($payload, 'origen', '');
+
+                                $ambito = match ($row->ambito_geo) {
+                                    'REGION' => 'REGIÓN',
+                                    'MUNICIPIO' => 'MUNICIPIO',
+                                    default => 'ESTATAL',
+                                };
+
+                                $ubicacion = 'ESTATAL';
+                                if ($row->ambito_geo === 'REGION') {
+                                    $ubicacion = $row->region->nombre_region ?? 'N/A';
+                                } elseif ($row->ambito_geo === 'MUNICIPIO') {
+                                    $ubicacion = $row->municipio->nombre_municipio ?? 'N/A';
+                                }
+
+                                return [
+                                    'folio' => $row->carga->folioUnico_carga ?? $row->id_carga,
+                                    'periodo' => $row->periodo_det,
+                                    'ejercicio' => $row->ejercicio_det,
+                                    'fecha' => optional($row->fecha_registro_det)?->format('d/m/Y') ?? '-',
+                                    'fuente' => $row->fuente_det,
+                                    'valor' => $row->valor_det,
+                                    'ambito' => $ambito,
+                                    'ubicacion' => $ubicacion,
+                                    'origen' => $origen,
+                                    'campos' => $campos,
+                                    'raw' => $raw,
+                                    'csv' => $csvInfo,
+                                ];
+                            });
+                    }
+
+                    $detalle->push([
+                        'indicador' => $indicador->nombre_ind,
+                        'meta' => $meta->titulo,
+                        'estado' => $status,
+                        'fecha' => $ultimaCargaMeta?->created_at
+                            ? $ultimaCargaMeta->created_at->format('d/m/Y')
+                            : '-',
+                        'captura' => $detallesCapturados,
+                    ]);
+                }
+            }
+
+            // =========================================================
+            // INDICADOR SIN METAS
+            // =========================================================
+            else {
+                $totalUnidades += 1;
+
+                $ultimaCarga = $formulario->ultimaCarga;
+
+                $status = $ultimaCarga
+                    ? strtoupper(trim((string) $ultimaCarga->status_env))
+                    : 'PENDIENTE';
+
+                if ($ultimaCarga) {
+                    $capturados++;
+
+                    if ($status === 'OBSERVADO') {
+                        $observados++;
+                    } elseif ($status === 'APROBADO') {
+                        $aprobados++;
+                    } else {
+                        $enviados++;
+                    }
+                }
+
+                $detallesCapturados = collect();
+
+                if ($ultimaCarga && $status === 'APROBADO') {
+                    $detallesCapturados = $ultimaCarga->detallecargas
+                        ->values()
+                        ->map(function ($row) {
+                            $payload = $row->payload_det ?? [];
+                            $campos = data_get($payload, 'campos', []);
+                            $raw = data_get($payload, 'raw', '');
+                            $csvInfo = data_get($payload, 'csv', []);
+                            $origen = data_get($payload, 'origen', '');
+
+                            $ambito = match ($row->ambito_geo) {
+                                'REGION' => 'REGIÓN',
+                                'MUNICIPIO' => 'MUNICIPIO',
+                                default => 'ESTATAL',
+                            };
+
+                            $ubicacion = 'ESTATAL';
+                            if ($row->ambito_geo === 'REGION') {
+                                $ubicacion = $row->region->nombre_region ?? 'N/A';
+                            } elseif ($row->ambito_geo === 'MUNICIPIO') {
+                                $ubicacion = $row->municipio->nombre_municipio ?? 'N/A';
+                            }
+
+                            return [
+                                'folio' => $row->carga->folioUnico_carga ?? $row->id_carga,
+                                'periodo' => $row->periodo_det,
+                                'ejercicio' => $row->ejercicio_det,
+                                'fecha' => optional($row->fecha_registro_det)?->format('d/m/Y') ?? '-',
+                                'fuente' => $row->fuente_det,
+                                'valor' => $row->valor_det,
+                                'ambito' => $ambito,
+                                'ubicacion' => $ubicacion,
+                                'origen' => $origen,
+                                'campos' => $campos,
+                                'raw' => $raw,
+                                'csv' => $csvInfo,
+                            ];
+                        });
+                }
+
+                $detalle->push([
+                    'indicador' => $indicador->nombre_ind,
+                    'meta' => null,
+                    'estado' => $status,
+                    'fecha' => $ultimaCarga?->created_at
+                        ? $ultimaCarga->created_at->format('d/m/Y')
+                        : '-',
+                    'captura' => $detallesCapturados,
+                ]);
+            }
+        }
+
+        $pendientes = max($totalUnidades - $capturados, 0);
+        $avance = $totalUnidades > 0
+            ? round(($capturados / $totalUnidades) * 100)
+            : 0;
+
+        $pdf = Pdf::loadView('admin.pdf.seguimiento-dependencia', [
+            'dependencia' => $dependencia,
+            'detalle' => $detalle,
+            'resumen' => [
+                'total' => $totalUnidades,
+                'capturados' => $capturados,
+                'pendientes' => $pendientes,
+                'observados' => $observados,
+                'aprobados' => $aprobados,
+                'enviados' => $enviados,
+                'avance' => $avance,
+            ],
+            'fechaGeneracion' => now()->format('d/m/Y H:i'),
+            'nombreSistema' => 'Sistema Integra - Seguimiento General',
+        ])->setPaper('a4', 'portrait');
+
+        return $pdf->stream('seguimiento-' . $dependencia->id_depen . '.pdf');
     }
 }

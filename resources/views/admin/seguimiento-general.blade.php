@@ -163,9 +163,16 @@
                         </small>
                     </div>
 
-                    <a href="{{ route('admin.seguimiento.general') }}" class="btn btn-sm btn-outline-secondary">
-                        Cerrar detalle
-                    </a>
+                    <div class="d-flex align-items-center" style="gap: .5rem;">
+                        <a href="{{ route('admin.seguimiento.general.pdf', $dependenciaSeleccionada->id_depen) }}"
+                            class="btn btn-sm btn-danger" target="_blank">
+                            Exportar PDF
+                        </a>
+
+                        <a href="{{ route('admin.seguimiento.general') }}" class="btn btn-sm btn-outline-secondary">
+                            Cerrar detalle
+                        </a>
+                    </div>
                 </div>
 
                 <div class="card-body">
